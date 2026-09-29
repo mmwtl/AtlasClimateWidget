@@ -70,6 +70,7 @@ final class WidgetRenderer {
         canvas.translate(plan.offsetX(), top - Math.round(top));
         if (card) {
             drawCard(canvas, strip);
+            drawDivider(canvas, strip);
         }
         if (!content) {
             return bitmap;
@@ -117,6 +118,18 @@ final class WidgetRenderer {
                 strip.lastInCard ? strip.height : strip.height + 1f);
         canvas.drawRoundRect(rect, radius, radius, paint);
         canvas.restore();
+    }
+
+    /** Hairline between blocks sharing one card, centred in the gap between them. */
+    private void drawDivider(Canvas canvas, WidgetGeometry.Strip strip) {
+        if (!strip.row.sectionStart) {
+            return;
+        }
+        paint.setShader(null);
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(withAlpha(Ui.TEXT, 22));
+        float thickness = Math.max(1f, dp);
+        canvas.drawRect(plan.padding, 0f, plan.width - plan.padding, thickness, paint);
     }
 
     // ---- temperature -------------------------------------------------------------------------

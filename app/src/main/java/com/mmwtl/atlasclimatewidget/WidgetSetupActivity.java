@@ -131,6 +131,20 @@ public final class WidgetSetupActivity extends ScaledActivity {
         }
         card.addView(blocks, fullWrap(8));
 
+        addTitle(card, R.string.card_layout_title);
+        LinearLayout layouts = segmentRow();
+        for (WidgetConfig.CardLayout layout : WidgetConfig.CardLayout.values()) {
+            TextView segment = Ui.segment(this, layout.titleRes);
+            segment.setOnClickListener(view -> {
+                config.cardLayout = layout;
+                refresh();
+            });
+            refreshers.add(() -> Ui.setSegmentSelected(this, segment,
+                    config.cardLayout == layout));
+            Ui.addSegment(layouts, segment);
+        }
+        card.addView(layouts, fullWrap(8));
+
         addTitle(card, R.string.height_title);
         LinearLayout heights = segmentRow();
         for (WidgetConfig.HeightMode mode : WidgetConfig.HeightMode.values()) {

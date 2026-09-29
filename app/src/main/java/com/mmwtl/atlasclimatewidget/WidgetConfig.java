@@ -61,6 +61,18 @@ final class WidgetConfig {
         }
     }
 
+    /** Whether each block gets its own card or all blocks share one. */
+    enum CardLayout {
+        SEPARATE(R.string.card_layout_separate),
+        SINGLE(R.string.card_layout_single);
+
+        final int titleRes;
+
+        CardLayout(int titleRes) {
+            this.titleRes = titleRes;
+        }
+    }
+
     static final int COLUMNS_MIN = 2;
     static final int COLUMNS_MAX = 8;
     static final int CARD_RADIUS_MAX_DP = 40;
@@ -105,6 +117,7 @@ final class WidgetConfig {
     /** Resolved from the global car setting by {@link Prefs}; not part of the saved layout. */
     int fanPresetCount = 3;
     VerticalAlign verticalAlign = VerticalAlign.TOP;
+    CardLayout cardLayout = CardLayout.SEPARATE;
 
     /** Enabled tiles in display order. */
     final List<ClimateFunction> functions = new ArrayList<>(DEFAULT_FUNCTIONS);
@@ -212,6 +225,7 @@ final class WidgetConfig {
             json.put("fanPresets", fanPresets);
             json.put("heightMode", heightMode.name());
             json.put("verticalAlign", verticalAlign.name());
+            json.put("cardLayout", cardLayout.name());
             JSONArray tiles = new JSONArray();
             for (ClimateFunction function : functions) {
                 tiles.put(function.name());
@@ -285,6 +299,8 @@ final class WidgetConfig {
                 config.heightMode);
         config.verticalAlign = enumValue(VerticalAlign.class, json.optString("verticalAlign"),
                 config.verticalAlign);
+        config.cardLayout = enumValue(CardLayout.class, json.optString("cardLayout"),
+                config.cardLayout);
         JSONArray tiles = json.optJSONArray("functions");
         if (tiles != null) {
             config.functions.clear();

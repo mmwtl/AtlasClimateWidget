@@ -22,6 +22,7 @@ public final class WidgetConfigTest {
         config.fanDirections = false;
         config.heightMode = WidgetConfig.HeightMode.CONTENT;
         config.verticalAlign = WidgetConfig.VerticalAlign.BOTTOM;
+        config.cardLayout = WidgetConfig.CardLayout.SINGLE;
         WidgetConfig copy = WidgetConfig.fromJson(config.toJson());
         assertEquals(WidgetConfig.Block.TILES, copy.blockOrder.get(0));
         assertFalse(copy.fanEnabled);
@@ -46,6 +47,8 @@ public final class WidgetConfigTest {
         assertEquals(WidgetConfig.HeightMode.CONTENT, copy.heightMode);
         assertEquals(WidgetConfig.VerticalAlign.BOTTOM, copy.verticalAlign);
         assertEquals(WidgetConfig.HeightMode.FILL, WidgetConfig.fromJson("{}").heightMode);
+        assertEquals(WidgetConfig.CardLayout.SINGLE, copy.cardLayout);
+        assertEquals(WidgetConfig.CardLayout.SEPARATE, WidgetConfig.fromJson("{}").cardLayout);
     }
 
     @Test public void toleratesUnknownAndInvalidValues() {

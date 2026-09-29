@@ -160,6 +160,41 @@ public final class WidgetGeometryTest {
         }
     }
 
+    @Test public void singleCardHoldsAllBlocksWithDividers() {
+        WidgetConfig config = new WidgetConfig();
+        config.cardLayout = WidgetConfig.CardLayout.SINGLE;
+        WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
+        assertEquals(6, plan.strips.size());
+        float card = 0f;
+        int sections = 0;
+        for (int index = 0; index < plan.strips.size(); index++) {
+            WidgetGeometry.Strip strip = plan.strips.get(index);
+            assertEquals(index == 0, strip.firstInCard);
+            assertEquals(index == plan.strips.size() - 1, strip.lastInCard);
+            assertEquals(0f, strip.trailingGap, 0f);
+            assertEquals(card, strip.cardOffset, 0.01f);
+            card += strip.height;
+            if (strip.row.sectionStart) {
+                sections++;
+                assertTrue(strip.block != plan.strips.get(index - 1).block);
+            }
+        }
+        assertEquals(plan.strips.get(0).cardHeight, card, 0.01f);
+        assertEquals("fan and tiles start their own sections", 2, sections);
+        assertEquals(WidgetConfig.Block.TILES, plan.strips.get(5).block);
+    }
+
+    @Test public void singleCardFillsToTheCellBottom() {
+        WidgetConfig config = new WidgetConfig();
+        config.cardLayout = WidgetConfig.CardLayout.SINGLE;
+        config.tilesEnabled = false;
+        float natural = WidgetGeometry.plan(config, 640f, 0f, 1f, 25).totalHeight();
+        for (float cell : new float[] {natural * 0.8f, natural + 200f}) {
+            WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, cell, 1f, 25);
+            assertEquals(cell, plan.totalHeight(), 0.5f);
+        }
+    }
+
     @Test public void contentModeLeavesFreeSpace() {
         WidgetConfig config = new WidgetConfig();
         config.heightMode = WidgetConfig.HeightMode.CONTENT;

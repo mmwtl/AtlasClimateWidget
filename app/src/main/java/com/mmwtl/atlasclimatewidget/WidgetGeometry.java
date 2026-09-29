@@ -35,12 +35,16 @@ final class WidgetGeometry {
     }
 
     static final class Row {
+        final WidgetConfig.Block block;
         final RowKind kind;
         /** Temperature zone index or tile row index. */
         final int index;
         float height;
+        /** First row of a block that shares its card with the block above; gets a divider. */
+        boolean sectionStart;
 
-        Row(RowKind kind, int index, float height) {
+        Row(WidgetConfig.Block block, RowKind kind, int index, float height) {
+            this.block = block;
             this.kind = kind;
             this.index = index;
             this.height = height;
@@ -225,7 +229,8 @@ final class WidgetGeometry {
     /**
      * Grows the layout by {@code extra} pixels so the last card ends at the widget's bottom edge.
      * Tile rows take the height first, up to {@link #MAX_TILE_ASPECT}; the rest is shared by the
-     * cards as vertical padding, which keeps the temperature and fan bars at their size.
+     * cards as vertical padding (in one card, by its padding and the gaps between blocks), which
+     * keeps the temperature and fan bars at their size.
      */
     private static Plan fill(WidgetConfig config, float width, float density,
             int temperatureSteps, float extra) {
@@ -255,56 +260,85 @@ final class WidgetGeometry {
         float gap = config.gapDp * density;
         float verticalPadding = padding * scale + cardExtra / 2f;
         float cardGap = gap * scale;
+        boolean single = config.cardLayout == WidgetConfig.CardLayout.SINGLE;
+        // In one card, blocks are a card padding apart and take the fill share of a card each.
+        float sectionGap = padding * scale + cardExtra;
         List<Strip> strips = new ArrayList<>();
+        List<Row> cardRows = new ArrayList<>();
+        List<Float> cardGaps = new ArrayList<>();
         List<WidgetConfig.Block> blocks = config.visibleBlocks();
         for (int blockIndex = 0; blockIndex < blocks.size(); blockIndex++) {
-            WidgetConfig.Block block = blocks.get(blockIndex);
             List<Row> rows = new ArrayList<>();
             List<Float> gaps = new ArrayList<>();
-            switch (block) {
-                case TEMPERATURE: {
-                    if (config.temperatureHeader) {
-                        rows.add(new Row(RowKind.HEADER, 0, HEADER_HEIGHT_DP * density * scale));
-                        gaps.add(HEADER_GAP_DP * density * scale);
-                    }
-                    int zones = config.temperatureDual ? 2 : 1;
-                    float rowHeight = temperatureRowDp(config) * density * scale;
-                    for (int zone = 0; zone < zones; zone++) {
-                        rows.add(new Row(RowKind.TEMPERATURE, zone, rowHeight));
-                        gaps.add(TEMP_ROW_GAP_DP * density * scale);
-                    }
-                    break;
-                }
-                case FAN:
-                    if (config.fanBar) {
-                        rows.add(new Row(RowKind.FAN, 0, FAN_ROW_DP * density * scale));
-                        gaps.add(TEMP_ROW_GAP_DP * density * scale);
-                    }
-                    if (config.fanControlCount() > 0) {
-                        rows.add(new Row(RowKind.FAN_CONTROLS, 0,
-                                FAN_CONTROLS_ROW_DP * density * scale));
-                        gaps.add(0f);
-                    }
-                    break;
-                default: {
-                    int columns = config.columns;
-                    int rowCount = (config.functions.size() + columns - 1) / columns;
-                    float tile = (width - 2f * padding + gap) / columns - gap;
-                    for (int row = 0; row < rowCount; row++) {
-                        rows.add(new Row(RowKind.TILES, row, tile * scale + tileExtra));
-                        gaps.add(gap * scale);
-                    }
-                    break;
-                }
+            addBlockRows(blocks.get(blockIndex), rows, gaps, config, width, density, scale,
+                    padding, gap, tileExtra);
+            if (rows.isEmpty()) {
+                continue;
             }
-            boolean lastCard = blockIndex == blocks.size() - 1;
-            addCard(strips, block, rows, gaps, width, padding, gap, verticalPadding,
-                    lastCard ? 0f : cardGap, config, temperatureSteps);
+            if (!single) {
+                boolean lastCard = blockIndex == blocks.size() - 1;
+                addCard(strips, rows, gaps, width, padding, gap, verticalPadding,
+                        lastCard ? 0f : cardGap, config, temperatureSteps);
+                continue;
+            }
+            if (!cardRows.isEmpty()) {
+                // The gap after a card's last row is unused, so it becomes the section gap.
+                cardGaps.set(cardGaps.size() - 1, sectionGap);
+                rows.get(0).sectionStart = true;
+            }
+            cardRows.addAll(rows);
+            cardGaps.addAll(gaps);
+        }
+        if (single) {
+            addCard(strips, cardRows, cardGaps, width, padding, gap, verticalPadding, 0f, config,
+                    temperatureSteps);
         }
         return new Plan(fullWidth, width, density, scale, padding, gap, temperatureSteps, strips);
     }
 
-    private static void addCard(List<Strip> strips, WidgetConfig.Block block, List<Row> rows,
+    private static void addBlockRows(WidgetConfig.Block block, List<Row> rows, List<Float> gaps,
+            WidgetConfig config, float width, float density, float scale, float padding,
+            float gap, float tileExtra) {
+        switch (block) {
+            case TEMPERATURE: {
+                if (config.temperatureHeader) {
+                    rows.add(new Row(block, RowKind.HEADER, 0,
+                            HEADER_HEIGHT_DP * density * scale));
+                    gaps.add(HEADER_GAP_DP * density * scale);
+                }
+                int zones = config.temperatureDual ? 2 : 1;
+                float rowHeight = temperatureRowDp(config) * density * scale;
+                for (int zone = 0; zone < zones; zone++) {
+                    rows.add(new Row(block, RowKind.TEMPERATURE, zone, rowHeight));
+                    gaps.add(TEMP_ROW_GAP_DP * density * scale);
+                }
+                break;
+            }
+            case FAN:
+                if (config.fanBar) {
+                    rows.add(new Row(block, RowKind.FAN, 0, FAN_ROW_DP * density * scale));
+                    gaps.add(TEMP_ROW_GAP_DP * density * scale);
+                }
+                if (config.fanControlCount() > 0) {
+                    rows.add(new Row(block, RowKind.FAN_CONTROLS, 0,
+                            FAN_CONTROLS_ROW_DP * density * scale));
+                    gaps.add(0f);
+                }
+                break;
+            default: {
+                int columns = config.columns;
+                int rowCount = (config.functions.size() + columns - 1) / columns;
+                float tile = (width - 2f * padding + gap) / columns - gap;
+                for (int row = 0; row < rowCount; row++) {
+                    rows.add(new Row(block, RowKind.TILES, row, tile * scale + tileExtra));
+                    gaps.add(gap * scale);
+                }
+                break;
+            }
+        }
+    }
+
+    private static void addCard(List<Strip> strips, List<Row> rows,
             List<Float> gaps, float width, float padding, float gap, float verticalPadding,
             float trailingGap, WidgetConfig config, int temperatureSteps) {
         if (rows.isEmpty()) {
@@ -355,7 +389,7 @@ final class WidgetGeometry {
                 default:
                     break;
             }
-            strips.add(new Strip(block, row, index, index == 0, last, stripTop, cardHeight,
+            strips.add(new Strip(row.block, row, index, index == 0, last, stripTop, cardHeight,
                     height, last ? trailingGap : 0f, rowTop - stripTop, row.height,
                     zonePadding, zoneCount, buttonCells));
             if (!last) {

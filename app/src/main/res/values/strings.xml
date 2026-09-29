@@ -58,6 +58,11 @@
     <string name="setup_height_fill">Заполнить</string>
     <string name="setup_height_content">По содержимому</string>
     <string name="blocks_hint">Включите нужные блоки и расставьте их стрелками.</string>
+    <string name="card_layout_title">Карточки</string>
+    <string name="card_layout_separate">Отдельные карточки</string>
+    <string name="card_layout_single">Одна карточка</string>
+    <string name="card_layout_separate_hint">Температура, обдув и плитки — на своих карточках с интервалом между ними.</string>
+    <string name="card_layout_single_hint">Все блоки на одной общей карточке, между ними — тонкий разделитель.</string>
     <string name="block_temperature">Полоса температуры</string>
     <string name="block_fan">Скорость обдува</string>
     <string name="block_tiles">Плитки функций</string>

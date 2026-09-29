@@ -247,7 +247,7 @@ public final class MainActivity extends ScaledActivity {
         previewHost = new FrameLayout(this);
         previewHost.setPadding(Ui.dp(this, 8), Ui.dp(this, 10), Ui.dp(this, 8),
                 Ui.dp(this, 10));
-        previewHost.setBackground(Ui.rounded(Ui.SURFACE, Ui.dp(this, 8)));
+        previewHost.setBackground(Ui.rounded(Ui.BACKGROUND, Ui.dp(this, 8)));
         previewHost.setContentDescription(getString(R.string.preview_title));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -499,6 +499,22 @@ public final class MainActivity extends ScaledActivity {
 
     private void rebuildBlocks() {
         blocksHost.removeAllViews();
+        LinearLayout layouts = new LinearLayout(this);
+        layouts.setOrientation(LinearLayout.HORIZONTAL);
+        Ui.topMargin(layouts, 10);
+        for (WidgetConfig.CardLayout layout : WidgetConfig.CardLayout.values()) {
+            TextView segment = Ui.segment(this, layout.titleRes);
+            Ui.setSegmentSelected(this, segment, config.cardLayout == layout);
+            segment.setOnClickListener(view -> {
+                config.cardLayout = layout;
+                changed();
+                rebuildBlocks();
+            });
+            Ui.addSegment(layouts, segment);
+        }
+        blocksHost.addView(layouts);
+        blocksHost.addView(hint(config.cardLayout == WidgetConfig.CardLayout.SINGLE
+                ? R.string.card_layout_single_hint : R.string.card_layout_separate_hint));
         List<WidgetConfig.Block> order = config.blockOrder;
         for (int index = 0; index < order.size(); index++) {
             WidgetConfig.Block block = order.get(index);

@@ -36,6 +36,9 @@ explicit migration request. All car access goes through the GInputBridge broadca
 - Height: `HeightMode.FILL` grows tile rows up to `MAX_TILE_ASPECT`, then card padding, so the
   last card ends at the cell bottom; bars keep their size. `CONTENT` keeps square tiles and uses
   the root gravity for alignment. Shrinking below the cell never depends on the mode.
+- Cards: `CardLayout.SEPARATE` gives every block its own card; `SINGLE` puts all rows in one card,
+  blocks a card padding apart with a hairline divider drawn in the card layer. Fill shares extra
+  height per block in both modes.
 - `ClimateCommands`, `ClimateStore`, `WidgetConfig` and `WidgetGeometry` are pure Java and covered by
   JVM unit tests; keep Android framework code at the service/provider/activity edges.
 - Property ids, zones and value encodings live in `Hvac` and `ClimateFunction`; they mirror
