@@ -26,6 +26,9 @@ explicit migration request. All car access goes through the GInputBridge broadca
 - `ScrubActivity` is a borderless window placed over a tapped bar (from the host's source
   bounds) that lets the finger drag the value; while it is open the widget draws that strip
   card-only and the window draws content only. Commands are sent on release.
+- Height: `HeightMode.FILL` grows tile rows up to `MAX_TILE_ASPECT`, then card padding, so the
+  last card ends at the cell bottom; bars keep their size. `CONTENT` keeps square tiles and uses
+  the root gravity for alignment. Shrinking below the cell never depends on the mode.
 - `ClimateCommands`, `ClimateStore`, `WidgetConfig` and `WidgetGeometry` are pure Java and covered by
   JVM unit tests; keep Android framework code at the service/provider/activity edges.
 - Property ids, zones and value encodings live in `Hvac` and `ClimateFunction`; they mirror

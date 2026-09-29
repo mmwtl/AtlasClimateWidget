@@ -40,6 +40,20 @@
     <string name="section_behaviour">ПОВЕДЕНИЕ</string>
 
     <string name="blocks_title">Блоки</string>
+    <string name="height_title">Высота виджета</string>
+    <string name="height_fill">Заполнить высоту ячейки</string>
+    <string name="height_content">По содержимому</string>
+    <string name="height_fill_hint">Нижний край совпадает с краем ячейки лаунчера. Лишнюю высоту забирают плитки (не выше 1,6 ширины), остаток делится между карточками; полосы температуры и обдува не растягиваются.</string>
+    <string name="align_top">Сверху</string>
+    <string name="align_center">По центру</string>
+    <string name="align_bottom">Снизу</string>
+    <string name="height_report_unknown">Лаунчер ещё не сообщил размер ячейки — высота подстроится после размещения.</string>
+    <string name="height_report_filled">Заполняет ячейку %1$d dp целиком.</string>
+    <string name="height_report_content">Содержимое %1$d из %2$d dp, свободно %3$d dp.</string>
+    <string name="height_report_squeezed">Содержимому нужно %1$d dp, в ячейке %2$d dp — сжато до %3$d%%. Добавьте столбцов, уберите функции или увеличьте виджет.</string>
+    <string name="height_report_squeezed_narrow">Содержимому нужно %1$d dp, в ячейке %2$d dp — сжато до %3$d%% и сужено. Добавьте столбцов, уберите функции или увеличьте виджет.</string>
+    <string name="setup_height_fill">Заполнить</string>
+    <string name="setup_height_content">По содержимому</string>
     <string name="blocks_hint">Включите нужные блоки и расставьте их стрелками.</string>
     <string name="block_temperature">Полоса температуры</string>
     <string name="block_fan">Скорость обдува</string>

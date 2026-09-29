@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.view.Gravity;
 import android.widget.RemoteViews;
 
 import java.util.Locale;
@@ -63,6 +64,7 @@ final class WidgetViews {
         String packageName = context.getPackageName();
         RemoteViews root = new RemoteViews(packageName, R.layout.widget_root);
         root.removeAllViews(R.id.widget_root);
+        root.setInt(R.id.widget_root, "setGravity", gravity(config));
         if (plan.strips.isEmpty()) {
             RemoteViews empty = new RemoteViews(packageName, R.layout.widget_empty);
             if (interactive) {
@@ -95,6 +97,21 @@ final class WidgetViews {
             root.addView(R.id.widget_root, views);
         }
         return root;
+    }
+
+    /** A filled layout matches the cell; a content-sized one sits where the user chose. */
+    static int gravity(WidgetConfig config) {
+        if (config.heightMode == WidgetConfig.HeightMode.FILL) {
+            return Gravity.TOP;
+        }
+        switch (config.verticalAlign) {
+            case CENTER:
+                return Gravity.CENTER_VERTICAL;
+            case BOTTOM:
+                return Gravity.BOTTOM;
+            default:
+                return Gravity.TOP;
+        }
     }
 
     /** Control encoded in the touch cell's URI, or {@code null} for an inert cell. */

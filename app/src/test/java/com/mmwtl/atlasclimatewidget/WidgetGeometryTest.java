@@ -94,4 +94,37 @@ public final class WidgetGeometryTest {
         assertTrue(!WidgetViews.isScrubbable("fanstep/-1"));
         assertTrue(!WidgetViews.isScrubbable("fn/AC"));
     }
+
+    @Test public void fillStretchesTilesToTheCellBottom() {
+        WidgetConfig config = new WidgetConfig();
+        float natural = WidgetGeometry.plan(config, 640f, 0f, 1f, 25).totalHeight();
+        WidgetGeometry.Plan filled = WidgetGeometry.plan(config, 640f, natural + 100f, 1f, 25);
+        assertEquals(natural + 100f - WidgetGeometry.FILL_SAFETY_PX, filled.totalHeight(), 0.5f);
+        WidgetGeometry.Strip tiles = filled.strips.get(filled.strips.size() - 1);
+        float tileWidth = filled.tileCellWidth(config.columns) - filled.gap;
+        assertTrue(tiles.contentHeight > tileWidth);
+        assertTrue(tiles.contentHeight <= tileWidth * WidgetGeometry.MAX_TILE_ASPECT + 0.01f);
+    }
+
+    @Test public void fillKeepsBarsAndSpreadsRestOverCards() {
+        WidgetConfig config = new WidgetConfig();
+        config.tilesEnabled = false;
+        float natural = WidgetGeometry.plan(config, 640f, 0f, 1f, 25).totalHeight();
+        WidgetGeometry.Plan filled = WidgetGeometry.plan(config, 640f, natural + 200f, 1f, 25);
+        assertEquals(natural + 200f - WidgetGeometry.FILL_SAFETY_PX, filled.totalHeight(), 0.5f);
+        for (WidgetGeometry.Strip strip : filled.strips) {
+            if (strip.row.kind == WidgetGeometry.RowKind.FAN) {
+                assertEquals(WidgetGeometry.FAN_ROW_DP, strip.contentHeight, 0.01f);
+            }
+        }
+    }
+
+    @Test public void contentModeLeavesFreeSpace() {
+        WidgetConfig config = new WidgetConfig();
+        config.heightMode = WidgetConfig.HeightMode.CONTENT;
+        float natural = WidgetGeometry.plan(config, 640f, 0f, 1f, 25).totalHeight();
+        WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, natural + 100f, 1f, 25);
+        assertEquals(natural, plan.totalHeight(), 0.01f);
+        assertEquals(natural, plan.naturalHeight, 0.01f);
+    }
 }

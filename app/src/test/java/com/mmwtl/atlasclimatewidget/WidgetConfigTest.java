@@ -19,6 +19,8 @@ public final class WidgetConfigTest {
         config.palette = Palette.SEMANTIC;
         config.cardOpacityPercent = 40;
         config.fanStyle = WidgetConfig.FanStyle.PRESETS;
+        config.heightMode = WidgetConfig.HeightMode.CONTENT;
+        config.verticalAlign = WidgetConfig.VerticalAlign.BOTTOM;
         WidgetConfig copy = WidgetConfig.fromJson(config.toJson());
         assertEquals(WidgetConfig.Block.TILES, copy.blockOrder.get(0));
         assertFalse(copy.fanEnabled);
@@ -31,6 +33,9 @@ public final class WidgetConfigTest {
         assertEquals(40, copy.cardOpacityPercent);
         assertEquals(WidgetConfig.FanStyle.PRESETS, copy.fanStyle);
         assertEquals(WidgetConfig.FanStyle.LEVELS, WidgetConfig.fromJson("{}").fanStyle);
+        assertEquals(WidgetConfig.HeightMode.CONTENT, copy.heightMode);
+        assertEquals(WidgetConfig.VerticalAlign.BOTTOM, copy.verticalAlign);
+        assertEquals(WidgetConfig.HeightMode.FILL, WidgetConfig.fromJson("{}").heightMode);
     }
 
     @Test public void toleratesUnknownAndInvalidValues() {

@@ -22,6 +22,10 @@ final class WidgetGeometry {
     static final float MIN_VERTICAL_SCALE = 0.55f;
     static final float FIT_MARGIN = 0.98f;
     static final float MIN_CONTENT_WIDTH = 0.3f;
+    /** Tallest tile relative to its width when tiles stretch to fill the widget. */
+    static final float MAX_TILE_ASPECT = 1.6f;
+    /** Room for per-strip pixel rounding so a filled widget never overflows its cell. */
+    static final float FILL_SAFETY_PX = 4f;
 
     enum RowKind {
         HEADER,
@@ -123,6 +127,17 @@ final class WidgetGeometry {
             return total;
         }
 
+        /** Content height the layout needs at full size, before fitting. */
+        float naturalHeight;
+        /** Height reported by the launcher, or 0. */
+        float availableHeight;
+
+        Plan measured(float natural, float available) {
+            naturalHeight = natural;
+            availableHeight = available;
+            return this;
+        }
+
         float offsetX() {
             return (fullWidth - width) / 2f;
         }
@@ -144,14 +159,25 @@ final class WidgetGeometry {
     static Plan plan(WidgetConfig config, float widthPx, float heightPx, float density,
             int temperatureSteps) {
         float natural = layoutHeight(config, widthPx, density, 1f, temperatureSteps);
-        if (heightPx <= 0f || natural <= heightPx * FIT_MARGIN) {
-            return build(config, widthPx, widthPx, density, 1f, temperatureSteps);
+        if (heightPx <= 0f) {
+            return build(config, widthPx, widthPx, density, 1f, temperatureSteps, 0f, 0f)
+                    .measured(natural, heightPx);
+        }
+        if (natural <= heightPx * FIT_MARGIN) {
+            float target = heightPx - FILL_SAFETY_PX;
+            if (config.heightMode != WidgetConfig.HeightMode.FILL || natural >= target) {
+                return build(config, widthPx, widthPx, density, 1f, temperatureSteps, 0f, 0f)
+                        .measured(natural, heightPx);
+            }
+            return fill(config, widthPx, density, temperatureSteps, target - natural)
+                    .measured(natural, heightPx);
         }
         // Fit a little inside the reported height; hosts round cell sizes.
         float target = heightPx * FIT_MARGIN;
         float scale = target / natural;
         if (scale >= MIN_VERTICAL_SCALE) {
-            return build(config, widthPx, widthPx, density, scale, temperatureSteps);
+            return build(config, widthPx, widthPx, density, scale, temperatureSteps, 0f, 0f)
+                    .measured(natural, heightPx);
         }
         // Squashing further would distort the controls, so narrow and centre the content.
         float low = widthPx * MIN_CONTENT_WIDTH;
@@ -169,19 +195,42 @@ final class WidgetGeometry {
         // Heights are linear in the vertical scale, so a tiny widget is squashed as a last resort.
         float lastResort = height > target ? MIN_VERTICAL_SCALE * target / height
                 : MIN_VERTICAL_SCALE;
-        return build(config, widthPx, low, density, lastResort, temperatureSteps);
+        return build(config, widthPx, low, density, lastResort, temperatureSteps, 0f, 0f)
+                .measured(natural, heightPx);
+    }
+
+    /**
+     * Grows the layout by {@code extra} pixels so the last card ends at the widget's bottom edge.
+     * Tile rows take the height first, up to {@link #MAX_TILE_ASPECT}; the rest is shared by the
+     * cards as vertical padding, which keeps the temperature and fan bars at their size.
+     */
+    private static Plan fill(WidgetConfig config, float width, float density,
+            int temperatureSteps, float extra) {
+        int cards = config.visibleBlocks().size();
+        int tileRows = config.isEnabled(WidgetConfig.Block.TILES)
+                ? (config.functions.size() + config.columns - 1) / config.columns : 0;
+        float tileExtra = 0f;
+        if (tileRows > 0) {
+            float padding = config.cardPaddingDp * density;
+            float gap = config.gapDp * density;
+            float tile = (width - 2f * padding + gap) / config.columns - gap;
+            tileExtra = Math.min(extra / tileRows, tile * (MAX_TILE_ASPECT - 1f));
+        }
+        float cardExtra = cards == 0 ? 0f : (extra - tileExtra * tileRows) / cards;
+        return build(config, width, width, density, 1f, temperatureSteps, tileExtra, cardExtra);
     }
 
     private static float layoutHeight(WidgetConfig config, float width, float density,
             float scale, int temperatureSteps) {
-        return build(config, width, width, density, scale, temperatureSteps).totalHeight();
+        return build(config, width, width, density, scale, temperatureSteps, 0f, 0f)
+                .totalHeight();
     }
 
     private static Plan build(WidgetConfig config, float fullWidth, float width, float density,
-            float scale, int temperatureSteps) {
+            float scale, int temperatureSteps, float tileExtra, float cardExtra) {
         float padding = config.cardPaddingDp * density;
         float gap = config.gapDp * density;
-        float verticalPadding = padding * scale;
+        float verticalPadding = padding * scale + cardExtra / 2f;
         float cardGap = gap * scale;
         List<Strip> strips = new ArrayList<>();
         List<WidgetConfig.Block> blocks = config.visibleBlocks();
@@ -212,7 +261,7 @@ final class WidgetGeometry {
                     int rowCount = (config.functions.size() + columns - 1) / columns;
                     float tile = (width - 2f * padding + gap) / columns - gap;
                     for (int row = 0; row < rowCount; row++) {
-                        rows.add(new Row(RowKind.TILES, row, tile * scale));
+                        rows.add(new Row(RowKind.TILES, row, tile * scale + tileExtra));
                         gaps.add(gap * scale);
                     }
                     break;

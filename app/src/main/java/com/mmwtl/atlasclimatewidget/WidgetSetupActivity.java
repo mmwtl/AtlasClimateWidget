@@ -38,6 +38,7 @@ public final class WidgetSetupActivity extends ScaledActivity {
     private WidgetConfig config;
     private FrameLayout previewHost;
     private TextView previewCaption;
+    private TextView heightReport;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -106,6 +107,9 @@ public final class WidgetSetupActivity extends ScaledActivity {
         previewCaption = Ui.text(this, "", 12, Ui.TEXT_SECONDARY);
         previewCaption.setGravity(Gravity.CENTER);
         card.addView(previewCaption, fullWrap(6));
+        heightReport = Ui.text(this, "", 12, Ui.TEXT_SECONDARY);
+        heightReport.setGravity(Gravity.CENTER);
+        card.addView(heightReport, fullWrap(2));
 
         addTitle(card, R.string.setup_blocks);
         LinearLayout blocks = segmentRow();
@@ -126,6 +130,20 @@ public final class WidgetSetupActivity extends ScaledActivity {
             addSegment(blocks, segment);
         }
         card.addView(blocks, fullWrap(8));
+
+        addTitle(card, R.string.height_title);
+        LinearLayout heights = segmentRow();
+        for (WidgetConfig.HeightMode mode : WidgetConfig.HeightMode.values()) {
+            TextView segment = Ui.segment(this, mode == WidgetConfig.HeightMode.FILL
+                    ? R.string.setup_height_fill : R.string.setup_height_content);
+            segment.setOnClickListener(view -> {
+                config.heightMode = mode;
+                refresh();
+            });
+            refreshers.add(() -> Ui.setSegmentSelected(this, segment, config.heightMode == mode));
+            addSegment(heights, segment);
+        }
+        card.addView(heights, fullWrap(8));
 
         addTitle(card, R.string.fan_style_title);
         LinearLayout fan = segmentRow();
@@ -254,15 +272,15 @@ public final class WidgetSetupActivity extends ScaledActivity {
             // Keep the preview short enough that the choices stay on screen.
             float appDensity = getApplicationContext().getResources().getDisplayMetrics().density;
             int maxHeight = Math.round(getResources().getDisplayMetrics().heightPixels * .3f);
-            float natural = WidgetGeometry.plan(config, size.widthPx, size.heightPx, appDensity,
-                    ClimateCommands.tempRange(DemoState.INSTANCE).steps()).totalHeight();
-            int fitWidth = natural <= 0f ? width
-                    : Math.round(maxHeight * size.widthPx / natural);
-            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                    Math.min(width, fitWidth), ViewGroup.LayoutParams.WRAP_CONTENT,
-                    Gravity.CENTER_HORIZONTAL);
+            WidgetGeometry.Plan plan = WidgetGeometry.plan(config, size.widthPx, size.heightPx,
+                    appDensity, ClimateCommands.tempRange(DemoState.INSTANCE).steps());
+            float cellHeight = size.heightPx > 0 ? size.heightPx : plan.totalHeight();
+            int fitWidth = cellHeight <= 0f ? width
+                    : Math.round(maxHeight * size.widthPx / cellHeight);
             previewHost.removeAllViews();
-            previewHost.addView(preview, params);
+            previewHost.addView(HeightReport.framePreview(this, preview, size,
+                    Math.min(width, fitWidth)));
+            heightReport.setText(HeightReport.describe(this, config, plan));
         } catch (RuntimeException error) {
             AppLog.warn("Setup preview failed", error);
         }

@@ -51,6 +51,7 @@ public final class MainActivity extends ScaledActivity {
     private Spinner widgetSpinner;
     private FrameLayout previewHost;
     private TextView previewCaption;
+    private TextView heightReport;
     private LinearLayout blocksHost;
     private LinearLayout functionsHost;
     private LinearLayout appearanceHost;
@@ -254,6 +255,8 @@ public final class MainActivity extends ScaledActivity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         params.topMargin = Ui.dp(this, 10);
         card.addView(previewHost, params);
+        heightReport = hint(R.string.height_report_unknown);
+        card.addView(heightReport);
         return card;
     }
 
@@ -330,6 +333,44 @@ public final class MainActivity extends ScaledActivity {
 
     private void rebuildBlocks() {
         blocksHost.removeAllViews();
+        blocksHost.addView(label(R.string.height_title));
+        RadioGroup heights = radioGroup();
+        for (WidgetConfig.HeightMode mode : WidgetConfig.HeightMode.values()) {
+            RadioButton button = radio(mode.titleRes);
+            button.setChecked(config.heightMode == mode);
+            button.setOnCheckedChangeListener((view, checked) -> {
+                if (checked && config.heightMode != mode) {
+                    config.heightMode = mode;
+                    changed();
+                    view.post(this::rebuildBlocks);
+                }
+            });
+            heights.addView(button);
+        }
+        blocksHost.addView(heights);
+        if (config.heightMode == WidgetConfig.HeightMode.FILL) {
+            blocksHost.addView(hint(R.string.height_fill_hint));
+        } else {
+            LinearLayout aligns = new LinearLayout(this);
+            aligns.setOrientation(LinearLayout.HORIZONTAL);
+            Ui.topMargin(aligns, 8);
+            for (WidgetConfig.VerticalAlign align : WidgetConfig.VerticalAlign.values()) {
+                TextView segment = Ui.segment(this, align.titleRes);
+                Ui.setSegmentSelected(this, segment, config.verticalAlign == align);
+                segment.setOnClickListener(view -> {
+                    config.verticalAlign = align;
+                    changed();
+                    rebuildBlocks();
+                });
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0,
+                        ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                if (aligns.getChildCount() > 0) {
+                    params.leftMargin = Ui.dp(this, 6);
+                }
+                aligns.addView(segment, params);
+            }
+            blocksHost.addView(aligns);
+        }
         List<WidgetConfig.Block> order = config.blockOrder;
         for (int index = 0; index < order.size(); index++) {
             WidgetConfig.Block block = order.get(index);
@@ -620,10 +661,12 @@ public final class MainActivity extends ScaledActivity {
             int maxWidth = Math.min(width, Math.round(size.widthPx
                     * getResources().getDisplayMetrics().density
                     / getApplicationContext().getResources().getDisplayMetrics().density));
-            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(maxWidth,
-                    ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL);
             previewHost.removeAllViews();
-            previewHost.addView(preview, params);
+            previewHost.addView(HeightReport.framePreview(this, preview, size, maxWidth));
+            WidgetGeometry.Plan plan = WidgetGeometry.plan(config, size.widthPx, size.heightPx,
+                    getApplicationContext().getResources().getDisplayMetrics().density,
+                    ClimateCommands.tempRange(demo ? DemoState.INSTANCE : live).steps());
+            heightReport.setText(HeightReport.describe(this, config, plan));
         } catch (RuntimeException error) {
             AppLog.warn("Preview failed", error);
         }
