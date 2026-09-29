@@ -659,6 +659,9 @@ final class WidgetRenderer {
         boolean withLabel = config.tileStyle == WidgetConfig.TileStyle.TILE_LABEL;
         boolean active = tileState.active;
         float size = Math.min(tile.width(), tile.height());
+        // Flattened console tiles have spare width; the glyph stack still fits their height.
+        float glyphSize = config.style == WidgetConfig.Style.CONSOLE
+                ? Math.min(tile.width(), tile.height() * 1.2f) : size;
         int content;
         int unlit;
         if (iconStyle) {
@@ -689,9 +692,9 @@ final class WidgetRenderer {
         }
 
         boolean indicator = function.indicatorCount() > 0;
-        float glyph = size * GLYPH_RATIO * (withLabel ? 0.82f : 1f);
-        float gap = size * GAP_RATIO;
-        float barHeight = Math.max(2f * dp * 0.75f, size * BAR_HEIGHT_RATIO);
+        float glyph = glyphSize * GLYPH_RATIO * (withLabel ? 0.82f : 1f);
+        float gap = glyphSize * GAP_RATIO;
+        float barHeight = Math.max(2f * dp * 0.75f, glyphSize * BAR_HEIGHT_RATIO);
         float labelSize = Math.max(9f * dp, Math.min(13f * dp, size * 0.13f));
         float labelGap = size * 0.06f;
         float total = glyph + (indicator ? gap + barHeight : 0f)
@@ -725,7 +728,8 @@ final class WidgetRenderer {
         float y = top + glyph;
         if (indicator) {
             y += gap;
-            drawIndicator(canvas, function, tileState, cx, y, barHeight, size, content, unlit);
+            drawIndicator(canvas, function, tileState, cx, y, barHeight, glyphSize, content,
+                    unlit);
             y += barHeight;
         }
         if (withLabel) {

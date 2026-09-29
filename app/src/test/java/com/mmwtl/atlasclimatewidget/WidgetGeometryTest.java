@@ -262,4 +262,60 @@ public final class WidgetGeometryTest {
             assertEquals(index / 2, plan.strips.get(index).row.index);
         }
     }
+
+    @Test public void consoleFlattensTilesBeforeSquashingControls() {
+        WidgetConfig config = new WidgetConfig();
+        config.style = WidgetConfig.Style.CONSOLE;
+        config.cardLayout = WidgetConfig.CardLayout.SINGLE;
+        config.columns = 4;
+        WidgetGeometry.Plan natural = WidgetGeometry.plan(config, 740f, 0f, 1f, 25);
+        float tile = tileHeight(natural);
+        float segment = WidgetGeometry.CONSOLE_SEGMENT_ROW_DP * natural.density;
+        int rows = config.tileRows().size();
+
+        // A little too tall: only the tiles give up height.
+        float cell = natural.totalHeight() - tile * 0.2f * rows;
+        WidgetGeometry.Plan tight = WidgetGeometry.plan(config, 740f, cell, 1f, 25);
+        assertEquals(cell, tight.totalHeight(), 0.5f);
+        assertEquals(1f, tight.verticalScale, 0f);
+        assertEquals(tile * 0.8f, tileHeight(tight), 0.5f);
+        assertEquals(segment, segmentHeight(tight), 0.01f);
+
+        // Far too tall: tiles stop at the minimum aspect and the rest is squashed evenly.
+        cell = natural.totalHeight() - tile * 0.6f * rows;
+        WidgetGeometry.Plan squashed = WidgetGeometry.plan(config, 740f, cell, 1f, 25);
+        assertEquals(cell, squashed.totalHeight(), 0.5f);
+        assertTrue(squashed.verticalScale < 1f);
+        assertEquals(tile * WidgetGeometry.CONSOLE_MIN_TILE_ASPECT * squashed.verticalScale,
+                tileHeight(squashed), 0.5f);
+        assertEquals(segment * squashed.verticalScale, segmentHeight(squashed), 0.01f);
+    }
+
+    @Test public void consoleFillKeepsTilesSquare() {
+        WidgetConfig config = new WidgetConfig();
+        config.style = WidgetConfig.Style.CONSOLE;
+        WidgetGeometry.Plan natural = WidgetGeometry.plan(config, 740f, 0f, 1f, 25);
+        WidgetGeometry.Plan filled = WidgetGeometry.plan(config, 740f,
+                natural.totalHeight() + 300f, 1f, 25);
+        assertEquals(natural.totalHeight() + 300f, filled.totalHeight(), 0.5f);
+        assertEquals(tileHeight(natural), tileHeight(filled), 0.01f);
+    }
+
+    private static float tileHeight(WidgetGeometry.Plan plan) {
+        for (WidgetGeometry.Strip strip : plan.strips) {
+            if (strip.row.kind == WidgetGeometry.RowKind.TILES) {
+                return strip.contentHeight;
+            }
+        }
+        throw new AssertionError("no tiles");
+    }
+
+    private static float segmentHeight(WidgetGeometry.Plan plan) {
+        for (WidgetGeometry.Strip strip : plan.strips) {
+            if (strip.row.kind == WidgetGeometry.RowKind.FAN_CONTROLS) {
+                return strip.contentHeight;
+            }
+        }
+        throw new AssertionError("no fan buttons");
+    }
 }

@@ -45,6 +45,9 @@ explicit migration request. All car access goes through the GInputBridge broadca
   rows, and arranges tiles via `WidgetConfig.tileRows()`: climate modes, glass, then seats
   mirrored driver ↔ passenger. All console round buttons share one diameter and sit on the
   content edges; labels centre on font metrics, not glyph bounds.
+  When a console layout is too tall, tile rows flatten first (down to
+  `CONSOLE_MIN_TILE_ASPECT`) so bars and fan buttons keep their size; fill never grows console
+  tiles past square.
 - `ClimateCommands`, `ClimateStore`, `WidgetConfig` and `WidgetGeometry` are pure Java and covered by
   JVM unit tests; keep Android framework code at the service/provider/activity edges.
 - Property ids, zones and value encodings live in `Hvac` and `ClimateFunction`; they mirror

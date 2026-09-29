@@ -27,7 +27,13 @@ final class WidgetGeometry {
     static final float CONSOLE_VALUE_GAP_DP = 2f;
     /** Diameter of every round console button, so the −/+ of all bars line up. */
     static final float CONSOLE_BUTTON_DP = 36f;
-    static final float CONSOLE_SEGMENT_ROW_DP = 38f;
+    static final float CONSOLE_SEGMENT_ROW_DP = 48f;
+    /**
+     * Console tiles flatten down to this height/width ratio before anything else shrinks, so a
+     * tight cell keeps the bars and fan buttons at size; filling never grows them past square.
+     */
+    static final float CONSOLE_MIN_TILE_ASPECT = 0.6f;
+    static final float CONSOLE_MAX_TILE_ASPECT = 1f;
     static final float MIN_VERTICAL_SCALE = 0.55f;
     static final float FIT_MARGIN = 0.98f;
     static final float MIN_CONTENT_WIDTH = 0.3f;
@@ -211,6 +217,13 @@ final class WidgetGeometry {
             return fill(config, widthPx, density, temperatureSteps, target - natural)
                     .measured(natural, heightPx);
         }
+        if (config.style == WidgetConfig.Style.CONSOLE) {
+            Plan flat = flattenTiles(config, widthPx, density, temperatureSteps, natural,
+                    target);
+            if (flat != null) {
+                return flat.measured(natural, heightPx);
+            }
+        }
         float scale = target / natural;
         if (scale >= MIN_VERTICAL_SCALE) {
             return build(config, widthPx, widthPx, density, scale, temperatureSteps, 0f, 0f)
@@ -237,6 +250,38 @@ final class WidgetGeometry {
     }
 
     /**
+     * Shrinks a console layout that is too tall by flattening its tile rows first, down to
+     * {@link #CONSOLE_MIN_TILE_ASPECT}; only what is still missing then squashes every row.
+     * Returns {@code null} when even that would squash below {@link #MIN_VERTICAL_SCALE}.
+     */
+    private static Plan flattenTiles(WidgetConfig config, float width, float density,
+            int temperatureSteps, float natural, float target) {
+        int tileRows = config.isEnabled(WidgetConfig.Block.TILES)
+                ? config.tileRows().size() : 0;
+        if (tileRows == 0) {
+            return null;
+        }
+        float cut = tileSize(config, width, density) * (1f - CONSOLE_MIN_TILE_ASPECT);
+        float deficit = natural - target;
+        if (deficit <= cut * tileRows) {
+            return build(config, width, width, density, 1f, temperatureSteps,
+                    -deficit / tileRows, 0f);
+        }
+        // Heights stay linear in the scale when the cut is scaled with the rows.
+        float scale = target / (natural - cut * tileRows);
+        if (scale < MIN_VERTICAL_SCALE) {
+            return null;
+        }
+        return build(config, width, width, density, scale, temperatureSteps, -cut * scale, 0f);
+    }
+
+    private static float tileSize(WidgetConfig config, float width, float density) {
+        float padding = config.cardPaddingDp * density;
+        float gap = config.gapDp * density;
+        return (width - 2f * padding + gap) / config.columns - gap;
+    }
+
+    /**
      * Grows the layout by {@code extra} pixels so the last card ends at the widget's bottom edge.
      * Tile rows take the height first, up to {@link #MAX_TILE_ASPECT}; the rest is shared by the
      * cards as vertical padding (in one card, by its padding and the gaps between blocks), which
@@ -249,10 +294,10 @@ final class WidgetGeometry {
                 ? config.tileRows().size() : 0;
         float tileExtra = 0f;
         if (tileRows > 0) {
-            float padding = config.cardPaddingDp * density;
-            float gap = config.gapDp * density;
-            float tile = (width - 2f * padding + gap) / config.columns - gap;
-            tileExtra = Math.min(extra / tileRows, tile * (MAX_TILE_ASPECT - 1f));
+            float aspect = config.style == WidgetConfig.Style.CONSOLE
+                    ? CONSOLE_MAX_TILE_ASPECT : MAX_TILE_ASPECT;
+            tileExtra = Math.min(extra / tileRows,
+                    tileSize(config, width, density) * (aspect - 1f));
         }
         float cardExtra = cards == 0 ? 0f : (extra - tileExtra * tileRows) / cards;
         return build(config, width, width, density, 1f, temperatureSteps, tileExtra, cardExtra);
