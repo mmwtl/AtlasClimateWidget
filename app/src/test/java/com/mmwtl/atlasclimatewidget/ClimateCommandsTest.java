@@ -105,27 +105,36 @@ public final class ClimateCommandsTest {
         ClimateStore store = store(0);
         store.putProperty(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL, Hvac.FAN_SPEED_LEVEL_1 + 8, 0);
         store.putProperty(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL, 0, 0);
-        assertTrue(ClimateCommands.stepFan(store.snapshot(0), CarModel.ATLAS, 1).isEmpty());
+        assertTrue(ClimateCommands.stepFan(store.snapshot(0), CarModel.ATLAS, 1, 3).isEmpty());
         assertEquals(Hvac.FAN_SPEED_LEVEL_1 + 7, (int) ClimateCommands.stepFan(
-                store.snapshot(0), CarModel.ATLAS, -1).get(0).value);
+                store.snapshot(0), CarModel.ATLAS, -1, 3).get(0).value);
 
         ClimateStore auto = store(0);
         auto.putProperty(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL, Hvac.AUTO_FAN_NORMAL, 0);
         ClimateCommands.FanState fan = ClimateCommands.fanState(auto.snapshot(0));
         assertTrue(fan.auto);
         assertEquals(Hvac.AUTO_FAN_HIGHER, (int) ClimateCommands.stepFan(auto.snapshot(0),
-                CarModel.ATLAS, 1).get(0).value);
+                CarModel.ATLAS, 1, 3).get(0).value);
+        assertEquals(Hvac.AUTO_FAN_HIGH, (int) ClimateCommands.stepFan(auto.snapshot(0),
+                CarModel.ATLAS, 1, 5).get(0).value);
         assertEquals(ClimateCommands.FAN_BLOWER_UP, (int) ClimateCommands.stepFan(
-                auto.snapshot(0), CarModel.PREFACE, 1).get(0).value);
+                auto.snapshot(0), CarModel.PREFACE, 1, 3).get(0).value);
     }
 
     @Test public void fanPresetsMapToAutoFanProfiles() {
-        assertEquals(Hvac.AUTO_FAN_QUIETER, (int) ClimateCommands.setFanPreset(0).get(0).value);
-        assertEquals(Hvac.AUTO_FAN_HIGHER, (int) ClimateCommands.setFanPreset(9).get(0).value);
+        assertEquals(Hvac.AUTO_FAN_QUIETER,
+                (int) ClimateCommands.setFanPreset(0, 3).get(0).value);
+        assertEquals(Hvac.AUTO_FAN_HIGHER,
+                (int) ClimateCommands.setFanPreset(9, 3).get(0).value);
+        assertEquals(Hvac.AUTO_FAN_SILENT,
+                (int) ClimateCommands.setFanPreset(1, 5).get(0).value);
+        assertEquals(Hvac.AUTO_FAN_HIGH,
+                (int) ClimateCommands.setFanPreset(3, 5).get(0).value);
         ClimateStore store = new ClimateStore();
         store.putProperty(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL, Hvac.AUTO_FAN_NORMAL, 0);
-        assertEquals(1, ClimateCommands.fanPreset(store.snapshot(0)));
-        assertEquals(-1, ClimateCommands.fanPreset(ClimateState.EMPTY));
+        assertEquals(1, ClimateCommands.fanPreset(store.snapshot(0), 3));
+        assertEquals(2, ClimateCommands.fanPreset(store.snapshot(0), 5));
+        assertEquals(-1, ClimateCommands.fanPreset(ClimateState.EMPTY, 3));
     }
 
     @Test public void unknownStateIsReported() {

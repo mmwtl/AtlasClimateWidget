@@ -36,18 +36,6 @@ final class WidgetConfig {
         }
     }
 
-    /** How the fan bar sets the airflow. */
-    enum FanStyle {
-        LEVELS(R.string.fan_style_levels),
-        PRESETS(R.string.fan_style_presets);
-
-        final int titleRes;
-
-        FanStyle(int titleRes) {
-            this.titleRes = titleRes;
-        }
-    }
-
     /** How the layout uses the launcher cell's height. */
     enum HeightMode {
         FILL(R.string.height_fill),
@@ -107,8 +95,13 @@ final class WidgetConfig {
     boolean temperatureHeader = true;
     boolean temperatureButtons = true;
     boolean fanButtons = true;
-    FanStyle fanStyle = FanStyle.LEVELS;
+    /** Fan block parts, as in FX11: speed bar, blowing directions and auto-fan presets. */
+    boolean fanBar = true;
+    boolean fanDirections = true;
+    boolean fanPresets = true;
     HeightMode heightMode = HeightMode.FILL;
+    /** Resolved from the global car setting by {@link Prefs}; not part of the saved layout. */
+    int fanPresetCount = 3;
     VerticalAlign verticalAlign = VerticalAlign.TOP;
 
     /** Enabled tiles in display order. */
@@ -130,10 +123,24 @@ final class WidgetConfig {
             case TEMPERATURE:
                 return temperatureEnabled;
             case FAN:
-                return fanEnabled;
+                return fanEnabled && hasFanParts();
             default:
                 return tilesEnabled && !functions.isEmpty();
         }
+    }
+
+    boolean hasFanParts() {
+        return fanBar || fanDirections || fanPresets;
+    }
+
+    /** Direction buttons of the fan block, in FX11's order. */
+    static final ClimateFunction[] FAN_DIRECTIONS = {
+            ClimateFunction.BLOW_WINDOW, ClimateFunction.BLOW_FACE, ClimateFunction.BLOW_LEGS
+    };
+
+    int fanControlCount() {
+        return (fanDirections ? FAN_DIRECTIONS.length : 0)
+                + (fanPresets ? ClimateCommands.fanPresets(fanPresetCount).length : 0);
     }
 
     void setEnabled(Block block, boolean enabled) {
@@ -196,7 +203,9 @@ final class WidgetConfig {
             json.put("temperatureHeader", temperatureHeader);
             json.put("temperatureButtons", temperatureButtons);
             json.put("fanButtons", fanButtons);
-            json.put("fanStyle", fanStyle.name());
+            json.put("fanBar", fanBar);
+            json.put("fanDirections", fanDirections);
+            json.put("fanPresets", fanPresets);
             json.put("heightMode", heightMode.name());
             json.put("verticalAlign", verticalAlign.name());
             JSONArray tiles = new JSONArray();
@@ -256,7 +265,17 @@ final class WidgetConfig {
         config.temperatureButtons = json.optBoolean("temperatureButtons",
                 config.temperatureButtons);
         config.fanButtons = json.optBoolean("fanButtons", config.fanButtons);
-        config.fanStyle = enumValue(FanStyle.class, json.optString("fanStyle"), config.fanStyle);
+        if (json.has("fanBar")) {
+            config.fanBar = json.optBoolean("fanBar", config.fanBar);
+            config.fanDirections = json.optBoolean("fanDirections", config.fanDirections);
+            config.fanPresets = json.optBoolean("fanPresets", config.fanPresets);
+        } else if (json.has("fanStyle")) {
+            // Layouts saved before the combined fan block keep their single part.
+            boolean presets = "PRESETS".equals(json.optString("fanStyle"));
+            config.fanBar = !presets;
+            config.fanPresets = presets;
+            config.fanDirections = false;
+        }
         config.heightMode = enumValue(HeightMode.class, json.optString("heightMode"),
                 config.heightMode);
         config.verticalAlign = enumValue(VerticalAlign.class, json.optString("verticalAlign"),

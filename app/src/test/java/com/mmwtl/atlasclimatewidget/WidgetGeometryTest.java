@@ -21,8 +21,8 @@ public final class WidgetGeometryTest {
                 assertEquals(strip.cardHeight, card, 0.01f);
             }
         }
-        // header, temperature, fan and two tile rows
-        assertEquals(5, plan.strips.size());
+        // header, temperature, fan bar, fan buttons and two tile rows
+        assertEquals(6, plan.strips.size());
     }
 
     @Test public void tileCellsCentreOnTiles() {
@@ -74,17 +74,31 @@ public final class WidgetGeometryTest {
                 plan.strips.get(plan.strips.size() - 2), 0));
     }
 
-    @Test public void fanPresetsUseThreeCellsWithoutScrubbing() {
+    @Test public void fanBlockStacksBarAndControlRow() {
         WidgetConfig config = new WidgetConfig();
         config.temperatureEnabled = false;
-        config.fanStyle = WidgetConfig.FanStyle.PRESETS;
+        config.tilesEnabled = false;
         WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
-        WidgetGeometry.Strip fan = plan.strips.get(0);
-        assertEquals(WidgetGeometry.RowKind.FAN, fan.row.kind);
-        assertEquals(3, fan.zoneCount);
-        assertEquals(0, fan.buttonCells);
-        assertEquals("fanpreset/2", WidgetViews.control(config, fan, 2));
-        assertTrue(!WidgetViews.isScrubbable("fanpreset/2"));
+        assertEquals(2, plan.strips.size());
+        WidgetGeometry.Strip bar = plan.strips.get(0);
+        WidgetGeometry.Strip controls = plan.strips.get(1);
+        assertEquals(WidgetGeometry.RowKind.FAN, bar.row.kind);
+        assertEquals(WidgetGeometry.RowKind.FAN_CONTROLS, controls.row.kind);
+        assertEquals(6, controls.zoneCount);
+        assertEquals("fn/BLOW_WINDOW", WidgetViews.control(config, controls, 0));
+        assertEquals("fn/BLOW_LEGS", WidgetViews.control(config, controls, 2));
+        assertEquals("fanpreset/0", WidgetViews.control(config, controls, 3));
+        assertEquals("fanpreset/2", WidgetViews.control(config, controls, 5));
+
+        config.fanDirections = false;
+        config.fanPresetCount = 5;
+        WidgetGeometry.Strip five = WidgetGeometry.plan(config, 640f, 0f, 1f, 25).strips.get(1);
+        assertEquals(5, five.zoneCount);
+        assertEquals("fanpreset/4", WidgetViews.control(config, five, 4));
+
+        config.fanBar = false;
+        config.fanPresets = false;
+        assertTrue(!config.isEnabled(WidgetConfig.Block.FAN));
     }
 
     @Test public void onlyBarCellsOpenTheScrubber() {
@@ -93,6 +107,7 @@ public final class WidgetGeometryTest {
         assertTrue(!WidgetViews.isScrubbable("tempstep/1/1"));
         assertTrue(!WidgetViews.isScrubbable("fanstep/-1"));
         assertTrue(!WidgetViews.isScrubbable("fn/AC"));
+        assertTrue(!WidgetViews.isScrubbable("fanpreset/2"));
     }
 
     @Test public void fillStretchesTilesToTheCellBottom() {

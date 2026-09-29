@@ -19,6 +19,7 @@ final class WidgetGeometry {
     static final float TEMP_LABEL_DP = 18f;
     static final float TEMP_ROW_GAP_DP = 8f;
     static final float FAN_ROW_DP = 42f;
+    static final float FAN_CONTROLS_ROW_DP = 46f;
     static final float MIN_VERTICAL_SCALE = 0.55f;
     static final float FIT_MARGIN = 0.98f;
     static final float MIN_CONTENT_WIDTH = 0.3f;
@@ -31,6 +32,7 @@ final class WidgetGeometry {
         HEADER,
         TEMPERATURE,
         FAN,
+        FAN_CONTROLS,
         TILES
     }
 
@@ -253,8 +255,15 @@ final class WidgetGeometry {
                     break;
                 }
                 case FAN:
-                    rows.add(new Row(RowKind.FAN, 0, FAN_ROW_DP * density * scale));
-                    gaps.add(0f);
+                    if (config.fanBar) {
+                        rows.add(new Row(RowKind.FAN, 0, FAN_ROW_DP * density * scale));
+                        gaps.add(TEMP_ROW_GAP_DP * density * scale);
+                    }
+                    if (config.fanControlCount() > 0) {
+                        rows.add(new Row(RowKind.FAN_CONTROLS, 0,
+                                FAN_CONTROLS_ROW_DP * density * scale));
+                        gaps.add(0f);
+                    }
                     break;
                 default: {
                     int columns = config.columns;
@@ -308,15 +317,14 @@ final class WidgetGeometry {
                     zoneCount = temperatureSteps + 2 * buttonCells;
                     break;
                 case FAN:
-                    if (config.fanStyle == WidgetConfig.FanStyle.PRESETS) {
-                        zoneCount = ClimateCommands.FAN_PRESETS.length;
-                        break;
-                    }
                     buttonCells = config.fanButtons
                             ? buttonCells(width - 2f * padding, Hvac.FAN_SPEED_LEVEL_COUNT,
                             row.height)
                             : 0;
                     zoneCount = Hvac.FAN_SPEED_LEVEL_COUNT + 2 * buttonCells;
+                    break;
+                case FAN_CONTROLS:
+                    zoneCount = config.fanControlCount();
                     break;
                 case TILES:
                     zoneCount = config.columns;

@@ -345,9 +345,11 @@ public final class ClimateService extends Service {
             case "fan":
                 return ClimateCommands.setFan(Integer.parseInt(parts.get(1)));
             case "fanpreset":
-                return ClimateCommands.setFanPreset(Integer.parseInt(parts.get(1)));
+                return ClimateCommands.setFanPreset(Integer.parseInt(parts.get(1)),
+                        prefs.fanPresetCount());
             case "fanstep":
-                return ClimateCommands.stepFan(state, model, Integer.parseInt(parts.get(1)));
+                return ClimateCommands.stepFan(state, model, Integer.parseInt(parts.get(1)),
+                        prefs.fanPresetCount());
             default:
                 return new ArrayList<>();
         }

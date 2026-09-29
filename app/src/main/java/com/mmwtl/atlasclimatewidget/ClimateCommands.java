@@ -18,10 +18,18 @@ final class ClimateCommands {
     private static final int SEAT_HEAT_MAX_ALIAS = 0x1005020F;
     private static final int SEAT_VENT_MAX_ALIAS = 0x1005010F;
     /** Atlas auto-fan presets «Мягко», «Комфорт», «Сильно», as used by GInputBridge. */
-    static final int[] FAN_PRESETS = {
+    static final int[] FAN_PRESETS_THREE = {
             Hvac.AUTO_FAN_QUIETER, Hvac.AUTO_FAN_NORMAL, Hvac.AUTO_FAN_HIGHER
     };
-    private static final int[] AUTO_FAN_CYCLE = FAN_PRESETS;
+    /** All five auto-fan profiles in GInputBridge's order, from quietest to strongest. */
+    static final int[] FAN_PRESETS_FIVE = {
+            Hvac.AUTO_FAN_QUIETER, Hvac.AUTO_FAN_SILENT, Hvac.AUTO_FAN_NORMAL,
+            Hvac.AUTO_FAN_HIGH, Hvac.AUTO_FAN_HIGHER
+    };
+
+    static int[] fanPresets(int count) {
+        return count >= FAN_PRESETS_FIVE.length ? FAN_PRESETS_FIVE : FAN_PRESETS_THREE;
+    }
 
     private ClimateCommands() {
     }
@@ -327,19 +335,22 @@ final class ClimateCommands {
                 Hvac.FAN_SPEED_LEVEL_1 + bounded - 1));
     }
 
-    static List<Command> setFanPreset(int index) {
-        int bounded = Math.max(0, Math.min(FAN_PRESETS.length - 1, index));
+    static List<Command> setFanPreset(int index, int count) {
+        int[] presets = fanPresets(count);
+        int bounded = Math.max(0, Math.min(presets.length - 1, index));
         return single(Command.setInt(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL,
-                FAN_PRESETS[bounded]));
+                presets[bounded]));
     }
 
     /** Index of the active auto-fan preset, or -1. */
-    static int fanPreset(ClimateState state) {
+    static int fanPreset(ClimateState state, int count) {
         Double raw = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL);
-        return raw == null ? -1 : indexOf(FAN_PRESETS, (int) Math.round(raw));
+        return raw == null ? -1 : indexOf(fanPresets(count), (int) Math.round(raw));
     }
 
-    static List<Command> stepFan(ClimateState state, CarModel model, int direction) {
+    static List<Command> stepFan(ClimateState state, CarModel model, int direction,
+            int presetCount) {
+        int[] cycle = fanPresets(presetCount);
         if (model != CarModel.ATLAS) {
             return single(Command.setInt(FAN_BLOWER, Hvac.ZONE_ROW_1_ALL,
                     direction > 0 ? FAN_BLOWER_UP : FAN_BLOWER_DOWN));
@@ -347,17 +358,18 @@ final class ClimateCommands {
         FanState fan = fanState(state);
         if (fan.auto) {
             Double raw = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL);
-            int current = raw == null ? AUTO_FAN_CYCLE[1] : (int) Math.round(raw);
-            int index = indexOf(AUTO_FAN_CYCLE, current);
-            // Profiles outside the three-step cycle snap to the middle one.
+            int middle = cycle.length / 2;
+            int current = raw == null ? cycle[middle] : (int) Math.round(raw);
+            int index = indexOf(cycle, current);
+            // Profiles outside the preset cycle snap to the middle one.
             int next = index < 0
-                    ? 1
-                    : Math.max(0, Math.min(AUTO_FAN_CYCLE.length - 1, index + direction));
+                    ? middle
+                    : Math.max(0, Math.min(cycle.length - 1, index + direction));
             if (next == index) {
                 return Collections.emptyList();
             }
             return single(Command.setInt(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL,
-                    AUTO_FAN_CYCLE[next]));
+                    cycle[next]));
         }
         int next = Math.max(1, Math.min(Hvac.FAN_SPEED_LEVEL_COUNT, fan.level + direction));
         if (fan.known && next == fan.level) {

@@ -129,9 +129,6 @@ final class WidgetViews {
                 return "temp/" + zone + "/" + (cell - buttons);
             }
             case FAN:
-                if (config.fanStyle == WidgetConfig.FanStyle.PRESETS) {
-                    return "fanpreset/" + cell;
-                }
                 if (cell < buttons) {
                     return "fanstep/-1";
                 }
@@ -139,6 +136,12 @@ final class WidgetViews {
                     return "fanstep/1";
                 }
                 return "fan/" + (cell - buttons + 1);
+            case FAN_CONTROLS: {
+                int directions = config.fanDirections ? WidgetConfig.FAN_DIRECTIONS.length : 0;
+                return cell < directions
+                        ? "fn/" + WidgetConfig.FAN_DIRECTIONS[cell].name()
+                        : "fanpreset/" + (cell - directions);
+            }
             case TILES: {
                 int index = strip.row.index * config.columns + cell;
                 if (index >= config.functions.size()) {

@@ -140,8 +140,7 @@ public final class ScrubActivity extends Activity {
                     && candidate.row.index == index) {
                 return candidate;
             }
-            if (!temperature && candidate.row.kind == WidgetGeometry.RowKind.FAN
-                    && config.fanStyle == WidgetConfig.FanStyle.LEVELS) {
+            if (!temperature && candidate.row.kind == WidgetGeometry.RowKind.FAN) {
                 return candidate;
             }
         }

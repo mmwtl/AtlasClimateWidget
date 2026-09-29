@@ -232,7 +232,7 @@ public final class MainActivity extends ScaledActivity {
         });
         Button reset = Ui.button(this, R.string.reset_layout);
         reset.setOnClickListener(view -> {
-            config = new WidgetConfig();
+            config = prefs.resolved(new WidgetConfig());
             save();
             rebuildEditor();
         });
@@ -272,7 +272,7 @@ public final class MainActivity extends ScaledActivity {
             button.setOnCheckedChangeListener((view, checked) -> {
                 if (checked) {
                     prefs.setCarModel(model);
-                    ClimateService.start(this, ClimateService.ACTION_REFRESH);
+                    presetsChanged();
                 }
             });
             models.addView(button);
@@ -298,6 +298,22 @@ public final class MainActivity extends ScaledActivity {
             }
         });
         card.addView(steps);
+
+        card.addView(label(R.string.fan_presets_title));
+        RadioGroup presets = radioGroup();
+        for (Prefs.FanPresets value : Prefs.FanPresets.values()) {
+            RadioButton button = radio(value.titleRes);
+            button.setChecked(prefs.fanPresets() == value);
+            button.setOnCheckedChangeListener((view, checked) -> {
+                if (checked) {
+                    prefs.setFanPresets(value);
+                    presetsChanged();
+                }
+            });
+            presets.addView(button);
+        }
+        card.addView(presets);
+        card.addView(hint(R.string.fan_presets_hint));
 
         Switch fromMax = switchRow(R.string.levels_from_max, prefs.levelsFromMax());
         fromMax.setOnCheckedChangeListener((view, checked) -> prefs.setLevelsFromMax(checked));
@@ -400,28 +416,17 @@ public final class MainActivity extends ScaledActivity {
                     options.addView(hint(R.string.temp_hint));
                     break;
                 case FAN: {
-                    options.addView(label(R.string.fan_style_title));
-                    RadioGroup fanStyles = radioGroup();
-                    for (WidgetConfig.FanStyle style : WidgetConfig.FanStyle.values()) {
-                        RadioButton button = radio(style.titleRes);
-                        button.setChecked(config.fanStyle == style);
-                        button.setOnCheckedChangeListener((view, checked) -> {
-                            if (checked && config.fanStyle != style) {
-                                config.fanStyle = style;
-                                changed();
-                                view.post(this::rebuildBlocks);
-                            }
-                        });
-                        fanStyles.addView(button);
-                    }
-                    options.addView(fanStyles);
-                    if (config.fanStyle == WidgetConfig.FanStyle.LEVELS) {
+                    options.addView(fanPartSwitch(R.string.fan_part_bar, config.fanBar,
+                            value -> config.fanBar = value));
+                    if (config.fanBar) {
                         options.addView(configSwitch(R.string.fan_buttons, config.fanButtons,
                                 value -> config.fanButtons = value));
-                        options.addView(hint(R.string.fan_hint));
-                    } else {
-                        options.addView(hint(R.string.fan_presets_hint));
                     }
+                    options.addView(fanPartSwitch(R.string.fan_part_directions,
+                            config.fanDirections, value -> config.fanDirections = value));
+                    options.addView(fanPartSwitch(R.string.fan_part_presets, config.fanPresets,
+                            value -> config.fanPresets = value));
+                    options.addView(hint(R.string.fan_hint));
                     break;
                 }
                 default:
@@ -545,6 +550,13 @@ public final class MainActivity extends ScaledActivity {
 
     private WidgetConfig loadConfig(int widgetId) {
         return widgetId == TEMPLATE ? prefs.template() : prefs.widget(widgetId);
+    }
+
+    /** The preset count follows global settings, so the edited layout picks it up again. */
+    private void presetsChanged() {
+        prefs.resolved(config);
+        ClimateService.start(this, ClimateService.ACTION_REFRESH);
+        refreshPreview();
     }
 
     private void changed() {
@@ -730,6 +742,23 @@ public final class MainActivity extends ScaledActivity {
         params.leftMargin = Ui.dp(this, 8);
         button.setLayoutParams(params);
         return button;
+    }
+
+    /** A fan block part; switching one rebuilds the options that depend on it. */
+    private Switch fanPartSwitch(int text, boolean checked, BoolListener listener) {
+        Switch view = switchRow(text, checked);
+        view.setOnCheckedChangeListener((button, value) -> {
+            listener.onValue(value);
+            if (!config.hasFanParts()) {
+                // The block needs at least one part; keep the one just switched on.
+                listener.onValue(true);
+                button.setChecked(true);
+                return;
+            }
+            changed();
+            button.post(this::rebuildBlocks);
+        });
+        return view;
     }
 
     private Switch configSwitch(int text, boolean checked, BoolListener listener) {

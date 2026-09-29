@@ -145,17 +145,27 @@ public final class WidgetSetupActivity extends ScaledActivity {
         }
         card.addView(heights, fullWrap(8));
 
-        addTitle(card, R.string.fan_style_title);
+        addTitle(card, R.string.setup_fan_parts);
         LinearLayout fan = segmentRow();
-        for (WidgetConfig.FanStyle style : WidgetConfig.FanStyle.values()) {
-            TextView segment = Ui.segment(this, style == WidgetConfig.FanStyle.LEVELS
-                    ? R.string.setup_fan_levels : R.string.setup_fan_presets);
+        int[] partLabels = {R.string.setup_fan_bar, R.string.setup_fan_directions,
+                R.string.setup_fan_presets};
+        for (int part = 0; part < partLabels.length; part++) {
+            int index = part;
+            TextView segment = Ui.segment(this, partLabels[part]);
             segment.setOnClickListener(view -> {
-                config.fanStyle = style;
+                boolean[] parts = {config.fanBar, config.fanDirections, config.fanPresets};
+                parts[index] = !parts[index];
+                if (!parts[0] && !parts[1] && !parts[2]) {
+                    return; // The fan block keeps at least one part.
+                }
+                config.fanBar = parts[0];
+                config.fanDirections = parts[1];
+                config.fanPresets = parts[2];
                 refresh();
             });
             refreshers.add(() -> {
-                Ui.setSegmentSelected(this, segment, config.fanStyle == style);
+                boolean[] parts = {config.fanBar, config.fanDirections, config.fanPresets};
+                Ui.setSegmentSelected(this, segment, parts[index]);
                 segment.setEnabled(config.fanEnabled);
                 segment.setAlpha(config.fanEnabled ? 1f : 0.45f);
             });

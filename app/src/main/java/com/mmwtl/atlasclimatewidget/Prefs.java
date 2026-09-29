@@ -11,6 +11,7 @@ final class Prefs {
     static final String KEY_LEVELS_FROM_MAX = "levels_from_max";
     static final String KEY_UI_SCALE_TENTHS = "ui_scale_tenths";
     static final String KEY_TEMPLATE = "widget_template";
+    static final String KEY_FAN_PRESETS = "fan_presets";
     static final String KEY_WIDGET_PREFIX = "widget_config_";
 
     private final SharedPreferences preferences;
@@ -58,7 +59,52 @@ final class Prefs {
 
     /** Layout used for newly placed widgets. */
     WidgetConfig template() {
-        return WidgetConfig.fromJson(preferences.getString(KEY_TEMPLATE, null));
+        return resolved(WidgetConfig.fromJson(preferences.getString(KEY_TEMPLATE, null)));
+    }
+
+    /** Auto-fan preset set: {@link FanPresets#AUTO} follows the car model. */
+    enum FanPresets {
+        AUTO(R.string.fan_presets_auto),
+        THREE(R.string.fan_presets_three),
+        FIVE(R.string.fan_presets_five);
+
+        final int titleRes;
+
+        FanPresets(int titleRes) {
+            this.titleRes = titleRes;
+        }
+    }
+
+    FanPresets fanPresets() {
+        String raw = preferences.getString(KEY_FAN_PRESETS, FanPresets.AUTO.name());
+        for (FanPresets value : FanPresets.values()) {
+            if (value.name().equals(raw)) {
+                return value;
+            }
+        }
+        return FanPresets.AUTO;
+    }
+
+    void setFanPresets(FanPresets value) {
+        preferences.edit().putString(KEY_FAN_PRESETS, value.name()).apply();
+    }
+
+    int fanPresetCount() {
+        switch (fanPresets()) {
+            case THREE:
+                return ClimateCommands.FAN_PRESETS_THREE.length;
+            case FIVE:
+                return ClimateCommands.FAN_PRESETS_FIVE.length;
+            default:
+                return carModel() == CarModel.CITYRAY
+                        ? ClimateCommands.FAN_PRESETS_FIVE.length
+                        : ClimateCommands.FAN_PRESETS_THREE.length;
+        }
+    }
+
+    WidgetConfig resolved(WidgetConfig config) {
+        config.fanPresetCount = fanPresetCount();
+        return config;
     }
 
     void setTemplate(WidgetConfig config) {
@@ -67,7 +113,7 @@ final class Prefs {
 
     WidgetConfig widget(int widgetId) {
         String raw = preferences.getString(KEY_WIDGET_PREFIX + widgetId, null);
-        return raw == null ? template() : WidgetConfig.fromJson(raw);
+        return raw == null ? template() : resolved(WidgetConfig.fromJson(raw));
     }
 
     /** Whether the widget has its own saved layout rather than the template. */

@@ -84,6 +84,9 @@ final class WidgetRenderer {
             case FAN:
                 drawFan(canvas, strip);
                 break;
+            case FAN_CONTROLS:
+                drawFanControls(canvas, strip);
+                break;
             case TILES:
                 drawTiles(canvas, strip);
                 break;
@@ -238,10 +241,6 @@ final class WidgetRenderer {
     // ---- fan ---------------------------------------------------------------------------------
 
     private void drawFan(Canvas canvas, WidgetGeometry.Strip strip) {
-        if (config.fanStyle == WidgetConfig.FanStyle.PRESETS) {
-            drawFanPresets(canvas, strip);
-            return;
-        }
         float height = strip.contentHeight;
         float inner = plan.width - 2f * plan.padding;
         float cell = inner / strip.zoneCount;
@@ -287,24 +286,47 @@ final class WidgetRenderer {
         }
     }
 
-    private void drawFanPresets(Canvas canvas, WidgetGeometry.Strip strip) {
-        int[] labels = {R.string.fn_fan_soft_short, R.string.fn_fan_normal_short,
+    /**
+     * FX11-style button row of the fan block: blowing directions, then auto-fan presets. Beside
+     * the directions the presets are fans of growing size; alone they also carry their names.
+     */
+    private void drawFanControls(Canvas canvas, WidgetGeometry.Strip strip) {
+        int directions = config.fanDirections ? WidgetConfig.FAN_DIRECTIONS.length : 0;
+        int presets = strip.zoneCount - directions;
+        int[] labels = config.fanPresetCount >= ClimateCommands.FAN_PRESETS_FIVE.length
+                ? new int[]{R.string.fan_preset_quiet, R.string.fn_fan_soft_short,
+                R.string.fn_fan_normal_short, R.string.fan_preset_strong,
+                R.string.fan_preset_max}
+                : new int[]{R.string.fn_fan_soft_short, R.string.fn_fan_normal_short,
                 R.string.fn_fan_strong_short};
-        int active = ClimateCommands.fanPreset(state);
-        boolean known = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL) != null;
+        int activePreset = ClimateCommands.fanPreset(state, config.fanPresetCount);
+        boolean presetsKnown = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL) != null;
+        boolean withLabels = directions == 0;
+
         float height = strip.contentHeight;
         float inner = plan.width - 2f * plan.padding;
-        float cell = inner / labels.length;
+        float cell = inner / strip.zoneCount;
         float gap = Math.max(4f, 8f * dp);
-        float pillHeight = height * 0.86f;
+        float pillHeight = height * 0.9f;
         float top = (height - pillHeight) / 2f;
         float radius = Math.min(pillHeight / 2f,
-                pillHeight * config.tileRadiusPercent / 100f * 2f);
-        for (int index = 0; index < labels.length; index++) {
-            boolean on = index == active;
+                Math.min(cell, pillHeight) * config.tileRadiusPercent / 100f * 1.4f);
+        for (int index = 0; index < strip.zoneCount; index++) {
+            boolean direction = index < directions;
+            boolean on;
+            boolean known;
+            if (direction) {
+                ClimateCommands.TileState tileState = ClimateCommands.tileState(
+                        WidgetConfig.FAN_DIRECTIONS[index], state, model);
+                on = tileState.active;
+                known = tileState.known;
+            } else {
+                on = index - directions == activePreset;
+                known = presetsKnown;
+            }
             float left = plan.padding + index * cell + (index == 0 ? 0f : gap / 2f);
             float right = plan.padding + (index + 1) * cell
-                    - (index == labels.length - 1 ? 0f : gap / 2f);
+                    - (index == strip.zoneCount - 1 ? 0f : gap / 2f);
             int background;
             int content;
             if (on && config.filledActive) {
@@ -324,25 +346,42 @@ final class WidgetRenderer {
             paint.setColor(background);
             rect.set(left, top, right, top + pillHeight);
             canvas.drawRoundRect(rect, radius, radius, paint);
-
-            textPaint.setTypeface(Typeface.DEFAULT_BOLD);
-            textPaint.setTextSize(Math.min(15f * dp, pillHeight * 0.36f));
-            textPaint.setColor(content);
-            String label = context.getString(labels[index]);
-            float icon = pillHeight * (0.36f + 0.1f * index);
-            float iconGap = pillHeight * 0.18f;
-            float textWidth = textPaint.measureText(label);
-            float total = pillHeight * 0.56f + iconGap + textWidth;
-            if (total > right - left - pillHeight * 0.3f) {
-                // Narrow cells keep only the label.
-                drawCentered(canvas, label, (left + right) / 2f, top + pillHeight / 2f);
+            float cx = (left + right) / 2f;
+            float cy = top + pillHeight / 2f;
+            float iconMax = Math.min(right - left, pillHeight);
+            if (direction) {
+                drawIcon(canvas, WidgetConfig.FAN_DIRECTIONS[index].iconRes, cx, cy,
+                        iconMax * 0.78f, content);
                 continue;
             }
-            float start = (left + right) / 2f - total / 2f;
-            drawIcon(canvas, R.drawable.ic_fan, start + pillHeight * 0.28f,
-                    top + pillHeight / 2f, icon, content);
-            canvas.drawText(label, start + pillHeight * 0.56f + iconGap,
-                    top + pillHeight / 2f - textBounds(label).exactCenterY(), textPaint);
+            int preset = index - directions;
+            float grow = presets <= 1 ? 1f : preset / (float) (presets - 1);
+            float icon = iconMax * (0.4f + 0.3f * grow);
+            if (!withLabels) {
+                drawIcon(canvas, R.drawable.ic_fan, cx, cy, icon, content);
+                continue;
+            }
+            textPaint.setTypeface(Typeface.DEFAULT_BOLD);
+            textPaint.setTextSize(Math.min(15f * dp, pillHeight * 0.34f));
+            textPaint.setColor(content);
+            String label = context.getString(labels[Math.min(preset, labels.length - 1)]);
+            float iconSlot = pillHeight * 0.56f;
+            float iconGap = pillHeight * 0.14f;
+            float textWidth = textPaint.measureText(label);
+            if (iconSlot + iconGap + textWidth > (right - left) * 0.9f) {
+                // Narrow cells keep only the label, shrunk to fit if needed.
+                float room = (right - left) * 0.9f;
+                if (textWidth > room) {
+                    textPaint.setTextSize(textPaint.getTextSize() * room / textWidth);
+                }
+                drawCentered(canvas, label, cx, cy);
+                continue;
+            }
+            float start = cx - (iconSlot + iconGap + textWidth) / 2f;
+            drawIcon(canvas, R.drawable.ic_fan, start + iconSlot / 2f, cy,
+                    pillHeight * (0.34f + 0.2f * grow), content);
+            canvas.drawText(label, start + iconSlot + iconGap,
+                    cy - textBounds(label).exactCenterY(), textPaint);
         }
     }
 

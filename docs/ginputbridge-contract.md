@@ -34,6 +34,7 @@
 | Подогрев сидений | `HVAC_FUNC_SEAT_HEATING` 268763648 | 1, 4, 16, 64 | GInputBridge (1, 4); задний ряд не проверен |
 | Вентиляция сидений | `HVAC_FUNC_SEAT_VENTILATION` 268763392 | 1, 4 | GInputBridge |
 | Скорость и профиль обдува | `HVAC_FUNC_FAN_SPEED`, `HVAC_FUNC_AUTO_FAN_SETTING` | 8 | GInputBridge (FX11 использует 1) |
+| Пять профилей авто-обдува | 268567044, 268567041, 268567042, 268567043, 268567045 | 8 | порядок GInputBridge; набор для Cityray не проверен |
 | Направление обдува | `HVAC_FUNC_BLOWING_MODE` 268894464 | 1 | FX11 |
 | AUTO | `HVAC_FUNC_AUTO` 268501504 | 1 | FX11 |
 | Синхронизация | `HVAC_FUNC_TEMP_DUAL` 268829952, 1 = вкл | глобальная | FX11, семантика не проверена |
