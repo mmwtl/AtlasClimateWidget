@@ -31,9 +31,11 @@ import java.util.List;
  */
 public final class ScrubActivity extends Activity {
     private static final long IDLE_FINISH_MS = 3_000L;
+    /** Time for the launcher to draw the restored strip before the window leaves. */
+    private static final long RESTORE_FINISH_MS = 300L;
 
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final Runnable idleFinish = this::finish;
+    private final Runnable idleFinish = this::close;
 
     private int widgetId = AppWidgetManager.INVALID_APPWIDGET_ID;
     private boolean temperature;
@@ -41,6 +43,7 @@ public final class ScrubActivity extends Activity {
     private int value;
     private int sentValue;
     private boolean scrubbing;
+    private boolean closing;
 
     private WidgetConfig config;
     private CarModel model;
@@ -127,8 +130,15 @@ public final class ScrubActivity extends Activity {
                 | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
                 | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
                 | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
-        scrubbing = true;
-        ClimateService.setScrubbed(this, widgetId, WidgetViews.stripKey(strip));
+        // Hide the widget's content only once this window's content is on screen, so the bar
+        // never shows an empty card while the window starts.
+        String stripKey = WidgetViews.stripKey(strip);
+        window.getDecorView().getViewTreeObserver().registerFrameCommitCallback(() -> {
+            if (!closing && !isFinishing()) {
+                scrubbing = true;
+                ClimateService.setScrubbed(this, widgetId, stripKey);
+            }
+        });
         main.postDelayed(idleFinish, IDLE_FINISH_MS);
         return true;
     }
@@ -150,7 +160,7 @@ public final class ScrubActivity extends Activity {
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
         if (event.getActionMasked() == MotionEvent.ACTION_OUTSIDE) {
-            finish();
+            close();
             return true;
         }
         return super.dispatchTouchEvent(event);
@@ -164,7 +174,25 @@ public final class ScrubActivity extends Activity {
         }
     }
 
+    /** Restores the widget's content under the window first, then removes the window. */
+    private void close() {
+        if (closing || isFinishing()) {
+            return;
+        }
+        closing = true;
+        main.removeCallbacks(idleFinish);
+        if (!scrubbing) {
+            finish();
+            return;
+        }
+        scrubbing = false;
+        ClimateService.setScrubbed(this, widgetId, null);
+        main.postDelayed(this::finish, RESTORE_FINISH_MS);
+    }
+
+    /** The window belongs to its own task; skip the task close slide over HOME. */
     @Override
+    @SuppressWarnings("deprecation") // overrideActivityTransition needs API 34.
     public void finish() {
         main.removeCallbacks(idleFinish);
         if (scrubbing) {
@@ -172,6 +200,7 @@ public final class ScrubActivity extends Activity {
             ClimateService.setScrubbed(this, widgetId, null);
         }
         super.finish();
+        overridePendingTransition(0, 0);
     }
 
     /** Value under the finger: a temperature step or a zero-based fan level. */
@@ -259,6 +288,9 @@ public final class ScrubActivity extends Activity {
 
         @Override
         public boolean onTouchEvent(MotionEvent event) {
+            if (closing) {
+                return true;
+            }
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                 case MotionEvent.ACTION_MOVE:

@@ -25,7 +25,9 @@ explicit migration request. All car access goes through the GInputBridge broadca
   It edits a copy and saves only on confirm; a widget with reported size counts as reconfigured.
 - `ScrubActivity` is a borderless window placed over a tapped bar (from the host's source
   bounds) that lets the finger drag the value; while it is open the widget draws that strip
-  card-only and the window draws content only. Commands are sent on release.
+  card-only and the window draws content only. Commands are sent on release. The strip is
+  hidden only after the window's first frame and restored 300 ms before it closes; `finish()`
+  skips the task transition, otherwise the window slides down over HOME.
 - Height: `HeightMode.FILL` grows tile rows up to `MAX_TILE_ASPECT`, then card padding, so the
   last card ends at the cell bottom; bars keep their size. `CONTENT` keeps square tiles and uses
   the root gravity for alignment. Shrinking below the cell never depends on the mode.
