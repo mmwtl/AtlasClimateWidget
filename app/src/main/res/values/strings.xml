@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Atlas Climate Widget</string>
+    <string name="widget_label">Atlas Climate</string>
+    <string name="widget_description">Температура, обдув и функции климата через GInputBridge</string>
+    <string name="widget_empty">Все блоки выключены.\nНажмите, чтобы открыть конструктор.</string>
+    <string name="main_subtitle">Конструктор климатического виджета для главного экрана. Управление автомобилем идёт через GInputBridge.</string>
+
+    <string name="notification_channel">Связь с GInputBridge</string>
+    <string name="notification_connected">Виджеты климата получают данные</string>
+    <string name="notification_waiting">Ожидание ответа GInputBridge</string>
+
+    <string name="status_title">Связь с автомобилем</string>
+    <string name="status_bridge_installed">GInputBridge: установлен</string>
+    <string name="status_bridge_missing">GInputBridge: не найден — виджет не сможет управлять климатом</string>
+    <string name="status_no_answer">Ответ GInputBridge: ещё не получен</string>
+    <string name="status_answer">Ответ GInputBridge: %1$d с назад</string>
+    <string name="status_widgets">Виджетов на экране: %1$d</string>
+    <string name="status_service_running">Служба синхронизации: работает</string>
+    <string name="status_service_stopped">Служба синхронизации: остановлена</string>
+    <string name="status_refresh">Запросить данные заново</string>
+    <string name="status_refresh_sent">Запрос отправлен в GInputBridge</string>
+    <string name="pin_widget">Добавить виджет на главный экран</string>
+    <string name="pin_widget_manual">Добавьте виджет «Atlas Climate» через меню виджетов лаунчера.</string>
+
+    <string name="edited_widget_title">Редактируемый виджет</string>
+    <string name="edited_widget_hint">У каждого виджета на экране своя раскладка. Шаблон применяется к новым виджетам.</string>
+    <string name="widget_item">Виджет %1$d · %2$s</string>
+    <string name="widget_template">Шаблон для новых виджетов</string>
+    <string name="apply_to_all">Применить ко всем</string>
+    <string name="applied_to_all">Раскладка применена ко всем виджетам и шаблону</string>
+    <string name="reset_layout">Сбросить</string>
+
+    <string name="preview_title">Предпросмотр</string>
+    <string name="preview_live">Живые данные автомобиля</string>
+    <string name="preview_demo">Демо-данные: GInputBridge пока не ответил</string>
+    <string name="preview_demo_no_car">Демо-данные: GInputBridge отвечает, но автомобиль не передал значения климата</string>
+
+    <string name="section_constructor">КОНСТРУКТОР</string>
+    <string name="section_behaviour">ПОВЕДЕНИЕ</string>
+
+    <string name="blocks_title">Блоки</string>
+    <string name="blocks_hint">Включите нужные блоки и расставьте их стрелками.</string>
+    <string name="block_temperature">Полоса температуры</string>
+    <string name="block_fan">Скорость обдува</string>
+    <string name="block_tiles">Плитки функций</string>
+    <string name="temp_dual">Две зоны: водитель и пассажир</string>
+    <string name="temp_header">Строка «Салон · Улица»</string>
+    <string name="temp_buttons">Кнопки − и +</string>
+    <string name="fan_buttons">Кнопки − и +</string>
+    <string name="fan_hint">Нажатие на сегмент задаёт скорость вручную. В режиме AUTO кнопки меняют профиль авто-обдува.</string>
+    <string name="tile_columns">Столбцы плиток</string>
+    <string name="tile_style_title">Вид плиток</string>
+    <string name="tile_style_tile">Плитка</string>
+    <string name="tile_style_tile_label">Плитка с подписью</string>
+    <string name="tile_style_icon">Только иконка</string>
+
+    <string name="functions_title">Функции</string>
+    <string name="functions_hint">Отмеченные функции выводятся плитками в этом порядке.</string>
+    <string name="functions_available">Доступные функции</string>
+
+    <string name="appearance_title">Оформление</string>
+    <string name="palette_title">Цвет активной плитки</string>
+    <string name="palette_atlas">Atlas</string>
+    <string name="palette_blue">Синий</string>
+    <string name="palette_teal">Бирюзовый</string>
+    <string name="palette_emerald">Изумрудный</string>
+    <string name="palette_violet">Фиолетовый</string>
+    <string name="palette_semantic">По смыслу: обогрев тёплый, охлаждение синее</string>
+    <string name="filled_active">Заливать активную плитку</string>
+    <string name="card_opacity">Непрозрачность карточек</string>
+    <string name="card_radius">Радиус карточек</string>
+    <string name="card_padding">Внутренний отступ</string>
+    <string name="gap">Интервал</string>
+    <string name="tile_radius">Скругление плиток</string>
+    <string name="dp_value">%1$d dp</string>
+
+    <string name="behaviour_title">Управление</string>
+    <string name="car_model_title">Автомобиль</string>
+    <string name="car_model_hint">Влияет на обогрев лобового стекла и управление обдувом кнопками − и +.</string>
+    <string name="car_model_atlas">Geely Atlas</string>
+    <string name="car_model_preface">Geely Preface</string>
+    <string name="car_model_cityray">Geely Cityray</string>
+    <string name="temp_step_title">Шаг кнопок температуры</string>
+    <string name="temp_step_half">0,5 °C</string>
+    <string name="temp_step_whole">1 °C</string>
+    <string name="levels_from_max">Уровни с максимального</string>
+    <string name="levels_from_max_hint">Нажатие на подогрев или вентиляцию: выкл → 3 → 2 → 1 → выкл. Иначе выкл → 1 → 2 → 3 → выкл.</string>
+
+    <string name="interface_title">Интерфейс приложения</string>
+    <string name="interface_hint">Меняет размер этого экрана без изменения системного масштаба ГУ.</string>
+    <string name="interface_scale">Масштаб</string>
+
+    <string name="header_inside">Салон</string>
+    <string name="header_outside">Улица</string>
+    <string name="header_no_bridge">нет связи с GInputBridge</string>
+    <string name="zone_driver">Водитель</string>
+    <string name="zone_passenger">Пассажир</string>
+
+    <string name="fn_power">Климат вкл/выкл</string>
+    <string name="fn_power_short">Климат</string>
+    <string name="fn_auto">AUTO</string>
+    <string name="fn_auto_short">Авто</string>
+    <string name="fn_ac">Кондиционер (A/C)</string>
+    <string name="fn_ac_short">A/C</string>
+    <string name="fn_ac_max">Максимальное охлаждение</string>
+    <string name="fn_ac_max_short">Max A/C</string>
+    <string name="fn_recirculation">Рециркуляция</string>
+    <string name="fn_recirculation_short">Рецирк.</string>
+    <string name="fn_windshield_heat">Обогрев лобового стекла</string>
+    <string name="fn_windshield_heat_short">Лобовое</string>
+    <string name="fn_defrost_max">Максимальный обдув стекла</string>
+    <string name="fn_defrost_max_short">Обдув стекла</string>
+    <string name="fn_rear_defrost">Обогрев заднего стекла</string>
+    <string name="fn_rear_defrost_short">Заднее</string>
+    <string name="fn_wheel_heat">Подогрев руля</string>
+    <string name="fn_wheel_heat_short">Руль</string>
+    <string name="fn_driver_heat">Подогрев водителя</string>
+    <string name="fn_driver_heat_short">Водитель</string>
+    <string name="fn_passenger_heat">Подогрев пассажира</string>
+    <string name="fn_passenger_heat_short">Пассажир</string>
+    <string name="fn_driver_vent">Вентиляция водителя</string>
+    <string name="fn_driver_vent_short">Вент. вод.</string>
+    <string name="fn_passenger_vent">Вентиляция пассажира</string>
+    <string name="fn_passenger_vent_short">Вент. пасс.</string>
+    <string name="fn_rear_left_heat">Подогрев заднего левого</string>
+    <string name="fn_rear_left_heat_short">Сзади слева</string>
+    <string name="fn_rear_right_heat">Подогрев заднего правого</string>
+    <string name="fn_rear_right_heat_short">Сзади справа</string>
+    <string name="fn_blow_face">Обдув в лицо</string>
+    <string name="fn_blow_face_short">В лицо</string>
+    <string name="fn_blow_legs">Обдув в ноги</string>
+    <string name="fn_blow_legs_short">В ноги</string>
+    <string name="fn_blow_window">Обдув на стекло</string>
+    <string name="fn_blow_window_short">На стекло</string>
+    <string name="fn_fan_soft">Авто-обдув: мягко</string>
+    <string name="fn_fan_soft_short">Мягко</string>
+    <string name="fn_fan_normal">Авто-обдув: комфортно</string>
+    <string name="fn_fan_normal_short">Комфорт</string>
+    <string name="fn_fan_strong">Авто-обдув: сильно</string>
+    <string name="fn_fan_strong_short">Сильно</string>
+    <string name="fn_temp_sync">Синхронизация температуры</string>
+    <string name="fn_temp_sync_short">Синхр.</string>
+    <string name="fn_eco">ECO кондиционера</string>
+    <string name="fn_eco_short">ECO</string>
+    <string name="fn_ionizer">Ионизатор</string>
+    <string name="fn_ionizer_short">Ионизатор</string>
+    <string name="fn_me_hot">Мне жарко (GInputBridge)</string>
+    <string name="fn_me_hot_short">Мне жарко</string>
+    <string name="fn_me_cold">Я замёрз (GInputBridge)</string>
+    <string name="fn_me_cold_short">Я замёрз</string>
+    <string name="fn_climate_menu">Штатное меню климата</string>
+    <string name="fn_climate_menu_short">Меню</string>
+</resources>

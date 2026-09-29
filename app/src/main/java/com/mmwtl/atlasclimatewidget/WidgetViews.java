@@ -1,0 +1,136 @@
+package com.mmwtl.atlasclimatewidget;
+
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.net.Uri;
+import android.widget.RemoteViews;
+
+import java.util.Locale;
+
+/** Builds the RemoteViews tree of one widget. */
+final class WidgetViews {
+    /** Keeps the RemoteViews bitmap payload well below host and Binder limits. */
+    static final long MAX_BITMAP_BYTES = 6L * 1024L * 1024L;
+    static final String CONTROL_SCHEME = "atlasclimate";
+
+    private WidgetViews() {
+    }
+
+    static final class Size {
+        final int widthPx;
+        final int heightPx;
+
+        Size(int widthPx, int heightPx) {
+            this.widthPx = widthPx;
+            this.heightPx = heightPx;
+        }
+    }
+
+    /**
+     * @param interactive whether touch zones get PendingIntents; the settings preview is inert
+     * @param quality 1 for full resolution, smaller values reduce the bitmap payload
+     */
+    static RemoteViews build(Context context, WidgetConfig config, ClimateState state,
+            CarModel model, Size size, boolean interactive, float quality) {
+        float density = context.getResources().getDisplayMetrics().density;
+        int steps = ClimateCommands.tempRange(state).steps();
+        WidgetGeometry.Plan full = WidgetGeometry.plan(config, size.widthPx, size.heightPx,
+                density, steps);
+        float bytes = full.fullWidth * full.totalHeight() * 4f;
+        float scale = quality;
+        if (bytes * scale * scale > MAX_BITMAP_BYTES) {
+            scale = (float) Math.sqrt(MAX_BITMAP_BYTES / bytes);
+        }
+        WidgetGeometry.Plan plan = scale >= 0.999f
+                ? full
+                : WidgetGeometry.plan(config, size.widthPx * scale, size.heightPx * scale,
+                density * scale, steps);
+
+        String packageName = context.getPackageName();
+        RemoteViews root = new RemoteViews(packageName, R.layout.widget_root);
+        root.removeAllViews(R.id.widget_root);
+        if (plan.strips.isEmpty()) {
+            RemoteViews empty = new RemoteViews(packageName, R.layout.widget_empty);
+            if (interactive) {
+                empty.setOnClickPendingIntent(R.id.widget_empty, openSettings(context));
+            }
+            root.addView(R.id.widget_root, empty);
+            return root;
+        }
+        WidgetRenderer renderer = new WidgetRenderer(context, config, state, model, plan);
+        for (WidgetGeometry.Strip strip : plan.strips) {
+            RemoteViews views = new RemoteViews(packageName, R.layout.widget_strip);
+            Bitmap bitmap = renderer.render(strip);
+            views.setImageViewBitmap(R.id.strip_image, bitmap);
+            int padding = Math.round((strip.zonePadding + plan.offsetX()) / scale);
+            views.setViewPadding(R.id.strip_zones, padding, 0, padding, 0);
+            for (int cell = 0; cell < strip.zoneCount; cell++) {
+                String control = interactive ? control(config, strip, cell) : null;
+                RemoteViews zone = new RemoteViews(packageName,
+                        control == null ? R.layout.widget_zone_blank : R.layout.widget_zone);
+                if (control != null) {
+                    zone.setOnClickPendingIntent(R.id.zone, controlIntent(context, control));
+                }
+                views.addView(R.id.strip_zones, zone);
+            }
+            root.addView(R.id.widget_root, views);
+        }
+        return root;
+    }
+
+    /** Control encoded in the touch cell's URI, or {@code null} for an inert cell. */
+    static String control(WidgetConfig config, WidgetGeometry.Strip strip, int cell) {
+        int buttons = strip.buttonCells;
+        switch (strip.row.kind) {
+            case TEMPERATURE: {
+                int zone = strip.row.index == 0 ? Hvac.ZONE_DRIVER : Hvac.ZONE_PASSENGER;
+                if (cell < buttons) {
+                    return "tempstep/" + zone + "/-1";
+                }
+                if (cell >= strip.zoneCount - buttons) {
+                    return "tempstep/" + zone + "/1";
+                }
+                return "temp/" + zone + "/" + (cell - buttons);
+            }
+            case FAN:
+                if (cell < buttons) {
+                    return "fanstep/-1";
+                }
+                if (cell >= strip.zoneCount - buttons) {
+                    return "fanstep/1";
+                }
+                return "fan/" + (cell - buttons + 1);
+            case TILES: {
+                int index = strip.row.index * config.columns + cell;
+                if (index >= config.functions.size()) {
+                    return null;
+                }
+                return "fn/" + config.functions.get(index).name();
+            }
+            default:
+                return null;
+        }
+    }
+
+    static PendingIntent controlIntent(Context context, String control) {
+        Intent intent = new Intent(context, ClimateService.class)
+                .setAction(ClimateService.ACTION_CONTROL)
+                .setData(Uri.parse(CONTROL_SCHEME + "://control/" + control));
+        return PendingIntent.getForegroundService(context, 0, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    static PendingIntent openSettings(Context context) {
+        Intent intent = new Intent(context, MainActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        return PendingIntent.getActivity(context, 1, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    static String describe(Size size, float density) {
+        return String.format(Locale.US, "%d×%d dp", Math.round(size.widthPx / density),
+                Math.round(size.heightPx / density));
+    }
+}

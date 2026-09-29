@@ -1,0 +1,52 @@
+# AtlasClimateWidget Repository Guide
+
+## Scope
+
+These instructions apply to the entire repository.
+
+## Project purpose
+
+AtlasClimateWidget is a real Android `AppWidget` (not an overlay) for portrait Geely OneOS head
+units on Android 11. It is a user-built climate widget: a temperature bar, a fan bar and tiles of
+climate functions. Package name: `com.mmwtl.atlasclimatewidget`; do not change it without an
+explicit migration request. All car access goes through the GInputBridge broadcast API
+(`com.salat.gbinder`); do not bind ECarX services directly or add fuel/tank logic.
+
+## Architecture
+
+- `ClimateService` is a foreground service that owns the bridge receiver, the periodic
+  `LISTEN_*`/`GET_*` refresh, widget controls and widget redraws. The bridge answers with implicit
+  broadcasts, so the service must stay running while widgets exist.
+- `WidgetGeometry` splits the widget into full-width strips; `WidgetRenderer` draws each strip as a
+  bitmap; `WidgetViews` stacks the strips with an overlay row of equal-weight touch cells. Android 11
+  `RemoteViews` cannot set weights, margins or positions dynamically, so every touch target must sit
+  on the equal-cell grid computed by `WidgetGeometry`.
+- `ClimateCommands`, `ClimateStore`, `WidgetConfig` and `WidgetGeometry` are pure Java and covered by
+  JVM unit tests; keep Android framework code at the service/provider/activity edges.
+- Property ids, zones and value encodings live in `Hvac` and `ClimateFunction`; they mirror
+  GInputBridge. Keep unverified values listed in `docs/ginputbridge-contract.md`.
+
+## Behaviour rules
+
+- Never show stale values indefinitely: values expire when the bridge stops answering, and the
+  widget shows an explicit "no bridge" state.
+- Optimistic values after a command are temporary and replaced by the bridge's confirmation.
+- The settings preview uses the same `RemoteViews` as the widget, inert; demo values are labelled.
+- Preserve per-widget layouts across upgrades; `WidgetConfig.fromJson` must tolerate unknown and
+  missing fields.
+
+## UI guidelines
+
+Maintain the Atlas graphite palette shared with AtlasAppWidget and AtlasMediaWidget: `#171717`
+background, `#262626` cards, `#333333` nested surfaces, `#F5F5F5` primary text, `#D4D4D4` secondary
+text and `#7893A0` accent. Tiles follow the GInputBridge launcher tile proportions.
+
+## Version and build
+
+- Keep `appVersionCode` and `appVersionName` at the top of `app/build.gradle`; non-`main` branches
+  append the sanitized branch name to the effective version name only.
+- Artifact name: `<effectiveVersionName>[<versionCode>]AtlasClimateWidget-<buildType>.apk`.
+- Before handing off an improvement run `sh gradlew --offline clean check assembleRelease`.
+- For UI changes validate on the Android 11 1440×1920 emulator with a widget placed in a launcher.
+- Never commit APKs, decompiler output, the `reference/` folder, signing files or keystores.
+- After completing and verifying each improvement, create a Git commit unless asked otherwise.

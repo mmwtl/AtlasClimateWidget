@@ -1,0 +1,70 @@
+plugins {
+    id 'com.android.application'
+}
+
+def appVersionCode = 1
+def appVersionName = '0.1.0'
+def currentBranch = providers.exec {
+    workingDir rootDir
+    commandLine 'git', 'branch', '--show-current'
+    ignoreExitValue = true
+}.standardOutput.asText.get().trim()
+def branchSuffix = currentBranch.replaceAll(/[^A-Za-z0-9._-]+/, '-')
+        .replaceAll(/^-+|-+$/, '')
+def effectiveVersionName = currentBranch && currentBranch != 'main' && branchSuffix
+        ? "${appVersionName}-${branchSuffix}"
+        : appVersionName
+def secureSigningScript = providers.gradleProperty('secure.signing').orNull
+def secureSigningFile = secureSigningScript == null ? null : rootProject.file(secureSigningScript)
+
+base {
+    archivesName.set("${effectiveVersionName}[${appVersionCode}]AtlasClimateWidget")
+}
+
+android {
+    namespace = 'com.mmwtl.atlasclimatewidget'
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = 'com.mmwtl.atlasclimatewidget'
+        minSdk = 30
+        targetSdk = 36
+        versionCode = appVersionCode
+        versionName = effectiveVersionName
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "${effectiveVersionName}[${appVersionCode}]AtlasClimateWidget-${variant.buildType.name}.apk"
+        }
+    }
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.addAll(['-Xlint:deprecation', '-Xlint:unchecked'])
+}
+
+if (secureSigningFile != null && secureSigningFile.isFile()) {
+    apply from: secureSigningFile
+}

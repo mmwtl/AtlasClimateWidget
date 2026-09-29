@@ -1,0 +1,40 @@
+# Контракт GInputBridge, используемый виджетом
+
+## Запросы (явные broadcast'ы в `com.salat.gbinder`)
+
+| Action | Extras | Назначение |
+| --- | --- | --- |
+| `SET_INT_PROPERTY` / `SET_FLOAT_PROPERTY` | `id`, `area`, `value` | записать свойство |
+| `GET_INT_PROPERTY` / `GET_FLOAT_PROPERTY` | `id`, `area` | запросить значение |
+| `LISTEN_PROPERTY_CHANGES` | `id`, `area` | подписка на изменения `id_area` |
+| `GET_FLOAT_SENSOR`, `LISTEN_SENSOR_CHANGES` | `id` | датчики температуры |
+| `CAR_FUNCTION` | `function` | `ME_HOT`, `ME_COLD`, `CLIMATE_MENU` |
+
+Без `area` мост использует `Integer.MIN_VALUE` (глобальная зона).
+
+## Ответы (неявные broadcast'ы, строковые extras `id`, `area`, `value`)
+
+`PROPERTY_INT_RESULT`, `PROPERTY_INT_CHANGED`, `PROPERTY_FLOAT_RESULT`,
+`PROPERTY_FLOAT_CHANGED`, `SENSOR_FLOAT_RESULT`, `SENSOR_FLOAT_CHANGED`.
+Неудачное чтение свойства возвращает `-1`.
+
+## Поведение виджета
+
+- подписки GInputBridge хранит в памяти, поэтому служба повторяет `LISTEN_*` и `GET_*` раз в
+  60 секунд; значения без ответа дольше 150 секунд считаются устаревшими;
+- для зонального свойства дополнительно читается глобальная зона и используется как запасной
+  вариант;
+- после команды значение показывается оптимистично до 4 секунд, затем — только подтверждённое
+  мостом; через 0,8 и 2,5 секунды значение перечитывается.
+
+## Зоны и значения, требующие проверки на ГУ
+
+| Функция | Свойство | Зона | Источник |
+| --- | --- | --- | --- |
+| Подогрев сидений | `HVAC_FUNC_SEAT_HEATING` 268763648 | 1, 4, 16, 64 | GInputBridge (1, 4); задний ряд не проверен |
+| Вентиляция сидений | `HVAC_FUNC_SEAT_VENTILATION` 268763392 | 1, 4 | GInputBridge |
+| Скорость и профиль обдува | `HVAC_FUNC_FAN_SPEED`, `HVAC_FUNC_AUTO_FAN_SETTING` | 8 | GInputBridge (FX11 использует 1) |
+| Направление обдува | `HVAC_FUNC_BLOWING_MODE` 268894464 | 1 | FX11 |
+| AUTO | `HVAC_FUNC_AUTO` 268501504 | 1 | FX11 |
+| Синхронизация | `HVAC_FUNC_TEMP_DUAL` 268829952, 1 = вкл | глобальная | FX11, семантика не проверена |
+| Обогрев лобового | 269027328 / 269753088 / 269755136 | глобальная | GInputBridge по модели |
