@@ -707,6 +707,8 @@ public final class MainActivity extends ScaledActivity {
 
     private RadioButton radio(int text) {
         RadioButton button = new RadioButton(this);
+        // RadioGroup records a pre-checked child by id while adding it, before it would generate one.
+        button.setId(View.generateViewId());
         button.setText(text);
         button.setTextColor(Ui.TEXT);
         button.setTextSize(15);
