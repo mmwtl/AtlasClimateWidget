@@ -63,7 +63,7 @@
     <string name="style_console">Пульт</string>
     <string name="style_classic_hint">Плитки идут в заданном порядке, температура — ползунком с числом на бегунке.</string>
     <string name="style_console_hint">Как на пульте: крупная температура над шкалой, обдув и пресеты — переключателями, плитки сгруппированы (режимы, стёкла, сиденья зеркально водитель ↔ пассажир).</string>
-    <string name="style_console_tiles_hint">В компоновке «Пульт» плитки расставляются по группам; порядок ниже действует внутри групп режимов и стёкол.</string>
+    <string name="style_console_tiles_hint">В компоновке «Пульт» плитки расставляются по группам; порядок ниже действует внутри групп режимов и стёкол, там же плитки перетаскиваются на предпросмотре. Сиденья стоят зеркально и не двигаются.</string>
     <string name="card_layout_title">Карточки</string>
     <string name="card_layout_separate">Отдельные карточки</string>
     <string name="card_layout_single">Одна карточка</string>
@@ -118,7 +118,7 @@
     <string name="tile_style_icon">Только иконка</string>
 
     <string name="functions_title">Функции</string>
-    <string name="functions_hint">Отмеченные функции выводятся плитками в этом порядке.</string>
+    <string name="functions_hint">Отмеченные функции выводятся плитками в этом порядке. Плитку можно перетащить пальцем прямо на предпросмотре.</string>
     <string name="functions_available">Доступные функции</string>
     <string name="functions_available_summary">Отметьте функцию, чтобы добавить её плиткой в конец списка.</string>
     <string name="functions_empty">Пока ни одной функции — добавьте их из списка доступных ниже.</string>

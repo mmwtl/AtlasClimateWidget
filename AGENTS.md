@@ -26,6 +26,9 @@ explicit migration request. All car access goes through the GInputBridge broadca
   selector and live preview are pinned under the tabs on the three layout tabs and hidden on
   System. Keep fine-tuning controls (card sliders, the list of available functions) in collapsed
   sections; the selected tab survives recreation.
+- `TileDragLayer` hosts the settings preview and lets the finger drag tiles to reorder them
+  (`WidgetConfig.dropTile`); the preview follows each step and the order is saved on release.
+  Home-screen widgets cannot be dragged: `RemoteViews` only deliver clicks.
 - `WidgetSetupActivity` is the `APPWIDGET_CONFIGURE` dialog (also the launcher's ⚙ reconfigure).
   It edits a copy and saves only on confirm; a widget with reported size counts as reconfigured.
 - `ScrubActivity` is a borderless window placed over a tapped bar (from the host's source

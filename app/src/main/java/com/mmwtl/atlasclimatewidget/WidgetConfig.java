@@ -368,6 +368,47 @@ final class WidgetConfig {
         move(functions, function, direction);
     }
 
+    /** Console seats are mirrored like the cabin, so only classic tiles and console modes move. */
+    boolean canDragTile(ClimateFunction function) {
+        return style != Style.CONSOLE || group(function) != TileGroup.SEATS;
+    }
+
+    /**
+     * Drops a dragged tile onto a slot of {@link #tileRows()}: it takes the place of the tile
+     * there, or goes last on an empty classic slot. Console tiles stay inside their group.
+     *
+     * @return whether the order changed
+     */
+    boolean dropTile(ClimateFunction function, int row, int column) {
+        List<ClimateFunction[]> rows = tileRows();
+        if (!canDragTile(function) || !functions.contains(function) || row < 0
+                || row >= rows.size() || column < 0 || column >= columns) {
+            return false;
+        }
+        ClimateFunction target = rows.get(row)[column];
+        if (target == function) {
+            return false;
+        }
+        int index;
+        if (target == null) {
+            if (style == Style.CONSOLE) {
+                return false;
+            }
+            index = functions.size() - 1;
+        } else {
+            if (style == Style.CONSOLE && group(target) != group(function)) {
+                return false;
+            }
+            index = functions.indexOf(target);
+        }
+        if (functions.indexOf(function) == index) {
+            return false;
+        }
+        functions.remove(function);
+        functions.add(index, function);
+        return true;
+    }
+
     void setFunctionEnabled(ClimateFunction function, boolean enabled) {
         if (enabled && !functions.contains(function)) {
             functions.add(function);

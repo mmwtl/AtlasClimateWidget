@@ -69,7 +69,7 @@ public final class MainActivity extends ScaledActivity {
     private TextView previewTitle;
     private TextView statusText;
     private Spinner widgetSpinner;
-    private FrameLayout previewHost;
+    private TileDragLayer previewHost;
     private TextView previewCaption;
     private TextView heightReport;
     private LinearLayout heightHost;
@@ -244,7 +244,26 @@ public final class MainActivity extends ScaledActivity {
         });
         previewPanel.addView(widgetSpinner);
 
-        previewHost = new FrameLayout(this);
+        previewHost = new TileDragLayer(this);
+        previewHost.setListener(new TileDragLayer.Listener() {
+            @Override
+            public boolean onTileMoved(ClimateFunction function, int row, int column) {
+                if (!config.dropTile(function, row, column)) {
+                    return false;
+                }
+                // The order is saved once on release; meanwhile only the preview follows.
+                refreshPreview();
+                return true;
+            }
+
+            @Override
+            public void onTileDropped(boolean moved) {
+                if (moved) {
+                    save();
+                    rebuildFunctions();
+                }
+            }
+        });
         previewHost.setPadding(Ui.dp(this, 8), Ui.dp(this, 10), Ui.dp(this, 8),
                 Ui.dp(this, 10));
         previewHost.setBackground(Ui.rounded(Ui.BACKGROUND, Ui.dp(this, 8)));
@@ -855,6 +874,7 @@ public final class MainActivity extends ScaledActivity {
             WidgetGeometry.Plan plan = WidgetGeometry.plan(config, size.widthPx, size.heightPx,
                     getApplicationContext().getResources().getDisplayMetrics().density,
                     ClimateCommands.tempRange(demo ? DemoState.INSTANCE : live).steps());
+            previewHost.setLayout(config, plan);
             heightReport.setText(HeightReport.describe(this, config, plan));
         } catch (RuntimeException error) {
             AppLog.warn("Preview failed", error);

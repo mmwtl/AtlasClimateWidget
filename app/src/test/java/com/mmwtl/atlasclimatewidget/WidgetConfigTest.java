@@ -67,6 +67,44 @@ public final class WidgetConfigTest {
         assertEquals(null, rows.get(2)[2]);
     }
 
+    @Test public void droppedTileTakesTheTargetSlot() {
+        WidgetConfig config = new WidgetConfig();
+        config.columns = 3;
+        config.functions.clear();
+        config.functions.addAll(java.util.Arrays.asList(
+                ClimateFunction.AC, ClimateFunction.AUTO, ClimateFunction.POWER,
+                ClimateFunction.DRIVER_HEAT));
+        // Forward: AC lands where POWER was.
+        assertTrue(config.dropTile(ClimateFunction.AC, 0, 2));
+        assertEquals(java.util.Arrays.asList(ClimateFunction.AUTO, ClimateFunction.POWER,
+                ClimateFunction.AC, ClimateFunction.DRIVER_HEAT), config.functions);
+        // Backward, across rows.
+        assertTrue(config.dropTile(ClimateFunction.DRIVER_HEAT, 0, 0));
+        assertEquals(ClimateFunction.DRIVER_HEAT, config.functions.get(0));
+        // An empty slot after the last tile moves it last.
+        assertTrue(config.dropTile(ClimateFunction.DRIVER_HEAT, 1, 2));
+        assertEquals(ClimateFunction.DRIVER_HEAT, config.functions.get(3));
+        assertFalse(config.dropTile(ClimateFunction.DRIVER_HEAT, 1, 1));
+        assertFalse(config.dropTile(ClimateFunction.DRIVER_HEAT, 2, 0));
+    }
+
+    @Test public void consoleTilesMoveOnlyInsideTheirGroup() {
+        WidgetConfig config = new WidgetConfig();
+        config.style = WidgetConfig.Style.CONSOLE;
+        config.columns = 5;
+        config.functions.clear();
+        config.functions.addAll(java.util.Arrays.asList(
+                ClimateFunction.AC, ClimateFunction.WINDSHIELD_HEAT, ClimateFunction.AUTO,
+                ClimateFunction.DRIVER_HEAT, ClimateFunction.PASSENGER_HEAT));
+        // Row 0: AC, AUTO, WINDSHIELD_HEAT; row 1: mirrored seats.
+        assertTrue(config.dropTile(ClimateFunction.AUTO, 0, 0));
+        assertEquals(ClimateFunction.AUTO, config.tileRows().get(0)[0]);
+        assertFalse(config.dropTile(ClimateFunction.AUTO, 0, 2));
+        assertFalse(config.dropTile(ClimateFunction.AUTO, 0, 4));
+        assertFalse(config.canDragTile(ClimateFunction.DRIVER_HEAT));
+        assertFalse(config.dropTile(ClimateFunction.DRIVER_HEAT, 1, 4));
+    }
+
     @Test public void consoleGroupsTilesAndMirrorsSeats() {
         WidgetConfig config = new WidgetConfig();
         config.style = WidgetConfig.Style.CONSOLE;
