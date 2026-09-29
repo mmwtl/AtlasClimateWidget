@@ -515,6 +515,13 @@ public final class MainActivity extends ScaledActivity {
         appearanceHost.addView(palettes);
         appearanceHost.addView(configSwitch(R.string.filled_active, config.filledActive,
                 value -> config.filledActive = value));
+        addSlider(appearanceHost, getString(R.string.widget_scale),
+                WidgetConfig.SCALE_MIN_PERCENT, WidgetConfig.SCALE_MAX_PERCENT,
+                config.scalePercent, value -> value + "%", value -> {
+                    config.scalePercent = value;
+                    changed();
+                }, null);
+        appearanceHost.addView(hint(R.string.widget_scale_hint));
         addSlider(appearanceHost, getString(R.string.card_opacity), 0, 100,
                 config.cardOpacityPercent, value -> value + "%", value -> {
                     config.cardOpacityPercent = value;

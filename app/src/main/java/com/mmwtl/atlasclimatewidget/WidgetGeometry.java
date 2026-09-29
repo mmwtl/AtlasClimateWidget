@@ -155,11 +155,12 @@ final class WidgetGeometry {
     /**
      * @param widthPx widget width in pixels
      * @param heightPx available height in pixels, or 0 when the host did not report it
-     * @param density pixels per dp
+     * @param density pixels per dp; the widget's own scale is applied on top
      * @param temperatureSteps number of 0.5 °C steps of the temperature range
      */
     static Plan plan(WidgetConfig config, float widthPx, float heightPx, float density,
             int temperatureSteps) {
+        density *= config.scalePercent / 100f;
         float natural = layoutHeight(config, widthPx, density, 1f, temperatureSteps);
         if (heightPx <= 0f) {
             return build(config, widthPx, widthPx, density, 1f, temperatureSteps, 0f, 0f)

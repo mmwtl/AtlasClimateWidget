@@ -64,4 +64,13 @@ public final class WidgetConfigTest {
         config.functions.clear();
         assertFalse(config.visibleBlocks().contains(WidgetConfig.Block.TILES));
     }
+
+    @Test public void scaleRoundTripsAndDefaults() {
+        WidgetConfig config = new WidgetConfig();
+        config.scalePercent = 130;
+        assertEquals(130, WidgetConfig.fromJson(config.toJson()).scalePercent);
+        assertEquals(100, WidgetConfig.fromJson("{\"columns\":4}").scalePercent);
+        assertEquals(WidgetConfig.SCALE_MAX_PERCENT,
+                WidgetConfig.fromJson("{\"scalePercent\":999}").scalePercent);
+    }
 }

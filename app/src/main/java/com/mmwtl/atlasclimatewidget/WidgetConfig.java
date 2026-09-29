@@ -69,6 +69,8 @@ final class WidgetConfig {
     static final int GAP_MAX_DP = 24;
     static final int PADDING_MIN_DP = 6;
     static final int PADDING_MAX_DP = 28;
+    static final int SCALE_MIN_PERCENT = 80;
+    static final int SCALE_MAX_PERCENT = 160;
 
     static final List<ClimateFunction> DEFAULT_FUNCTIONS = Arrays.asList(
             ClimateFunction.DRIVER_HEAT,
@@ -117,6 +119,8 @@ final class WidgetConfig {
     int cardPaddingDp = 14;
     int tileRadiusPercent = 22;
     int gapDp = 10;
+    /** Size of bars, text and spacing; tile width still follows the column count. */
+    int scalePercent = 100;
 
     boolean isEnabled(Block block) {
         switch (block) {
@@ -223,6 +227,7 @@ final class WidgetConfig {
             json.put("cardPaddingDp", cardPaddingDp);
             json.put("tileRadiusPercent", tileRadiusPercent);
             json.put("gapDp", gapDp);
+            json.put("scalePercent", scalePercent);
             return json.toString();
         } catch (JSONException error) {
             throw new IllegalStateException(error);
@@ -305,6 +310,8 @@ final class WidgetConfig {
         config.tileRadiusPercent = clamp(json.optInt("tileRadiusPercent",
                 config.tileRadiusPercent), 0, TILE_RADIUS_MAX_PERCENT);
         config.gapDp = clamp(json.optInt("gapDp", config.gapDp), GAP_MIN_DP, GAP_MAX_DP);
+        config.scalePercent = clamp(json.optInt("scalePercent", config.scalePercent),
+                SCALE_MIN_PERCENT, SCALE_MAX_PERCENT);
         return config;
     }
 

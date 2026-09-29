@@ -117,6 +117,8 @@
     <string name="card_radius">Радиус карточек</string>
     <string name="card_padding">Внутренний отступ</string>
     <string name="gap">Интервал</string>
+    <string name="widget_scale">Размер элементов</string>
+    <string name="widget_scale_hint">Увеличивает полосы, кнопки, текст и отступы. Ширина плиток зависит от числа столбцов; если по высоте не хватает места, виджет всё равно ужмётся под ячейку.</string>
     <string name="tile_radius">Скругление плиток</string>
     <string name="dp_value">%1$d dp</string>
 

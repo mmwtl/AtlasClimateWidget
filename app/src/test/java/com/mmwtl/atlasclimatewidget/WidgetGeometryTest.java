@@ -142,4 +142,17 @@ public final class WidgetGeometryTest {
         assertEquals(natural, plan.totalHeight(), 0.01f);
         assertEquals(natural, plan.naturalHeight, 0.01f);
     }
+
+    @Test public void scaleEnlargesBarsButKeepsTileColumns() {
+        WidgetConfig config = new WidgetConfig();
+        config.temperatureHeader = false;
+        WidgetGeometry.Plan normal = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
+        config.scalePercent = 150;
+        WidgetGeometry.Plan large = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
+        assertEquals(normal.strips.get(0).contentHeight * 1.5f,
+                large.strips.get(0).contentHeight, 0.01f);
+        assertEquals(1.5f, large.density, 0f);
+        WidgetGeometry.Strip tiles = large.strips.get(large.strips.size() - 1);
+        assertEquals(config.columns, tiles.zoneCount);
+    }
 }
