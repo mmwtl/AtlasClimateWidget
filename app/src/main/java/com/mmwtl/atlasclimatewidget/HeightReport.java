@@ -20,7 +20,7 @@ final class HeightReport {
         int available = Math.round(plan.availableHeight / density);
         int natural = Math.round(plan.naturalHeight / density);
         int used = Math.round(plan.totalHeight() / density);
-        if (plan.naturalHeight > plan.availableHeight * WidgetGeometry.FIT_MARGIN) {
+        if (plan.verticalScale < 1f) {
             int percent = Math.round(plan.verticalScale * 100f);
             return context.getString(plan.width < plan.fullWidth
                     ? R.string.height_report_squeezed_narrow : R.string.height_report_squeezed,

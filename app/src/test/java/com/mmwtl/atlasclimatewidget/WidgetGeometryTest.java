@@ -36,6 +36,7 @@ public final class WidgetGeometryTest {
 
     @Test public void fitsAvailableHeight() {
         WidgetConfig config = new WidgetConfig();
+        config.heightMode = WidgetConfig.HeightMode.CONTENT;
         float natural = WidgetGeometry.plan(config, 640f, 0f, 1f, 25).totalHeight();
         WidgetGeometry.Plan fitted = WidgetGeometry.plan(config, 640f, natural * 0.8f, 1f, 25);
         assertEquals(natural * 0.8f * WidgetGeometry.FIT_MARGIN, fitted.totalHeight(),
@@ -119,6 +120,18 @@ public final class WidgetGeometryTest {
         float tileWidth = filled.tileCellWidth(config.columns) - filled.gap;
         assertTrue(tiles.contentHeight > tileWidth);
         assertTrue(tiles.contentHeight <= tileWidth * WidgetGeometry.MAX_TILE_ASPECT + 0.01f);
+    }
+
+    @Test public void fillSqueezesToTheCellBottom() {
+        WidgetConfig config = new WidgetConfig();
+        float natural = WidgetGeometry.plan(config, 640f, 0f, 1f, 25).totalHeight();
+        float cell = natural * 0.8f;
+        WidgetGeometry.Plan fitted = WidgetGeometry.plan(config, 640f, cell, 1f, 25);
+        assertEquals(cell - WidgetGeometry.FILL_SAFETY_PX, fitted.totalHeight(), 0.5f);
+        // Just below the natural height still reaches the bottom instead of the fit margin.
+        cell = natural + 1f;
+        fitted = WidgetGeometry.plan(config, 640f, cell, 1f, 25);
+        assertEquals(cell - WidgetGeometry.FILL_SAFETY_PX, fitted.totalHeight(), 0.5f);
     }
 
     @Test public void fillKeepsBarsAndSpreadsRestOverCards() {

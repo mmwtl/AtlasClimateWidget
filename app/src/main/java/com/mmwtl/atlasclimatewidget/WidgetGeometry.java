@@ -166,17 +166,18 @@ final class WidgetGeometry {
             return build(config, widthPx, widthPx, density, 1f, temperatureSteps, 0f, 0f)
                     .measured(natural, heightPx);
         }
-        if (natural <= heightPx * FIT_MARGIN) {
-            float target = heightPx - FILL_SAFETY_PX;
-            if (config.heightMode != WidgetConfig.HeightMode.FILL || natural >= target) {
+        // A filled layout must end at the cell bottom whether it grows or shrinks; a content-sized
+        // one fits a little inside the reported height because hosts round cell sizes.
+        boolean filled = config.heightMode == WidgetConfig.HeightMode.FILL;
+        float target = filled ? heightPx - FILL_SAFETY_PX : heightPx * FIT_MARGIN;
+        if (natural <= target) {
+            if (!filled || natural >= target) {
                 return build(config, widthPx, widthPx, density, 1f, temperatureSteps, 0f, 0f)
                         .measured(natural, heightPx);
             }
             return fill(config, widthPx, density, temperatureSteps, target - natural)
                     .measured(natural, heightPx);
         }
-        // Fit a little inside the reported height; hosts round cell sizes.
-        float target = heightPx * FIT_MARGIN;
         float scale = target / natural;
         if (scale >= MIN_VERTICAL_SCALE) {
             return build(config, widthPx, widthPx, density, scale, temperatureSteps, 0f, 0f)
