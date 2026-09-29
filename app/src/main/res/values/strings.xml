@@ -4,7 +4,12 @@
     <string name="widget_label">Atlas Climate</string>
     <string name="widget_description">Температура, обдув и функции климата через GInputBridge</string>
     <string name="widget_empty">Все блоки выключены.\nНажмите, чтобы открыть конструктор.</string>
-    <string name="main_subtitle">Конструктор климатического виджета для главного экрана. Управление автомобилем идёт через GInputBridge.</string>
+    <string name="tab_blocks">Блоки</string>
+    <string name="tab_tiles">Плитки</string>
+    <string name="tab_look">Вид</string>
+    <string name="tab_system">Система</string>
+    <string name="collapsed_section">%1$s, свёрнуто</string>
+    <string name="expanded_section">%1$s, развёрнуто</string>
 
     <string name="notification_channel">Связь с GInputBridge</string>
     <string name="notification_connected">Виджеты климата получают данные</string>
@@ -23,8 +28,8 @@
     <string name="pin_widget">Добавить виджет на главный экран</string>
     <string name="pin_widget_manual">Добавьте виджет «Atlas Climate» через меню виджетов лаунчера.</string>
 
-    <string name="edited_widget_title">Редактируемый виджет</string>
-    <string name="edited_widget_hint">У каждого виджета на экране своя раскладка. Шаблон применяется к новым виджетам.</string>
+    <string name="edited_widget_title">Раскладка виджета</string>
+    <string name="edited_widget_hint">У каждого виджета на экране своя раскладка; какой из них редактируется, выбирается над предпросмотром. Шаблон применяется к новым виджетам.</string>
     <string name="widget_item">Виджет %1$d · %2$s</string>
     <string name="widget_template">Шаблон для новых виджетов</string>
     <string name="apply_to_all">Применить ко всем</string>
@@ -36,8 +41,6 @@
     <string name="preview_demo">Демо-данные: GInputBridge пока не ответил</string>
     <string name="preview_demo_no_car">Демо-данные: GInputBridge отвечает, но автомобиль не передал значения климата</string>
 
-    <string name="section_constructor">КОНСТРУКТОР</string>
-    <string name="section_behaviour">ПОВЕДЕНИЕ</string>
 
     <string name="blocks_title">Блоки</string>
     <string name="height_title">Высота виджета</string>
@@ -93,7 +96,10 @@
     <string name="fan_preset_quiet">Тихо</string>
     <string name="fan_preset_strong">Сильно</string>
     <string name="fan_preset_max">Макс</string>
-    <string name="fan_hint">Как в FX11: полоса задаёт скорость вручную (после нажатия её можно тянуть пальцем), ниже — кнопки направления и пресеты. Направления сочетаются: например, лицо + ноги. В режиме AUTO кнопки − и + меняют профиль авто-обдува. Количество пресетов — в разделе «Поведение».</string>
+    <string name="fan_hint">Как в FX11: полоса задаёт скорость вручную (после нажатия её можно тянуть пальцем), ниже — кнопки направления и пресеты. Направления сочетаются: например, лицо + ноги. В режиме AUTO кнопки − и + меняют профиль авто-обдува. Количество пресетов — во вкладке «Система».</string>
+    <string name="tiles_title">Сетка плиток</string>
+    <string name="tiles_block_hint">Столбцы, вид и набор плиток — во вкладке «Плитки».</string>
+    <string name="tiles_disabled_hint">Блок плиток выключен во вкладке «Блоки».</string>
     <string name="tile_columns">Столбцы плиток</string>
     <string name="tile_style_title">Вид плиток</string>
     <string name="tile_style_tile">Плитка</string>
@@ -103,6 +109,8 @@
     <string name="functions_title">Функции</string>
     <string name="functions_hint">Отмеченные функции выводятся плитками в этом порядке.</string>
     <string name="functions_available">Доступные функции</string>
+    <string name="functions_available_summary">Отметьте функцию, чтобы добавить её плиткой в конец списка.</string>
+    <string name="functions_empty">Пока ни одной функции — добавьте их из списка доступных ниже.</string>
 
     <string name="appearance_title">Оформление</string>
     <string name="palette_title">Цвет активной плитки</string>
@@ -121,6 +129,8 @@
     <string name="widget_scale_hint">Увеличивает полосы, кнопки, текст и отступы. Ширина плиток зависит от числа столбцов; если по высоте не хватает места, виджет всё равно ужмётся под ячейку.</string>
     <string name="tile_radius">Скругление плиток</string>
     <string name="dp_value">%1$d dp</string>
+    <string name="cards_title">Карточки и отступы</string>
+    <string name="cards_summary">Непрозрачность и скругление карточек, отступы, интервал, скругление плиток</string>
 
     <string name="behaviour_title">Управление</string>
     <string name="car_model_title">Автомобиль</string>

@@ -127,7 +127,7 @@ public final class WidgetSetupActivity extends ScaledActivity {
                 refresh();
             });
             refreshers.add(() -> Ui.setSegmentSelected(this, segment, isShown(block)));
-            addSegment(blocks, segment);
+            Ui.addSegment(blocks, segment);
         }
         card.addView(blocks, fullWrap(8));
 
@@ -141,7 +141,7 @@ public final class WidgetSetupActivity extends ScaledActivity {
                 refresh();
             });
             refreshers.add(() -> Ui.setSegmentSelected(this, segment, config.heightMode == mode));
-            addSegment(heights, segment);
+            Ui.addSegment(heights, segment);
         }
         card.addView(heights, fullWrap(8));
 
@@ -169,7 +169,7 @@ public final class WidgetSetupActivity extends ScaledActivity {
                 segment.setEnabled(config.fanEnabled);
                 segment.setAlpha(config.fanEnabled ? 1f : 0.45f);
             });
-            addSegment(fan, segment);
+            Ui.addSegment(fan, segment);
         }
         card.addView(fan, fullWrap(8));
 
@@ -186,7 +186,7 @@ public final class WidgetSetupActivity extends ScaledActivity {
                 segment.setEnabled(config.tilesEnabled);
                 segment.setAlpha(config.tilesEnabled ? 1f : 0.45f);
             });
-            addSegment(tiles, segment);
+            Ui.addSegment(tiles, segment);
         }
         card.addView(tiles, fullWrap(8));
 
@@ -200,7 +200,7 @@ public final class WidgetSetupActivity extends ScaledActivity {
                 refresh();
             });
             refreshers.add(() -> Ui.setSegmentSelected(this, segment, config.palette == palette));
-            addSegment(palettes, segment);
+            Ui.addSegment(palettes, segment);
         }
         card.addView(palettes, fullWrap(8));
 
@@ -310,15 +310,6 @@ public final class WidgetSetupActivity extends ScaledActivity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         return row;
-    }
-
-    private void addSegment(LinearLayout row, TextView segment) {
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0,
-                ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        if (row.getChildCount() > 0) {
-            params.leftMargin = Ui.dp(this, 6);
-        }
-        row.addView(segment, params);
     }
 
     private LinearLayout.LayoutParams fullWrap(int topMarginDp) {

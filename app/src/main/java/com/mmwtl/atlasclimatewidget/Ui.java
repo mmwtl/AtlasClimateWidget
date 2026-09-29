@@ -101,6 +101,16 @@ final class Ui {
         segment.setTextColor(selected ? ON_ACCENT : TEXT);
     }
 
+    /** Adds a segment with an equal share of the row. */
+    static void addSegment(LinearLayout row, TextView segment) {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        if (row.getChildCount() > 0) {
+            params.leftMargin = dp(row.getContext(), 6);
+        }
+        row.addView(segment, params);
+    }
+
     static GradientDrawable rounded(int color, float radiusPx) {
         GradientDrawable background = new GradientDrawable();
         background.setColor(color);

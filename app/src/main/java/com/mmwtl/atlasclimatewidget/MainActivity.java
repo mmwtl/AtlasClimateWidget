@@ -28,10 +28,23 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Single settings screen: bridge status, widget constructor with live preview, behaviour. */
+/**
+ * Settings editor with Blocks, Tiles, Look and System tabs pinned under the title, like the
+ * widgetkit settings of AtlasAppWidget and AtlasMediaWidget. The widget selector and the live
+ * preview sit in the pinned header on the three layout tabs.
+ */
 public final class MainActivity extends ScaledActivity {
     private static final int TEMPLATE = AppWidgetManager.INVALID_APPWIDGET_ID;
     private static final long STATUS_REFRESH_MS = 3_000L;
+    private static final String STATE_TAB = "settings_tab";
+    static final int TAB_BLOCKS = 0;
+    static final int TAB_TILES = 1;
+    static final int TAB_LOOK = 2;
+    static final int TAB_SYSTEM = 3;
+    private static final int[] TAB_LABELS = {R.string.tab_blocks, R.string.tab_tiles,
+            R.string.tab_look, R.string.tab_system};
+    /** The pinned preview may take this share of the screen; the settings scroll below it. */
+    private static final float PREVIEW_MAX_SCREEN_SHARE = 0.28f;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable statusTask = new Runnable() {
@@ -42,19 +55,30 @@ public final class MainActivity extends ScaledActivity {
         }
     };
 
+    private final LinearLayout[] tabPages = new LinearLayout[TAB_LABELS.length];
+    private final TextView[] tabButtons = new TextView[TAB_LABELS.length];
+    private int selectedTab;
+
     private Prefs prefs;
     private int editedWidget = TEMPLATE;
     private WidgetConfig config;
     private int[] widgetIds = new int[0];
 
+    private ScrollView settingsScroll;
+    private LinearLayout previewPanel;
+    private TextView previewTitle;
     private TextView statusText;
     private Spinner widgetSpinner;
     private FrameLayout previewHost;
     private TextView previewCaption;
     private TextView heightReport;
+    private LinearLayout heightHost;
     private LinearLayout blocksHost;
+    private LinearLayout tilesHost;
     private LinearLayout functionsHost;
+    private LinearLayout availableHost;
     private LinearLayout appearanceHost;
+    private LinearLayout cardsHost;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,7 +90,16 @@ public final class MainActivity extends ScaledActivity {
             editedWidget = widgetIds[0];
         }
         config = loadConfig(editedWidget);
-        setContentView(buildContent());
+        View content = buildContent(savedInstanceState == null
+                ? TAB_BLOCKS : savedInstanceState.getInt(STATE_TAB, TAB_BLOCKS));
+        setContentView(content);
+        Ui.applySystemBarInsets(content);
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt(STATE_TAB, selectedTab);
     }
 
     @Override
@@ -77,6 +110,7 @@ public final class MainActivity extends ScaledActivity {
             editedWidget = requested;
             config = loadConfig(requested);
             rebuildEditor();
+            reloadWidgetList();
         }
     }
 
@@ -111,56 +145,171 @@ public final class MainActivity extends ScaledActivity {
 
     // ---- layout ------------------------------------------------------------------------------
 
-    private View buildContent() {
-        ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(true);
-        scroll.setBackgroundColor(Ui.BACKGROUND);
+    private View buildContent(int initialTab) {
+        LinearLayout root = vertical();
+        root.setBackgroundColor(Ui.BACKGROUND);
 
-        LinearLayout content = new LinearLayout(this);
-        content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(Ui.dp(this, 24), Ui.dp(this, 16), Ui.dp(this, 24), Ui.dp(this, 42));
-        scroll.addView(content, new ScrollView.LayoutParams(
+        LinearLayout stickyHeader = vertical();
+        stickyHeader.setClipChildren(false);
+        stickyHeader.setPadding(Ui.dp(this, 24), Ui.dp(this, 16), Ui.dp(this, 24),
+                Ui.dp(this, 12));
+        stickyHeader.setBackgroundColor(Ui.BACKGROUND);
+
+        LinearLayout titleRow = new LinearLayout(this);
+        titleRow.setOrientation(LinearLayout.HORIZONTAL);
+        titleRow.setGravity(Gravity.CENTER_VERTICAL);
+        titleRow.addView(Ui.heading(this, R.string.app_name, 24), new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        previewTitle = Ui.text(this, R.string.preview_title, 13, Ui.TEXT_SECONDARY);
+        titleRow.addView(previewTitle);
+        stickyHeader.addView(titleRow);
+
+        LinearLayout tabs = new LinearLayout(this);
+        tabs.setOrientation(LinearLayout.HORIZONTAL);
+        for (int index = 0; index < TAB_LABELS.length; index++) {
+            int tab = index;
+            TextView button = Ui.segment(this, TAB_LABELS[index]);
+            button.setTextSize(15);
+            button.setOnClickListener(view -> selectTab(tab));
+            tabButtons[index] = button;
+            Ui.addSegment(tabs, button);
+        }
+        // Tabs sit above the preview so they stay put when a tab hides the preview.
+        Ui.topMargin(tabs, 12);
+        stickyHeader.addView(tabs);
+        stickyHeader.addView(buildPreviewPanel());
+
+        settingsScroll = new ScrollView(this);
+        settingsScroll.setFillViewport(true);
+        settingsScroll.setBackgroundColor(Ui.BACKGROUND);
+        LinearLayout content = vertical();
+        content.setPadding(Ui.dp(this, 24), Ui.dp(this, 8), Ui.dp(this, 24), Ui.dp(this, 42));
+        settingsScroll.addView(content, new ScrollView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        Ui.applySystemBarInsets(scroll);
+        for (int index = 0; index < tabPages.length; index++) {
+            tabPages[index] = vertical();
+            content.addView(tabPages[index], new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
+        buildBlocksTab(tabPages[TAB_BLOCKS]);
+        buildTilesTab(tabPages[TAB_TILES]);
+        buildLookTab(tabPages[TAB_LOOK]);
+        buildSystemTab(tabPages[TAB_SYSTEM]);
+        rebuildEditor();
 
-        content.addView(Ui.heading(this, R.string.app_name, 26));
-        TextView subtitle = Ui.text(this, R.string.main_subtitle, 15, Ui.TEXT_SECONDARY);
-        subtitle.setLineSpacing(0, 1.12f);
-        Ui.topMargin(subtitle, 6);
-        content.addView(subtitle);
-        spacer(content, 14);
+        root.addView(stickyHeader, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(settingsScroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        selectTab(initialTab >= 0 && initialTab < tabPages.length ? initialTab : TAB_BLOCKS);
+        return root;
+    }
 
-        content.addView(buildStatusCard());
-        content.addView(buildWidgetCard());
-        content.addView(buildPreviewCard());
+    private void selectTab(int tab) {
+        selectedTab = tab;
+        for (int index = 0; index < tabPages.length; index++) {
+            tabPages[index].setVisibility(index == tab ? View.VISIBLE : View.GONE);
+            Ui.setSegmentSelected(this, tabButtons[index], index == tab);
+        }
+        int preview = tab == TAB_SYSTEM ? View.GONE : View.VISIBLE;
+        previewPanel.setVisibility(preview);
+        previewTitle.setVisibility(preview);
+        settingsScroll.scrollTo(0, 0);
+        // A hidden preview is not redrawn on changes; catch up once it has a width again.
+        previewHost.post(this::refreshPreview);
+    }
 
-        addSectionHeading(content, R.string.section_constructor);
+    /** Widget selector, preview and data caption, pinned under the tabs. */
+    private LinearLayout buildPreviewPanel() {
+        previewPanel = vertical();
+        Ui.topMargin(previewPanel, 10);
+        widgetSpinner = new Spinner(this);
+        widgetSpinner.setBackground(Ui.rounded(Ui.SURFACE_RAISED, Ui.dp(this, 8)));
+        widgetSpinner.setContentDescription(getString(R.string.edited_widget_title));
+        widgetSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                int target = position < widgetIds.length ? widgetIds[position] : TEMPLATE;
+                if (target != editedWidget) {
+                    editedWidget = target;
+                    config = loadConfig(target);
+                    rebuildEditor();
+                    refreshPreview();
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
+        previewPanel.addView(widgetSpinner);
+
+        previewHost = new FrameLayout(this);
+        previewHost.setPadding(Ui.dp(this, 8), Ui.dp(this, 10), Ui.dp(this, 8),
+                Ui.dp(this, 10));
+        previewHost.setBackground(Ui.rounded(Ui.SURFACE, Ui.dp(this, 8)));
+        previewHost.setContentDescription(getString(R.string.preview_title));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.topMargin = Ui.dp(this, 8);
+        previewPanel.addView(previewHost, params);
+        previewCaption = Ui.text(this, R.string.preview_live, 13, Ui.TEXT_SECONDARY);
+        Ui.topMargin(previewCaption, 6);
+        previewPanel.addView(previewCaption);
+        return previewPanel;
+    }
+
+    private void buildBlocksTab(LinearLayout page) {
+        LinearLayout height = Ui.card(this);
+        height.addView(Ui.heading(this, R.string.height_title, 20));
+        heightHost = vertical();
+        height.addView(heightHost);
+        heightReport = hint(R.string.height_report_unknown);
+        height.addView(heightReport);
+        page.addView(height);
+
         LinearLayout blocks = Ui.card(this);
         blocks.addView(Ui.heading(this, R.string.blocks_title, 20));
         blocks.addView(hint(R.string.blocks_hint));
         blocksHost = vertical();
         blocks.addView(blocksHost);
-        content.addView(blocks);
+        page.addView(blocks);
+
+        page.addView(buildLayoutCard());
+    }
+
+    private void buildTilesTab(LinearLayout page) {
+        LinearLayout tiles = Ui.card(this);
+        tiles.addView(Ui.heading(this, R.string.tiles_title, 20));
+        tilesHost = vertical();
+        tiles.addView(tilesHost);
+        page.addView(tiles);
 
         LinearLayout functions = Ui.card(this);
         functions.addView(Ui.heading(this, R.string.functions_title, 20));
         functions.addView(hint(R.string.functions_hint));
         functionsHost = vertical();
         functions.addView(functionsHost);
-        content.addView(functions);
+        page.addView(functions);
 
+        availableHost = collapsibleCard(page, R.string.functions_available,
+                R.string.functions_available_summary);
+    }
+
+    private void buildLookTab(LinearLayout page) {
         LinearLayout appearance = Ui.card(this);
         appearance.addView(Ui.heading(this, R.string.appearance_title, 20));
         appearanceHost = vertical();
         appearance.addView(appearanceHost);
-        content.addView(appearance);
+        page.addView(appearance);
 
-        addSectionHeading(content, R.string.section_behaviour);
-        content.addView(buildBehaviourCard());
-        content.addView(buildInterfaceCard());
+        cardsHost = collapsibleCard(page, R.string.cards_title, R.string.cards_summary);
+    }
 
-        rebuildEditor();
-        return scroll;
+    private void buildSystemTab(LinearLayout page) {
+        page.addView(buildStatusCard());
+        page.addView(buildBehaviourCard());
+        page.addView(buildInterfaceCard());
     }
 
     private LinearLayout buildStatusCard() {
@@ -193,31 +342,11 @@ public final class MainActivity extends ScaledActivity {
         return card;
     }
 
-    private LinearLayout buildWidgetCard() {
+    /** Actions on the layout picked in the pinned selector. */
+    private LinearLayout buildLayoutCard() {
         LinearLayout card = Ui.card(this);
         card.addView(Ui.heading(this, R.string.edited_widget_title, 20));
         card.addView(hint(R.string.edited_widget_hint));
-        widgetSpinner = new Spinner(this);
-        Ui.topMargin(widgetSpinner, 10);
-        widgetSpinner.setBackground(Ui.rounded(Ui.SURFACE_RAISED, Ui.dp(this, 8)));
-        widgetSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                int target = position < widgetIds.length ? widgetIds[position] : TEMPLATE;
-                if (target != editedWidget) {
-                    editedWidget = target;
-                    config = loadConfig(target);
-                    rebuildEditor();
-                    refreshPreview();
-                }
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-            }
-        });
-        card.addView(widgetSpinner);
-
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
         Ui.topMargin(actions, 10);
@@ -235,28 +364,11 @@ public final class MainActivity extends ScaledActivity {
             config = prefs.resolved(new WidgetConfig());
             save();
             rebuildEditor();
+            refreshPreview();
         });
         actions.addView(applyAll, weighted(0, 8));
         actions.addView(reset, weighted(0, 0));
         card.addView(actions);
-        return card;
-    }
-
-    private LinearLayout buildPreviewCard() {
-        LinearLayout card = Ui.card(this);
-        card.addView(Ui.heading(this, R.string.preview_title, 20));
-        previewCaption = hint(R.string.preview_live);
-        card.addView(previewCaption);
-        previewHost = new FrameLayout(this);
-        previewHost.setPadding(Ui.dp(this, 12), Ui.dp(this, 12), Ui.dp(this, 12),
-                Ui.dp(this, 12));
-        previewHost.setBackground(Ui.rounded(Ui.BACKGROUND, Ui.dp(this, 8)));
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        params.topMargin = Ui.dp(this, 10);
-        card.addView(previewHost, params);
-        heightReport = hint(R.string.height_report_unknown);
-        card.addView(heightReport);
         return card;
     }
 
@@ -342,14 +454,15 @@ public final class MainActivity extends ScaledActivity {
         if (blocksHost == null) {
             return;
         }
+        rebuildHeight();
         rebuildBlocks();
+        rebuildTiles();
         rebuildFunctions();
         rebuildAppearance();
     }
 
-    private void rebuildBlocks() {
-        blocksHost.removeAllViews();
-        blocksHost.addView(label(R.string.height_title));
+    private void rebuildHeight() {
+        heightHost.removeAllViews();
         RadioGroup heights = radioGroup();
         for (WidgetConfig.HeightMode mode : WidgetConfig.HeightMode.values()) {
             RadioButton button = radio(mode.titleRes);
@@ -358,35 +471,34 @@ public final class MainActivity extends ScaledActivity {
                 if (checked && config.heightMode != mode) {
                     config.heightMode = mode;
                     changed();
-                    view.post(this::rebuildBlocks);
+                    view.post(this::rebuildHeight);
                 }
             });
             heights.addView(button);
         }
-        blocksHost.addView(heights);
+        heightHost.addView(heights);
         if (config.heightMode == WidgetConfig.HeightMode.FILL) {
-            blocksHost.addView(hint(R.string.height_fill_hint));
-        } else {
-            LinearLayout aligns = new LinearLayout(this);
-            aligns.setOrientation(LinearLayout.HORIZONTAL);
-            Ui.topMargin(aligns, 8);
-            for (WidgetConfig.VerticalAlign align : WidgetConfig.VerticalAlign.values()) {
-                TextView segment = Ui.segment(this, align.titleRes);
-                Ui.setSegmentSelected(this, segment, config.verticalAlign == align);
-                segment.setOnClickListener(view -> {
-                    config.verticalAlign = align;
-                    changed();
-                    rebuildBlocks();
-                });
-                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0,
-                        ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-                if (aligns.getChildCount() > 0) {
-                    params.leftMargin = Ui.dp(this, 6);
-                }
-                aligns.addView(segment, params);
-            }
-            blocksHost.addView(aligns);
+            heightHost.addView(hint(R.string.height_fill_hint));
+            return;
         }
+        LinearLayout aligns = new LinearLayout(this);
+        aligns.setOrientation(LinearLayout.HORIZONTAL);
+        Ui.topMargin(aligns, 8);
+        for (WidgetConfig.VerticalAlign align : WidgetConfig.VerticalAlign.values()) {
+            TextView segment = Ui.segment(this, align.titleRes);
+            Ui.setSegmentSelected(this, segment, config.verticalAlign == align);
+            segment.setOnClickListener(view -> {
+                config.verticalAlign = align;
+                changed();
+                rebuildHeight();
+            });
+            Ui.addSegment(aligns, segment);
+        }
+        heightHost.addView(aligns);
+    }
+
+    private void rebuildBlocks() {
+        blocksHost.removeAllViews();
         List<WidgetConfig.Block> order = config.blockOrder;
         for (int index = 0; index < order.size(); index++) {
             WidgetConfig.Block block = order.get(index);
@@ -397,6 +509,7 @@ public final class MainActivity extends ScaledActivity {
                         config.setEnabled(block, checked);
                         changed();
                         rebuildBlocks();
+                        rebuildTiles();
                     },
                     direction -> {
                         config.moveBlock(block, direction);
@@ -415,7 +528,7 @@ public final class MainActivity extends ScaledActivity {
                             config.temperatureButtons, value -> config.temperatureButtons = value));
                     options.addView(hint(R.string.temp_hint));
                     break;
-                case FAN: {
+                case FAN:
                     options.addView(fanPartSwitch(R.string.fan_part_bar, config.fanBar,
                             value -> config.fanBar = value));
                     if (config.fanBar) {
@@ -428,28 +541,8 @@ public final class MainActivity extends ScaledActivity {
                             value -> config.fanPresets = value));
                     options.addView(hint(R.string.fan_hint));
                     break;
-                }
                 default:
-                    addSlider(options, getString(R.string.tile_columns),
-                            WidgetConfig.COLUMNS_MIN, WidgetConfig.COLUMNS_MAX, config.columns,
-                            String::valueOf, value -> {
-                                config.columns = value;
-                                changed();
-                            }, null);
-                    options.addView(label(R.string.tile_style_title));
-                    RadioGroup styles = radioGroup();
-                    for (WidgetConfig.TileStyle style : WidgetConfig.TileStyle.values()) {
-                        RadioButton button = radio(style.titleRes);
-                        button.setChecked(config.tileStyle == style);
-                        button.setOnCheckedChangeListener((view, checked) -> {
-                            if (checked) {
-                                config.tileStyle = style;
-                                changed();
-                            }
-                        });
-                        styles.addView(button);
-                    }
-                    options.addView(styles);
+                    options.addView(hint(R.string.tiles_block_hint));
                     break;
             }
             boolean enabled = block == WidgetConfig.Block.TILES
@@ -460,19 +553,52 @@ public final class MainActivity extends ScaledActivity {
         }
     }
 
+    private void rebuildTiles() {
+        tilesHost.removeAllViews();
+        if (!config.tilesEnabled) {
+            tilesHost.addView(hint(R.string.tiles_disabled_hint));
+        }
+        LinearLayout options = vertical();
+        addSlider(options, getString(R.string.tile_columns),
+                WidgetConfig.COLUMNS_MIN, WidgetConfig.COLUMNS_MAX, config.columns,
+                String::valueOf, value -> {
+                    config.columns = value;
+                    changed();
+                }, null);
+        options.addView(label(R.string.tile_style_title));
+        RadioGroup styles = radioGroup();
+        for (WidgetConfig.TileStyle style : WidgetConfig.TileStyle.values()) {
+            RadioButton button = radio(style.titleRes);
+            button.setChecked(config.tileStyle == style);
+            button.setOnCheckedChangeListener((view, checked) -> {
+                if (checked) {
+                    config.tileStyle = style;
+                    changed();
+                }
+            });
+            styles.addView(button);
+        }
+        options.addView(styles);
+        setGroupEnabled(options, config.tilesEnabled);
+        options.setAlpha(config.tilesEnabled ? 1f : 0.45f);
+        tilesHost.addView(options);
+    }
+
     private void rebuildFunctions() {
         functionsHost.removeAllViews();
+        availableHost.removeAllViews();
         List<ClimateFunction> enabled = new ArrayList<>(config.functions);
+        if (enabled.isEmpty()) {
+            functionsHost.addView(hint(R.string.functions_empty));
+        }
         for (int index = 0; index < enabled.size(); index++) {
             ClimateFunction function = enabled.get(index);
             functionsHost.addView(functionRow(function, true, index > 0,
                     index < enabled.size() - 1));
         }
-        TextView available = label(R.string.functions_available);
-        functionsHost.addView(available);
         for (ClimateFunction function : ClimateFunction.values()) {
             if (!enabled.contains(function)) {
-                functionsHost.addView(functionRow(function, false, false, false));
+                availableHost.addView(functionRow(function, false, false, false));
             }
         }
     }
@@ -522,30 +648,32 @@ public final class MainActivity extends ScaledActivity {
                     changed();
                 }, null);
         appearanceHost.addView(hint(R.string.widget_scale_hint));
-        addSlider(appearanceHost, getString(R.string.card_opacity), 0, 100,
+
+        cardsHost.removeAllViews();
+        addSlider(cardsHost, getString(R.string.card_opacity), 0, 100,
                 config.cardOpacityPercent, value -> value + "%", value -> {
                     config.cardOpacityPercent = value;
                     changed();
                 }, null);
-        addSlider(appearanceHost, getString(R.string.card_radius), 0,
+        addSlider(cardsHost, getString(R.string.card_radius), 0,
                 WidgetConfig.CARD_RADIUS_MAX_DP, config.cardRadiusDp,
                 value -> getString(R.string.dp_value, value), value -> {
                     config.cardRadiusDp = value;
                     changed();
                 }, null);
-        addSlider(appearanceHost, getString(R.string.card_padding), WidgetConfig.PADDING_MIN_DP,
+        addSlider(cardsHost, getString(R.string.card_padding), WidgetConfig.PADDING_MIN_DP,
                 WidgetConfig.PADDING_MAX_DP, config.cardPaddingDp,
                 value -> getString(R.string.dp_value, value), value -> {
                     config.cardPaddingDp = value;
                     changed();
                 }, null);
-        addSlider(appearanceHost, getString(R.string.gap), WidgetConfig.GAP_MIN_DP,
+        addSlider(cardsHost, getString(R.string.gap), WidgetConfig.GAP_MIN_DP,
                 WidgetConfig.GAP_MAX_DP, config.gapDp,
                 value -> getString(R.string.dp_value, value), value -> {
                     config.gapDp = value;
                     changed();
                 }, null);
-        addSlider(appearanceHost, getString(R.string.tile_radius), 0,
+        addSlider(cardsHost, getString(R.string.tile_radius), 0,
                 WidgetConfig.TILE_RADIUS_MAX_PERCENT, config.tileRadiusPercent,
                 value -> value + "%", value -> {
                     config.tileRadiusPercent = value;
@@ -677,9 +805,15 @@ public final class MainActivity extends ScaledActivity {
             View preview = views.apply(this, previewHost);
             int width = previewHost.getWidth() - previewHost.getPaddingLeft()
                     - previewHost.getPaddingRight();
-            int maxWidth = Math.min(width, Math.round(size.widthPx
-                    * getResources().getDisplayMetrics().density
-                    / getApplicationContext().getResources().getDisplayMetrics().density));
+            float toScreen = getResources().getDisplayMetrics().density
+                    / getApplicationContext().getResources().getDisplayMetrics().density;
+            int maxWidth = Math.min(width, Math.round(size.widthPx * toScreen));
+            if (size.heightPx > 0) {
+                // Keep the pinned preview short enough for the settings below it.
+                int maxHeight = Math.round(getResources().getDisplayMetrics().heightPixels
+                        * PREVIEW_MAX_SCREEN_SHARE);
+                maxWidth = Math.min(maxWidth, maxHeight * size.widthPx / size.heightPx);
+            }
             previewHost.removeAllViews();
             previewHost.addView(HeightReport.framePreview(this, preview, size, maxWidth));
             WidgetGeometry.Plan plan = WidgetGeometry.plan(config, size.widthPx, size.heightPx,
@@ -855,14 +989,48 @@ public final class MainActivity extends ScaledActivity {
         return view;
     }
 
-    private void addSectionHeading(LinearLayout content, int titleRes) {
-        TextView heading = Ui.heading(this, titleRes, 16);
-        heading.setTextColor(Ui.ACCENT);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        params.topMargin = Ui.dp(this, 14);
-        params.bottomMargin = Ui.dp(this, 10);
-        content.addView(heading, params);
+    /** Adds a card whose body starts collapsed and returns the body for its controls. */
+    private LinearLayout collapsibleCard(LinearLayout page, int titleRes, int summaryRes) {
+        LinearLayout card = Ui.card(this);
+        LinearLayout body = collapsible(card, titleRes, summaryRes);
+        page.addView(card);
+        return body;
+    }
+
+    /** The header stays outside the body, so rebuilding the body keeps it open or closed. */
+    private LinearLayout collapsible(LinearLayout parent, int titleRes, int summaryRes) {
+        String title = getString(titleRes);
+        LinearLayout header = vertical();
+        header.setMinimumHeight(Ui.dp(this, 40));
+        header.setClickable(true);
+        LinearLayout titleRow = new LinearLayout(this);
+        titleRow.setOrientation(LinearLayout.HORIZONTAL);
+        titleRow.setGravity(Gravity.CENTER_VERTICAL);
+        titleRow.addView(Ui.heading(this, title, 20), new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView chevron = Ui.heading(this, "▸", 26);
+        chevron.setTextColor(Ui.ACCENT);
+        chevron.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        titleRow.addView(chevron);
+        header.addView(titleRow);
+        TextView summary = Ui.text(this, summaryRes, 13, Ui.TEXT_SECONDARY);
+        summary.setLineSpacing(0, 1.1f);
+        header.addView(summary);
+        parent.addView(header);
+
+        LinearLayout body = vertical();
+        body.setVisibility(View.GONE);
+        parent.addView(body, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        header.setContentDescription(getString(R.string.collapsed_section, title));
+        header.setOnClickListener(view -> {
+            boolean expand = body.getVisibility() != View.VISIBLE;
+            body.setVisibility(expand ? View.VISIBLE : View.GONE);
+            chevron.setText(expand ? "▾" : "▸");
+            header.setContentDescription(getString(expand
+                    ? R.string.expanded_section : R.string.collapsed_section, title));
+        });
+        return body;
     }
 
     private LinearLayout settingsGroup() {
@@ -898,10 +1066,5 @@ public final class MainActivity extends ScaledActivity {
                 widthDp == 0 ? 0 : Ui.dp(this, widthDp), ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         params.rightMargin = Ui.dp(this, rightMarginDp);
         return params;
-    }
-
-    private void spacer(LinearLayout parent, int heightDp) {
-        parent.addView(new View(this), new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, heightDp)));
     }
 }

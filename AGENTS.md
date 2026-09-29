@@ -21,6 +21,11 @@ explicit migration request. All car access goes through the GInputBridge broadca
   bitmap; `WidgetViews` stacks the strips with an overlay row of equal-weight touch cells. Android 11
   `RemoteViews` cannot set weights, margins or positions dynamically, so every touch target must sit
   on the equal-cell grid computed by `WidgetGeometry`.
+- `MainActivity` is the full settings editor with Blocks, Tiles, Look and System tabs pinned under
+  the title, as in the widgetkit branches of AtlasAppWidget and AtlasMediaWidget. The widget
+  selector and live preview are pinned under the tabs on the three layout tabs and hidden on
+  System. Keep fine-tuning controls (card sliders, the list of available functions) in collapsed
+  sections; the selected tab survives recreation.
 - `WidgetSetupActivity` is the `APPWIDGET_CONFIGURE` dialog (also the launcher's ⚙ reconfigure).
   It edits a copy and saves only on confirm; a widget with reported size counts as reconfigured.
 - `ScrubActivity` is a borderless window placed over a tapped bar (from the host's source
