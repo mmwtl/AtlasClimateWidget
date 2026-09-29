@@ -11,14 +11,16 @@ import java.util.List;
 /** User-built layout of one widget instance. */
 final class WidgetConfig {
     enum Block {
-        TEMPERATURE(R.string.block_temperature),
-        FAN(R.string.block_fan),
-        TILES(R.string.block_tiles);
+        TEMPERATURE(R.string.block_temperature, R.string.block_temperature_short),
+        FAN(R.string.block_fan, R.string.block_fan_short),
+        TILES(R.string.block_tiles, R.string.block_tiles_short);
 
         final int titleRes;
+        final int titleShortRes;
 
-        Block(int titleRes) {
+        Block(int titleRes, int titleShortRes) {
             this.titleRes = titleRes;
+            this.titleShortRes = titleShortRes;
         }
     }
 

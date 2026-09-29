@@ -60,9 +60,35 @@ public final class MainActivity extends ScaledActivity {
         super.onCreate(savedInstanceState);
         prefs = new Prefs(this);
         widgetIds = ClimateService.widgetIds(this);
-        editedWidget = widgetIds.length > 0 ? widgetIds[0] : TEMPLATE;
+        editedWidget = requestedWidget(getIntent());
+        if (editedWidget == TEMPLATE && widgetIds.length > 0) {
+            editedWidget = widgetIds[0];
+        }
         config = loadConfig(editedWidget);
         setContentView(buildContent());
+    }
+
+    @Override
+    protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        int requested = requestedWidget(intent);
+        if (requested != TEMPLATE && requested != editedWidget) {
+            editedWidget = requested;
+            config = loadConfig(requested);
+            rebuildEditor();
+        }
+    }
+
+    /** The widget setup dialog opens the full constructor on its own widget. */
+    private int requestedWidget(android.content.Intent intent) {
+        int requested = intent == null ? TEMPLATE
+                : intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, TEMPLATE);
+        for (int id : widgetIds) {
+            if (id == requested) {
+                return id;
+            }
+        }
+        return TEMPLATE;
     }
 
     @Override

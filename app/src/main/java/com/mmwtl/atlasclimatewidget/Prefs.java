@@ -70,6 +70,11 @@ final class Prefs {
         return raw == null ? template() : WidgetConfig.fromJson(raw);
     }
 
+    /** Whether the widget has its own saved layout rather than the template. */
+    boolean hasWidget(int widgetId) {
+        return preferences.contains(KEY_WIDGET_PREFIX + widgetId);
+    }
+
     void setWidget(int widgetId, WidgetConfig config) {
         preferences.edit().putString(KEY_WIDGET_PREFIX + widgetId, config.toJson()).apply();
     }

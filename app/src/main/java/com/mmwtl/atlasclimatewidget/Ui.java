@@ -21,6 +21,7 @@ final class Ui {
     static final int TEXT = 0xFFF5F5F5;
     static final int TEXT_SECONDARY = 0xFFD4D4D4;
     static final int ACCENT = 0xFF7893A0;
+    static final int ON_ACCENT = 0xFF071014;
 
     private Ui() {
     }
@@ -81,6 +82,23 @@ final class Ui {
         params.setMargins(0, 0, 0, dp(context, 12));
         card.setLayoutParams(params);
         return card;
+    }
+
+    /** Choice chip of a segmented row, as in AtlasMediaWidget's widget setup. */
+    static TextView segment(Context context, int value) {
+        TextView segment = text(context, value, 14, TEXT);
+        segment.setGravity(Gravity.CENTER);
+        segment.setMaxLines(1);
+        segment.setPadding(dp(context, 8), dp(context, 11), dp(context, 8), dp(context, 11));
+        segment.setClickable(true);
+        setSegmentSelected(context, segment, false);
+        return segment;
+    }
+
+    static void setSegmentSelected(Context context, TextView segment, boolean selected) {
+        segment.setSelected(selected);
+        segment.setBackground(rounded(selected ? ACCENT : SURFACE_RAISED, dp(context, 8)));
+        segment.setTextColor(selected ? ON_ACCENT : TEXT);
     }
 
     static GradientDrawable rounded(int color, float radiusPx) {

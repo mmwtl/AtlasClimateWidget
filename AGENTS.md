@@ -21,6 +21,8 @@ explicit migration request. All car access goes through the GInputBridge broadca
   bitmap; `WidgetViews` stacks the strips with an overlay row of equal-weight touch cells. Android 11
   `RemoteViews` cannot set weights, margins or positions dynamically, so every touch target must sit
   on the equal-cell grid computed by `WidgetGeometry`.
+- `WidgetSetupActivity` is the `APPWIDGET_CONFIGURE` dialog (also the launcher's ⚙ reconfigure).
+  It edits a copy and saves only on confirm; a widget with reported size counts as reconfigured.
 - `ScrubActivity` is a borderless window placed over a tapped bar (from the host's source
   bounds) that lets the finger drag the value; while it is open the widget draws that strip
   card-only and the window draws content only. Commands are sent on release.
