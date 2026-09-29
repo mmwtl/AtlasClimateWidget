@@ -73,6 +73,7 @@ public final class WidgetConfigTest {
         config.scalePercent = 130;
         assertEquals(130, WidgetConfig.fromJson(config.toJson()).scalePercent);
         assertEquals(100, WidgetConfig.fromJson("{\"columns\":4}").scalePercent);
+        assertEquals(WidgetConfig.SCALE_DEFAULT_PERCENT, WidgetConfig.fromJson(null).scalePercent);
         assertEquals(WidgetConfig.SCALE_MAX_PERCENT,
                 WidgetConfig.fromJson("{\"scalePercent\":999}").scalePercent);
     }

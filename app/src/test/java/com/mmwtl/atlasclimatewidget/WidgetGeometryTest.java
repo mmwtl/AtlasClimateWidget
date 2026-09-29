@@ -155,7 +155,7 @@ public final class WidgetGeometryTest {
         assertEquals(natural + 200f, filled.totalHeight(), 0.5f);
         for (WidgetGeometry.Strip strip : filled.strips) {
             if (strip.row.kind == WidgetGeometry.RowKind.FAN) {
-                assertEquals(WidgetGeometry.FAN_ROW_DP, strip.contentHeight, 0.01f);
+                assertEquals(WidgetGeometry.FAN_ROW_DP * filled.density, strip.contentHeight, 0.01f);
             }
         }
     }
@@ -207,6 +207,7 @@ public final class WidgetGeometryTest {
     @Test public void scaleEnlargesBarsButKeepsTileColumns() {
         WidgetConfig config = new WidgetConfig();
         config.temperatureHeader = false;
+        config.scalePercent = 100;
         WidgetGeometry.Plan normal = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
         config.scalePercent = 150;
         WidgetGeometry.Plan large = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
