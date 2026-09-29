@@ -51,6 +51,7 @@ public final class ScrubActivity extends Activity {
     private WidgetGeometry.Strip strip;
     private float scale;
     private float cell;
+    private ScrubView view;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -116,7 +117,7 @@ public final class ScrubActivity extends Activity {
                 - (plan.offsetX() + strip.zonePadding + cellIndex * cell) * scale);
         int width = Math.round(plan.fullWidth * scale);
 
-        ScrubView view = new ScrubView(this);
+        view = new ScrubView(this);
         setContentView(view);
         Window window = getWindow();
         window.setLayout(width, source.height());
@@ -187,6 +188,8 @@ public final class ScrubActivity extends Activity {
         }
         scrubbing = false;
         ClimateService.setScrubbed(this, widgetId, null);
+        // A tap outside may be a preset that changes this bar; draw what the widget draws.
+        view.invalidate();
         main.postDelayed(this::finish, RESTORE_FINISH_MS);
     }
 
@@ -267,7 +270,14 @@ public final class ScrubActivity extends Activity {
 
         @Override
         protected void onDraw(Canvas canvas) {
-            if (bitmap == null || renderedValue != value) {
+            if (closing) {
+                // The restored strip below shows the live state, so the window follows it
+                // every frame until it leaves.
+                bitmap = new WidgetRenderer(getApplicationContext(), config,
+                        ClimateService.STORE.snapshot(SystemClock.elapsedRealtime()), model, plan)
+                        .render(strip, false, true);
+                postInvalidateOnAnimation();
+            } else if (bitmap == null || renderedValue != value) {
                 renderedValue = value;
                 ClimateState state = new DraggedState(
                         ClimateService.STORE.snapshot(SystemClock.elapsedRealtime()));
