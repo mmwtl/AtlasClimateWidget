@@ -46,7 +46,7 @@ public final class WidgetGeometryTest {
     @Test public void narrowsContentWhenSquashingIsNotEnough() {
         WidgetConfig config = new WidgetConfig();
         WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 264f, 120f, 1f, 25);
-        assertTrue(plan.totalHeight() <= 120f);
+        assertTrue(Math.round(plan.totalHeight()) <= 120);
         assertTrue(plan.width < plan.fullWidth);
         assertEquals(264f, plan.fullWidth, 0f);
     }
@@ -115,7 +115,7 @@ public final class WidgetGeometryTest {
         WidgetConfig config = new WidgetConfig();
         float natural = WidgetGeometry.plan(config, 640f, 0f, 1f, 25).totalHeight();
         WidgetGeometry.Plan filled = WidgetGeometry.plan(config, 640f, natural + 100f, 1f, 25);
-        assertEquals(natural + 100f - WidgetGeometry.FILL_SAFETY_PX, filled.totalHeight(), 0.5f);
+        assertEquals(natural + 100f, filled.totalHeight(), 0.5f);
         WidgetGeometry.Strip tiles = filled.strips.get(filled.strips.size() - 1);
         float tileWidth = filled.tileCellWidth(config.columns) - filled.gap;
         assertTrue(tiles.contentHeight > tileWidth);
@@ -127,11 +127,24 @@ public final class WidgetGeometryTest {
         float natural = WidgetGeometry.plan(config, 640f, 0f, 1f, 25).totalHeight();
         float cell = natural * 0.8f;
         WidgetGeometry.Plan fitted = WidgetGeometry.plan(config, 640f, cell, 1f, 25);
-        assertEquals(cell - WidgetGeometry.FILL_SAFETY_PX, fitted.totalHeight(), 0.5f);
+        assertEquals(cell, fitted.totalHeight(), 0.5f);
         // Just below the natural height still reaches the bottom instead of the fit margin.
         cell = natural + 1f;
         fitted = WidgetGeometry.plan(config, 640f, cell, 1f, 25);
-        assertEquals(cell - WidgetGeometry.FILL_SAFETY_PX, fitted.totalHeight(), 0.5f);
+        assertEquals(cell, fitted.totalHeight(), 0.5f);
+    }
+
+    @Test public void snappedStripsAddUpToTheCell() {
+        WidgetConfig config = new WidgetConfig();
+        for (float cell : new float[] {333f, 517f, 744f, 1001f}) {
+            WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 744f, cell, 1.6f, 25);
+            int total = 0;
+            for (WidgetGeometry.Strip strip : plan.strips) {
+                total += plan.pixelHeight(strip);
+            }
+            assertEquals(Math.round(plan.totalHeight()), total);
+            assertTrue(total <= cell);
+        }
     }
 
     @Test public void fillKeepsBarsAndSpreadsRestOverCards() {
@@ -139,7 +152,7 @@ public final class WidgetGeometryTest {
         config.tilesEnabled = false;
         float natural = WidgetGeometry.plan(config, 640f, 0f, 1f, 25).totalHeight();
         WidgetGeometry.Plan filled = WidgetGeometry.plan(config, 640f, natural + 200f, 1f, 25);
-        assertEquals(natural + 200f - WidgetGeometry.FILL_SAFETY_PX, filled.totalHeight(), 0.5f);
+        assertEquals(natural + 200f, filled.totalHeight(), 0.5f);
         for (WidgetGeometry.Strip strip : filled.strips) {
             if (strip.row.kind == WidgetGeometry.RowKind.FAN) {
                 assertEquals(WidgetGeometry.FAN_ROW_DP, strip.contentHeight, 0.01f);

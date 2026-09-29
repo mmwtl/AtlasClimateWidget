@@ -62,10 +62,12 @@ final class WidgetRenderer {
      */
     Bitmap render(WidgetGeometry.Strip strip, boolean card, boolean content) {
         int width = Math.max(1, Math.round(plan.fullWidth));
-        int height = Math.max(1, Math.round(strip.totalHeight()));
+        int height = plan.pixelHeight(strip);
         Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
-        canvas.translate(plan.offsetX(), 0f);
+        // The bitmap starts on a whole pixel; draw at the strip's exact position inside it.
+        float top = plan.stripTop(strip);
+        canvas.translate(plan.offsetX(), top - Math.round(top));
         if (card) {
             drawCard(canvas, strip);
         }
@@ -110,7 +112,9 @@ final class WidgetRenderer {
         float radius = config.cardRadiusDp * dp;
         rect.set(0f, -strip.cardOffset, plan.width, strip.cardHeight - strip.cardOffset);
         canvas.save();
-        canvas.clipRect(0f, 0f, plan.width, strip.height);
+        // Inside a card the fill runs to the bitmap edge so snapped strips never leave a seam.
+        canvas.clipRect(0f, -1f, plan.width,
+                strip.lastInCard ? strip.height : strip.height + 1f);
         canvas.drawRoundRect(rect, radius, radius, paint);
         canvas.restore();
     }

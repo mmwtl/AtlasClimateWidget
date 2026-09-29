@@ -56,10 +56,12 @@ final class WidgetViews {
         if (bytes * scale * scale > MAX_BITMAP_BYTES) {
             scale = (float) Math.sqrt(MAX_BITMAP_BYTES / bytes);
         }
+        // Upscaled strips round once more in the host, up to a pixel each; leave room for it.
         WidgetGeometry.Plan plan = scale >= 0.999f
                 ? full
-                : WidgetGeometry.plan(config, size.widthPx * scale, size.heightPx * scale,
-                density * scale, steps);
+                : WidgetGeometry.plan(config, size.widthPx * scale,
+                Math.max(0f, size.heightPx - full.strips.size()) * scale, density * scale,
+                steps);
 
         String packageName = context.getPackageName();
         RemoteViews root = new RemoteViews(packageName, R.layout.widget_root);

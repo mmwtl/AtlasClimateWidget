@@ -25,8 +25,6 @@ final class WidgetGeometry {
     static final float MIN_CONTENT_WIDTH = 0.3f;
     /** Tallest tile relative to its width when tiles stretch to fill the widget. */
     static final float MAX_TILE_ASPECT = 1.6f;
-    /** Room for per-strip pixel rounding so a filled widget never overflows its cell. */
-    static final float FILL_SAFETY_PX = 4f;
 
     enum RowKind {
         HEADER,
@@ -129,6 +127,27 @@ final class WidgetGeometry {
             return total;
         }
 
+        /** Distance from the widget top to the strip. */
+        float stripTop(Strip strip) {
+            float top = 0f;
+            for (Strip candidate : strips) {
+                if (candidate == strip) {
+                    break;
+                }
+                top += candidate.totalHeight();
+            }
+            return top;
+        }
+
+        /**
+         * Bitmap height of a strip. Strip edges snap to whole pixels of the widget, so the
+         * bitmaps add up to the rounded layout height instead of accumulating rounding errors.
+         */
+        int pixelHeight(Strip strip) {
+            float top = stripTop(strip);
+            return Math.max(1, Math.round(top + strip.totalHeight()) - Math.round(top));
+        }
+
         /** Content height the layout needs at full size, before fitting. */
         float naturalHeight;
         /** Height reported by the launcher, or 0. */
@@ -169,7 +188,7 @@ final class WidgetGeometry {
         // A filled layout must end at the cell bottom whether it grows or shrinks; a content-sized
         // one fits a little inside the reported height because hosts round cell sizes.
         boolean filled = config.heightMode == WidgetConfig.HeightMode.FILL;
-        float target = filled ? heightPx - FILL_SAFETY_PX : heightPx * FIT_MARGIN;
+        float target = filled ? heightPx : heightPx * FIT_MARGIN;
         if (natural <= target) {
             if (!filled || natural >= target) {
                 return build(config, widthPx, widthPx, density, 1f, temperatureSteps, 0f, 0f)
