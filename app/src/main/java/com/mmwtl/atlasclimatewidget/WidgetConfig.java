@@ -73,6 +73,18 @@ final class WidgetConfig {
         }
     }
 
+    /** Overall arrangement: the user's own order, or a console-like grouped layout. */
+    enum Style {
+        CLASSIC(R.string.style_classic),
+        CONSOLE(R.string.style_console);
+
+        final int titleRes;
+
+        Style(int titleRes) {
+            this.titleRes = titleRes;
+        }
+    }
+
     static final int COLUMNS_MIN = 2;
     static final int COLUMNS_MAX = 8;
     static final int CARD_RADIUS_MAX_DP = 40;
@@ -122,6 +134,7 @@ final class WidgetConfig {
     int fanPresetCount = 3;
     VerticalAlign verticalAlign = VerticalAlign.TOP;
     CardLayout cardLayout = CardLayout.SEPARATE;
+    Style style = Style.CLASSIC;
 
     /** Enabled tiles in display order. */
     final List<ClimateFunction> functions = new ArrayList<>(DEFAULT_FUNCTIONS);
@@ -162,6 +175,165 @@ final class WidgetConfig {
     int fanControlCount() {
         return (fanDirections ? FAN_DIRECTIONS.length : 0)
                 + (fanPresets ? ClimateCommands.fanPresets(fanPresetCount).length : 0);
+    }
+
+    /** Console fan rows: blowing directions, then auto-fan presets. */
+    static final int FAN_ROW_DIRECTIONS = 0;
+    static final int FAN_ROW_PRESETS = 1;
+
+    /** Row indexes of the fan button rows, see {@link #FAN_ROW_DIRECTIONS}. */
+    List<Integer> fanControlRows() {
+        List<Integer> rows = new ArrayList<>();
+        if (style != Style.CONSOLE) {
+            if (fanControlCount() > 0) {
+                rows.add(0);
+            }
+            return rows;
+        }
+        if (fanDirections) {
+            rows.add(FAN_ROW_DIRECTIONS);
+        }
+        if (fanPresets && ClimateCommands.fanPresets(fanPresetCount).length > 0) {
+            rows.add(FAN_ROW_PRESETS);
+        }
+        return rows;
+    }
+
+    /** Touch cells of a fan button row. */
+    int fanControlCells(int row) {
+        if (style != Style.CONSOLE) {
+            return fanControlCount();
+        }
+        return row == FAN_ROW_DIRECTIONS ? FAN_DIRECTIONS.length
+                : ClimateCommands.fanPresets(fanPresetCount).length;
+    }
+
+    /** Where a tile goes in the console layout. */
+    enum TileGroup {
+        CLIMATE,
+        GLASS,
+        SEATS
+    }
+
+    /**
+     * Console seat order, mirrored like the cabin: driver side from the left edge, the wheel in
+     * the middle, passenger side towards the right edge.
+     */
+    private static final List<ClimateFunction> SEATS_LEFT = Arrays.asList(
+            ClimateFunction.DRIVER_HEAT, ClimateFunction.DRIVER_VENT,
+            ClimateFunction.REAR_LEFT_HEAT);
+    private static final List<ClimateFunction> SEATS_CENTER = Arrays.asList(
+            ClimateFunction.WHEEL_HEAT);
+    private static final List<ClimateFunction> SEATS_RIGHT = Arrays.asList(
+            ClimateFunction.REAR_RIGHT_HEAT, ClimateFunction.PASSENGER_VENT,
+            ClimateFunction.PASSENGER_HEAT);
+
+    static TileGroup group(ClimateFunction function) {
+        switch (function) {
+            case WINDSHIELD_HEAT:
+            case DEFROST_MAX:
+            case REAR_DEFROST:
+                return TileGroup.GLASS;
+            default:
+                if (SEATS_LEFT.contains(function) || SEATS_CENTER.contains(function)
+                        || SEATS_RIGHT.contains(function)) {
+                    return TileGroup.SEATS;
+                }
+                return TileGroup.CLIMATE;
+        }
+    }
+
+    /**
+     * Tile slots row by row; {@code null} marks an empty cell. Classic rows follow the user's
+     * order. Console rows put climate modes, then glass, then seats; a group starts a new row
+     * unless it fits whole into the rest of the current one, and a seat row of its own is
+     * mirrored with an empty middle.
+     */
+    List<ClimateFunction[]> tileRows() {
+        List<ClimateFunction[]> rows = new ArrayList<>();
+        if (style != Style.CONSOLE) {
+            appendWrapped(rows, functions, 0);
+            return rows;
+        }
+        int used = 0;
+        for (TileGroup group : TileGroup.values()) {
+            List<ClimateFunction> members = groupMembers(group);
+            if (members.isEmpty()) {
+                continue;
+            }
+            if (used > 0 && used + members.size() <= columns) {
+                ClimateFunction[] last = rows.get(rows.size() - 1);
+                for (ClimateFunction function : members) {
+                    last[used++] = function;
+                }
+                continue;
+            }
+            if (group == TileGroup.SEATS && members.size() <= columns) {
+                rows.add(mirroredSeats(members));
+                used = columns;
+                continue;
+            }
+            used = appendWrapped(rows, members, 0);
+        }
+        return rows;
+    }
+
+    private List<ClimateFunction> groupMembers(TileGroup group) {
+        List<ClimateFunction> members = new ArrayList<>();
+        if (group != TileGroup.SEATS) {
+            for (ClimateFunction function : functions) {
+                if (group(function) == group) {
+                    members.add(function);
+                }
+            }
+            return members;
+        }
+        for (List<ClimateFunction> side : Arrays.asList(SEATS_LEFT, SEATS_CENTER, SEATS_RIGHT)) {
+            for (ClimateFunction function : side) {
+                if (functions.contains(function)) {
+                    members.add(function);
+                }
+            }
+        }
+        return members;
+    }
+
+    private ClimateFunction[] mirroredSeats(List<ClimateFunction> seats) {
+        ClimateFunction[] row = new ClimateFunction[columns];
+        List<ClimateFunction> left = new ArrayList<>();
+        List<ClimateFunction> center = new ArrayList<>();
+        List<ClimateFunction> right = new ArrayList<>();
+        for (ClimateFunction function : seats) {
+            (SEATS_LEFT.contains(function) ? left
+                    : SEATS_CENTER.contains(function) ? center : right).add(function);
+        }
+        int free = columns - seats.size();
+        int slot = 0;
+        for (ClimateFunction function : left) {
+            row[slot++] = function;
+        }
+        slot += free / 2;
+        for (ClimateFunction function : center) {
+            row[slot++] = function;
+        }
+        slot += free - free / 2;
+        for (ClimateFunction function : right) {
+            row[slot++] = function;
+        }
+        return row;
+    }
+
+    /** Wraps the functions into new rows; returns the cells used in the last row. */
+    private int appendWrapped(List<ClimateFunction[]> rows, List<ClimateFunction> items,
+            int used) {
+        for (ClimateFunction function : items) {
+            if (used == 0 || used == columns) {
+                rows.add(new ClimateFunction[columns]);
+                used = 0;
+            }
+            rows.get(rows.size() - 1)[used++] = function;
+        }
+        return used;
     }
 
     void setEnabled(Block block, boolean enabled) {
@@ -230,6 +402,7 @@ final class WidgetConfig {
             json.put("heightMode", heightMode.name());
             json.put("verticalAlign", verticalAlign.name());
             json.put("cardLayout", cardLayout.name());
+            json.put("style", style.name());
             JSONArray tiles = new JSONArray();
             for (ClimateFunction function : functions) {
                 tiles.put(function.name());
@@ -305,6 +478,7 @@ final class WidgetConfig {
                 config.verticalAlign);
         config.cardLayout = enumValue(CardLayout.class, json.optString("cardLayout"),
                 config.cardLayout);
+        config.style = enumValue(Style.class, json.optString("style"), config.style);
         JSONArray tiles = json.optJSONArray("functions");
         if (tiles != null) {
             config.functions.clear();

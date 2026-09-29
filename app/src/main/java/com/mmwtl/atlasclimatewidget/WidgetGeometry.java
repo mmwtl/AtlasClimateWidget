@@ -20,6 +20,10 @@ final class WidgetGeometry {
     static final float TEMP_ROW_GAP_DP = 8f;
     static final float FAN_ROW_DP = 42f;
     static final float FAN_CONTROLS_ROW_DP = 56f;
+    /** Console temperature row: a large value riding above a thin bar. */
+    static final float CONSOLE_TEMP_ROW_DP = 60f;
+    static final float CONSOLE_DIRECTIONS_ROW_DP = 40f;
+    static final float CONSOLE_PRESETS_ROW_DP = 34f;
     static final float MIN_VERTICAL_SCALE = 0.55f;
     static final float FIT_MARGIN = 0.98f;
     static final float MIN_CONTENT_WIDTH = 0.3f;
@@ -236,7 +240,7 @@ final class WidgetGeometry {
             int temperatureSteps, float extra) {
         int cards = config.visibleBlocks().size();
         int tileRows = config.isEnabled(WidgetConfig.Block.TILES)
-                ? (config.functions.size() + config.columns - 1) / config.columns : 0;
+                ? config.tileRows().size() : 0;
         float tileExtra = 0f;
         if (tileRows > 0) {
             float padding = config.cardPaddingDp * density;
@@ -319,15 +323,15 @@ final class WidgetGeometry {
                     rows.add(new Row(block, RowKind.FAN, 0, FAN_ROW_DP * density * scale));
                     gaps.add(TEMP_ROW_GAP_DP * density * scale);
                 }
-                if (config.fanControlCount() > 0) {
-                    rows.add(new Row(block, RowKind.FAN_CONTROLS, 0,
-                            FAN_CONTROLS_ROW_DP * density * scale));
-                    gaps.add(0f);
+                for (int index : config.fanControlRows()) {
+                    rows.add(new Row(block, RowKind.FAN_CONTROLS, index,
+                            fanControlsRowDp(config, index) * density * scale));
+                    gaps.add(TEMP_ROW_GAP_DP * density * scale);
                 }
                 break;
             default: {
                 int columns = config.columns;
-                int rowCount = (config.functions.size() + columns - 1) / columns;
+                int rowCount = config.tileRows().size();
                 float tile = (width - 2f * padding + gap) / columns - gap;
                 for (int row = 0; row < rowCount; row++) {
                     rows.add(new Row(block, RowKind.TILES, row, tile * scale + tileExtra));
@@ -379,7 +383,7 @@ final class WidgetGeometry {
                     zoneCount = Hvac.FAN_SPEED_LEVEL_COUNT + 2 * buttonCells;
                     break;
                 case FAN_CONTROLS:
-                    zoneCount = config.fanControlCount();
+                    zoneCount = config.fanControlCells(row.index);
                     break;
                 case TILES:
                     zoneCount = config.columns;
@@ -400,7 +404,16 @@ final class WidgetGeometry {
     }
 
     static float temperatureRowDp(WidgetConfig config) {
-        return TEMP_ROW_DP + (config.temperatureDual ? TEMP_LABEL_DP : 0f);
+        float row = config.style == WidgetConfig.Style.CONSOLE ? CONSOLE_TEMP_ROW_DP : TEMP_ROW_DP;
+        return row + (config.temperatureDual ? TEMP_LABEL_DP : 0f);
+    }
+
+    static float fanControlsRowDp(WidgetConfig config, int row) {
+        if (config.style != WidgetConfig.Style.CONSOLE) {
+            return FAN_CONTROLS_ROW_DP;
+        }
+        return row == WidgetConfig.FAN_ROW_DIRECTIONS
+                ? CONSOLE_DIRECTIONS_ROW_DP : CONSOLE_PRESETS_ROW_DP;
     }
 
     /** Chooses how many equal cells a −/+ button spans so that it stays roughly square. */

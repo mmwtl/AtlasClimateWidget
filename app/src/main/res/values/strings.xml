@@ -58,6 +58,12 @@
     <string name="setup_height_fill">Заполнить</string>
     <string name="setup_height_content">По содержимому</string>
     <string name="blocks_hint">Включите нужные блоки и расставьте их стрелками.</string>
+    <string name="style_title">Компоновка</string>
+    <string name="style_classic">Классика</string>
+    <string name="style_console">Пульт</string>
+    <string name="style_classic_hint">Плитки идут в заданном порядке, температура — ползунком с числом на бегунке.</string>
+    <string name="style_console_hint">Как на пульте: крупная температура над шкалой, обдув и пресеты — переключателями, плитки сгруппированы (режимы, стёкла, сиденья зеркально водитель ↔ пассажир).</string>
+    <string name="style_console_tiles_hint">В компоновке «Пульт» плитки расставляются по группам; порядок ниже действует внутри групп режимов и стёкол.</string>
     <string name="card_layout_title">Карточки</string>
     <string name="card_layout_separate">Отдельные карточки</string>
     <string name="card_layout_single">Одна карточка</string>

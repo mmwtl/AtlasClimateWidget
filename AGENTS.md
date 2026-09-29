@@ -39,6 +39,10 @@ explicit migration request. All car access goes through the GInputBridge broadca
 - Cards: `CardLayout.SEPARATE` gives every block its own card; `SINGLE` puts all rows in one card,
   blocks a card padding apart with a hairline divider drawn in the card layer. Fill shares extra
   height per block in both modes.
+- Style: `Style.CLASSIC` keeps the user's tile order and the knob-labelled temperature bar.
+  `CONSOLE` draws the set temperature large above a thin bar (over the knob, so tapping it keeps
+  the value), splits fan directions and auto-fan presets into segmented rows, and arranges tiles
+  via `WidgetConfig.tileRows()`: climate modes, glass, then seats mirrored driver ↔ passenger.
 - `ClimateCommands`, `ClimateStore`, `WidgetConfig` and `WidgetGeometry` are pure Java and covered by
   JVM unit tests; keep Android framework code at the service/provider/activity edges.
 - Property ids, zones and value encodings live in `Hvac` and `ClimateFunction`; they mirror

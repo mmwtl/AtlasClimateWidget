@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.view.Gravity;
 import android.widget.RemoteViews;
 
+import java.util.List;
 import java.util.Locale;
 
 /** Builds the RemoteViews tree of one widget. */
@@ -139,17 +140,21 @@ final class WidgetViews {
                 }
                 return "fan/" + (cell - buttons + 1);
             case FAN_CONTROLS: {
+                if (config.style == WidgetConfig.Style.CONSOLE) {
+                    return strip.row.index == WidgetConfig.FAN_ROW_DIRECTIONS
+                            ? "fn/" + WidgetConfig.FAN_DIRECTIONS[cell].name()
+                            : "fanpreset/" + cell;
+                }
                 int directions = config.fanDirections ? WidgetConfig.FAN_DIRECTIONS.length : 0;
                 return cell < directions
                         ? "fn/" + WidgetConfig.FAN_DIRECTIONS[cell].name()
                         : "fanpreset/" + (cell - directions);
             }
             case TILES: {
-                int index = strip.row.index * config.columns + cell;
-                if (index >= config.functions.size()) {
-                    return null;
-                }
-                return "fn/" + config.functions.get(index).name();
+                List<ClimateFunction[]> rows = config.tileRows();
+                ClimateFunction function = strip.row.index < rows.size()
+                        ? rows.get(strip.row.index)[cell] : null;
+                return function == null ? null : "fn/" + function.name();
             }
             default:
                 return null;

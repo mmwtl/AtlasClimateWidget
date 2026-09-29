@@ -217,4 +217,25 @@ public final class WidgetGeometryTest {
         WidgetGeometry.Strip tiles = large.strips.get(large.strips.size() - 1);
         assertEquals(config.columns, tiles.zoneCount);
     }
+
+    @Test public void consoleSplitsFanButtonsAndGrowsTemperature() {
+        WidgetConfig config = new WidgetConfig();
+        config.temperatureHeader = false;
+        config.style = WidgetConfig.Style.CONSOLE;
+        config.scalePercent = 100;
+        WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
+        assertEquals(WidgetGeometry.CONSOLE_TEMP_ROW_DP, plan.strips.get(0).contentHeight,
+                0.01f);
+        assertEquals(25 + 2 * plan.strips.get(0).buttonCells, plan.strips.get(0).zoneCount);
+        WidgetGeometry.Strip directions = plan.strips.get(2);
+        WidgetGeometry.Strip presets = plan.strips.get(3);
+        assertEquals(WidgetGeometry.RowKind.FAN_CONTROLS, directions.row.kind);
+        assertEquals(WidgetConfig.FAN_ROW_DIRECTIONS, directions.row.index);
+        assertEquals(WidgetConfig.FAN_DIRECTIONS.length, directions.zoneCount);
+        assertEquals(WidgetConfig.FAN_ROW_PRESETS, presets.row.index);
+        assertEquals(config.fanControlCells(WidgetConfig.FAN_ROW_PRESETS), presets.zoneCount);
+        config.fanDirections = false;
+        plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
+        assertEquals(WidgetConfig.FAN_ROW_PRESETS, plan.strips.get(2).row.index);
+    }
 }

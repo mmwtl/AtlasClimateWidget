@@ -499,6 +499,23 @@ public final class MainActivity extends ScaledActivity {
 
     private void rebuildBlocks() {
         blocksHost.removeAllViews();
+        LinearLayout styles = new LinearLayout(this);
+        styles.setOrientation(LinearLayout.HORIZONTAL);
+        Ui.topMargin(styles, 10);
+        for (WidgetConfig.Style style : WidgetConfig.Style.values()) {
+            TextView segment = Ui.segment(this, style.titleRes);
+            Ui.setSegmentSelected(this, segment, config.style == style);
+            segment.setOnClickListener(view -> {
+                config.style = style;
+                changed();
+                rebuildBlocks();
+                rebuildTiles();
+            });
+            Ui.addSegment(styles, segment);
+        }
+        blocksHost.addView(styles);
+        blocksHost.addView(hint(config.style == WidgetConfig.Style.CONSOLE
+                ? R.string.style_console_hint : R.string.style_classic_hint));
         LinearLayout layouts = new LinearLayout(this);
         layouts.setOrientation(LinearLayout.HORIZONTAL);
         Ui.topMargin(layouts, 10);
@@ -573,6 +590,9 @@ public final class MainActivity extends ScaledActivity {
         tilesHost.removeAllViews();
         if (!config.tilesEnabled) {
             tilesHost.addView(hint(R.string.tiles_disabled_hint));
+        }
+        if (config.style == WidgetConfig.Style.CONSOLE) {
+            tilesHost.addView(hint(R.string.style_console_tiles_hint));
         }
         LinearLayout options = vertical();
         addSlider(options, getString(R.string.tile_columns),

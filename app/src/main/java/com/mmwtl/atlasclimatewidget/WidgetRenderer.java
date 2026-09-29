@@ -14,6 +14,7 @@ import android.graphics.drawable.Drawable;
 import android.text.TextPaint;
 import android.text.TextUtils;
 
+import java.util.List;
 import java.util.Locale;
 
 /** Draws the widget strips planned by {@link WidgetGeometry}. */
@@ -191,12 +192,20 @@ final class WidgetRenderer {
         float inner = plan.width - 2f * plan.padding;
         float cell = inner / strip.zoneCount;
         float centerY = top + barHeight / 2f;
+        boolean console = config.style == WidgetConfig.Style.CONSOLE;
         if (strip.buttonCells > 0) {
             float buttonWidth = cell * strip.buttonCells;
-            drawRoundButton(canvas, plan.padding + buttonWidth / 2f, centerY,
-                    Math.min(buttonWidth, barHeight), false);
+            // Console buttons keep the classic size although the row is taller.
+            float buttonSize = Math.min(buttonWidth, console
+                    ? barHeight * WidgetGeometry.TEMP_ROW_DP / WidgetGeometry.CONSOLE_TEMP_ROW_DP
+                    : barHeight);
+            drawRoundButton(canvas, plan.padding + buttonWidth / 2f, centerY, buttonSize, false);
             drawRoundButton(canvas, plan.width - plan.padding - buttonWidth / 2f, centerY,
-                    Math.min(buttonWidth, barHeight), true);
+                    buttonSize, true);
+        }
+        if (console) {
+            drawConsoleTemperature(canvas, strip, zone, cell, top, barHeight);
+            return;
         }
         float x0 = plan.padding + cell * strip.buttonCells + cell / 2f;
         float x1 = plan.width - plan.padding - cell * strip.buttonCells - cell / 2f;
@@ -236,6 +245,49 @@ final class WidgetRenderer {
         canvas.drawRoundRect(rect, knobHeight / 2f, knobHeight / 2f, paint);
         textPaint.setColor(knobText);
         drawCentered(canvas, label, rect.centerX(), centerY);
+    }
+
+    /**
+     * Console temperature: the set value in large type above a thin bar, riding over the knob so
+     * a tap on the number keeps the value and opens the scrubber.
+     */
+    private void drawConsoleTemperature(Canvas canvas, WidgetGeometry.Strip strip, int zone,
+            float cell, float top, float barHeight) {
+        float x0 = plan.padding + cell * strip.buttonCells + cell / 2f;
+        float x1 = plan.width - plan.padding - cell * strip.buttonCells - cell / 2f;
+        float thickness = Math.max(3f * dp, barHeight * 0.09f);
+        float barY = top + barHeight * 0.8f;
+        paint.setShader(null);
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(Ui.SURFACE_RAISED);
+        rect.set(x0 - thickness / 2f, barY - thickness / 2f, x1 + thickness / 2f,
+                barY + thickness / 2f);
+        canvas.drawRoundRect(rect, thickness / 2f, thickness / 2f, paint);
+
+        Float value = ClimateCommands.temperature(state, zone);
+        float knobX = (x0 + x1) / 2f;
+        String label = "--°";
+        int textColor = Ui.TEXT_SECONDARY;
+        if (value != null) {
+            knobX = x0 + range.fraction(value) * (x1 - x0);
+            paint.setShader(new LinearGradient(x0, 0f, x1, 0f,
+                    new int[]{TEMP_COLD, Ui.ACCENT, TEMP_WARM}, null, Shader.TileMode.CLAMP));
+            rect.set(x0 - thickness / 2f, barY - thickness / 2f, knobX, barY + thickness / 2f);
+            canvas.drawRoundRect(rect, thickness / 2f, thickness / 2f, paint);
+            paint.setShader(null);
+            paint.setColor(Ui.TEXT);
+            canvas.drawCircle(knobX, barY, thickness * 1.5f, paint);
+            label = formatTemperature(value);
+            textColor = Ui.TEXT;
+        }
+        textPaint.setTypeface(Typeface.DEFAULT_BOLD);
+        textPaint.setTextSize(barHeight * 0.44f);
+        textPaint.setColor(textColor);
+        float width = textPaint.measureText(label);
+        float left = Math.max(x0 - cell / 2f, Math.min(x1 + cell / 2f - width,
+                knobX - width / 2f));
+        float baseline = barY - thickness * 1.5f - barHeight * 0.1f;
+        canvas.drawText(label, left, baseline, textPaint);
     }
 
     private void drawRoundButton(Canvas canvas, float cx, float cy, float size, boolean plus) {
@@ -308,14 +360,13 @@ final class WidgetRenderer {
      * the directions the presets are fans of growing size; alone they also carry their names.
      */
     private void drawFanControls(Canvas canvas, WidgetGeometry.Strip strip) {
+        if (config.style == WidgetConfig.Style.CONSOLE) {
+            drawSegmented(canvas, strip, strip.row.index == WidgetConfig.FAN_ROW_DIRECTIONS);
+            return;
+        }
         int directions = config.fanDirections ? WidgetConfig.FAN_DIRECTIONS.length : 0;
         int presets = strip.zoneCount - directions;
-        int[] labels = config.fanPresetCount >= ClimateCommands.FAN_PRESETS_FIVE.length
-                ? new int[]{R.string.fan_preset_quiet, R.string.fn_fan_soft_short,
-                R.string.fn_fan_normal_short, R.string.fan_preset_strong,
-                R.string.fan_preset_max}
-                : new int[]{R.string.fn_fan_soft_short, R.string.fn_fan_normal_short,
-                R.string.fn_fan_strong_short};
+        int[] labels = presetLabels();
         int activePreset = ClimateCommands.fanPreset(state, config.fanPresetCount);
         boolean presetsKnown = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL) != null;
         boolean withLabels = directions == 0;
@@ -402,6 +453,101 @@ final class WidgetRenderer {
         }
     }
 
+    private int[] presetLabels() {
+        return config.fanPresetCount >= ClimateCommands.FAN_PRESETS_FIVE.length
+                ? new int[]{R.string.fan_preset_quiet, R.string.fn_fan_soft_short,
+                R.string.fn_fan_normal_short, R.string.fan_preset_strong,
+                R.string.fan_preset_max}
+                : new int[]{R.string.fn_fan_soft_short, R.string.fn_fan_normal_short,
+                R.string.fn_fan_strong_short};
+    }
+
+    /**
+     * Console fan row: one pill split into segments, the blowing directions with icon and name,
+     * or the auto-fan presets by name so they never read as fan speeds.
+     */
+    private void drawSegmented(Canvas canvas, WidgetGeometry.Strip strip, boolean directions) {
+        int[] labels = presetLabels();
+        int activePreset = ClimateCommands.fanPreset(state, config.fanPresetCount);
+        boolean presetsKnown = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL) != null;
+        float height = strip.contentHeight;
+        float inner = plan.width - 2f * plan.padding;
+        float cell = inner / strip.zoneCount;
+        float radius = Math.min(height / 2f,
+                height * config.tileRadiusPercent / 100f * 1.4f);
+        paint.setShader(null);
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(Ui.SURFACE_RAISED);
+        rect.set(plan.padding, 0f, plan.width - plan.padding, height);
+        canvas.drawRoundRect(rect, radius, radius, paint);
+
+        float inset = Math.max(2f, 3f * dp);
+        boolean previousOn = false;
+        for (int index = 0; index < strip.zoneCount; index++) {
+            boolean on;
+            boolean known;
+            if (directions) {
+                ClimateCommands.TileState tileState = ClimateCommands.tileState(
+                        WidgetConfig.FAN_DIRECTIONS[index], state, model);
+                on = tileState.active;
+                known = tileState.known;
+            } else {
+                on = index == activePreset;
+                known = presetsKnown;
+            }
+            float left = plan.padding + index * cell;
+            float right = left + cell;
+            int content = Ui.TEXT;
+            if (on) {
+                paint.setColor(config.filledActive
+                        ? config.palette.tile(ClimateFunction.Tone.NEUTRAL)
+                        : config.palette.softTile(ClimateFunction.Tone.NEUTRAL));
+                content = config.filledActive ? Color.WHITE
+                        : config.palette.softContent(ClimateFunction.Tone.NEUTRAL);
+                float innerRadius = Math.max(0f, radius - inset);
+                rect.set(left + inset, inset, right - inset, height - inset);
+                canvas.drawRoundRect(rect, innerRadius, innerRadius, paint);
+            } else if (index > 0 && !previousOn) {
+                paint.setColor(withAlpha(Ui.TEXT, 22));
+                float thickness = Math.max(1f, dp);
+                canvas.drawRect(left - thickness / 2f, height * 0.28f, left + thickness / 2f,
+                        height * 0.72f, paint);
+            }
+            previousOn = on;
+            if (!known) {
+                content = withAlpha(content, Math.round(255 * UNKNOWN_ALPHA));
+            }
+            float cx = (left + right) / 2f;
+            float cy = height / 2f;
+            float room = (right - left) - 2f * inset - height * 0.3f;
+            textPaint.setTypeface(Typeface.DEFAULT_BOLD);
+            textPaint.setTextSize(Math.min(14f * dp, height * 0.34f));
+            textPaint.setColor(content);
+            if (!directions) {
+                String label = context.getString(labels[Math.min(index, labels.length - 1)]);
+                float width = textPaint.measureText(label);
+                if (width > room) {
+                    textPaint.setTextSize(textPaint.getTextSize() * room / width);
+                }
+                drawCentered(canvas, label, cx, cy);
+                continue;
+            }
+            ClimateFunction function = WidgetConfig.FAN_DIRECTIONS[index];
+            float icon = height * 0.72f;
+            String label = context.getString(function.shortRes);
+            float iconGap = height * 0.12f;
+            float width = textPaint.measureText(label);
+            if (icon + iconGap + width > room) {
+                drawIcon(canvas, function.iconRes, cx, cy, icon, content);
+                continue;
+            }
+            float start = cx - (icon + iconGap + width) / 2f;
+            drawIcon(canvas, function.iconRes, start + icon / 2f, cy, icon, content);
+            canvas.drawText(label, start + icon + iconGap,
+                    cy - textBounds(label).exactCenterY(), textPaint);
+        }
+    }
+
     private Rect textBounds(String text) {
         textPaint.getTextBounds(text, 0, text.length(), bounds);
         return bounds;
@@ -420,12 +566,16 @@ final class WidgetRenderer {
         int columns = config.columns;
         float cellWidth = plan.tileCellWidth(columns);
         float tileWidth = cellWidth - plan.gap;
+        List<ClimateFunction[]> rows = config.tileRows();
+        if (strip.row.index >= rows.size()) {
+            return;
+        }
+        ClimateFunction[] row = rows.get(strip.row.index);
         for (int column = 0; column < columns; column++) {
-            int index = strip.row.index * columns + column;
-            if (index >= config.functions.size()) {
-                break;
+            ClimateFunction function = row[column];
+            if (function == null) {
+                continue;
             }
-            ClimateFunction function = config.functions.get(index);
             float left = plan.padding + column * cellWidth;
             rect.set(left, 0f, left + tileWidth, strip.contentHeight);
             drawTile(canvas, new RectF(rect), function,

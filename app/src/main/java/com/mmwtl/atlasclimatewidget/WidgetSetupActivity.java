@@ -131,6 +131,19 @@ public final class WidgetSetupActivity extends ScaledActivity {
         }
         card.addView(blocks, fullWrap(8));
 
+        addTitle(card, R.string.style_title);
+        LinearLayout styles = segmentRow();
+        for (WidgetConfig.Style style : WidgetConfig.Style.values()) {
+            TextView segment = Ui.segment(this, style.titleRes);
+            segment.setOnClickListener(view -> {
+                config.style = style;
+                refresh();
+            });
+            refreshers.add(() -> Ui.setSegmentSelected(this, segment, config.style == style));
+            Ui.addSegment(styles, segment);
+        }
+        card.addView(styles, fullWrap(8));
+
         addTitle(card, R.string.card_layout_title);
         LinearLayout layouts = segmentRow();
         for (WidgetConfig.CardLayout layout : WidgetConfig.CardLayout.values()) {
