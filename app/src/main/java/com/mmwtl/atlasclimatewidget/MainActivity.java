@@ -440,7 +440,7 @@ public final class MainActivity extends ScaledActivity {
         card.addView(hint(R.string.interface_hint));
         int current = configuredScaleTenths(this);
         addSlider(card, getString(R.string.interface_scale), MIN_SCALE_TENTHS, MAX_SCALE_TENTHS,
-                current, value -> (value / 10) + "." + (value % 10) + "×", value -> {
+                current, value -> (value * 10) + "%", value -> {
                 }, value -> {
                     prefs.setUiScaleTenths(value);
                     recreate();

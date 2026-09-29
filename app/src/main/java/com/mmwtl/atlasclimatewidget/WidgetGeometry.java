@@ -19,7 +19,7 @@ final class WidgetGeometry {
     static final float TEMP_LABEL_DP = 18f;
     static final float TEMP_ROW_GAP_DP = 8f;
     static final float FAN_ROW_DP = 42f;
-    static final float FAN_CONTROLS_ROW_DP = 46f;
+    static final float FAN_CONTROLS_ROW_DP = 56f;
     static final float MIN_VERTICAL_SCALE = 0.55f;
     static final float FIT_MARGIN = 0.98f;
     static final float MIN_CONTENT_WIDTH = 0.3f;

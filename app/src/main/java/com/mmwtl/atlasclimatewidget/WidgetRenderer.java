@@ -265,9 +265,9 @@ final class WidgetRenderer {
         if (strip.buttonCells > 0) {
             float buttonWidth = cell * strip.buttonCells;
             float size = Math.min(buttonWidth, height);
-            drawFanButton(canvas, plan.padding + buttonWidth / 2f, centerY, size, 0.42f);
+            drawFanButton(canvas, plan.padding + buttonWidth / 2f, centerY, size, 0.5f);
             drawFanButton(canvas, plan.width - plan.padding - buttonWidth / 2f, centerY, size,
-                    0.62f);
+                    0.72f);
         }
         ClimateCommands.FanState fan = ClimateCommands.fanState(state);
         int lit = config.palette.tile(ClimateFunction.Tone.NEUTRAL);
@@ -368,12 +368,12 @@ final class WidgetRenderer {
             float iconMax = Math.min(right - left, pillHeight);
             if (direction) {
                 drawIcon(canvas, WidgetConfig.FAN_DIRECTIONS[index].iconRes, cx, cy,
-                        iconMax * 0.78f, content);
+                        iconMax * 0.92f, content);
                 continue;
             }
             int preset = index - directions;
             float grow = presets <= 1 ? 1f : preset / (float) (presets - 1);
-            float icon = iconMax * (0.4f + 0.3f * grow);
+            float icon = iconMax * (0.52f + 0.34f * grow);
             if (!withLabels) {
                 drawIcon(canvas, R.drawable.ic_fan, cx, cy, icon, content);
                 continue;
@@ -382,7 +382,7 @@ final class WidgetRenderer {
             textPaint.setTextSize(Math.min(15f * dp, pillHeight * 0.34f));
             textPaint.setColor(content);
             String label = context.getString(labels[Math.min(preset, labels.length - 1)]);
-            float iconSlot = pillHeight * 0.56f;
+            float iconSlot = pillHeight * 0.66f;
             float iconGap = pillHeight * 0.14f;
             float textWidth = textPaint.measureText(label);
             if (iconSlot + iconGap + textWidth > (right - left) * 0.9f) {
@@ -396,7 +396,7 @@ final class WidgetRenderer {
             }
             float start = cx - (iconSlot + iconGap + textWidth) / 2f;
             drawIcon(canvas, R.drawable.ic_fan, start + iconSlot / 2f, cy,
-                    pillHeight * (0.34f + 0.2f * grow), content);
+                    pillHeight * (0.44f + 0.22f * grow), content);
             canvas.drawText(label, start + iconSlot + iconGap,
                     cy - textBounds(label).exactCenterY(), textPaint);
         }

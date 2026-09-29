@@ -7,8 +7,8 @@ import android.content.res.Configuration;
 /** Applies the app's own interface scale without changing the head unit density. */
 abstract class ScaledActivity extends Activity {
     static final int MIN_SCALE_TENTHS = 10;
-    static final int MAX_SCALE_TENTHS = 20;
-    static final int DEFAULT_SCALE_TENTHS = 15;
+    static final int MAX_SCALE_TENTHS = 30;
+    static final int DEFAULT_SCALE_TENTHS = 16;
 
     @Override
     protected void attachBaseContext(Context newBase) {
