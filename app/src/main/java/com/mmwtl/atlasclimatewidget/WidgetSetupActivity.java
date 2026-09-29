@@ -4,12 +4,16 @@ import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProviderInfo;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.graphics.Insets;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
+import android.view.WindowManager;
+import android.view.WindowMetrics;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -30,6 +34,12 @@ public final class WidgetSetupActivity extends ScaledActivity {
     private static final Palette[] PALETTES = {Palette.ATLAS, Palette.BLUE, Palette.SEMANTIC};
     private static final int[] PALETTE_LABELS = {R.string.palette_atlas, R.string.palette_blue,
             R.string.setup_palette_semantic};
+    /**
+     * The OneOS climate dock is a 124 px overlay at the bottom of the 160 dpi screen that reports
+     * no insets, so windows are laid out underneath it; the dialog keeps clear of it by hand.
+     */
+    private static final int CLIMATE_DOCK_DP = 124;
+    private static final int SCREEN_GAP_DP = 16;
 
     private final List<Runnable> refreshers = new ArrayList<>();
     private Prefs prefs;
@@ -58,6 +68,11 @@ public final class WidgetSetupActivity extends ScaledActivity {
         int screenWidth = getResources().getDisplayMetrics().widthPixels;
         getWindow().setLayout(Math.min(screenWidth - Ui.dp(this, 32), Ui.dp(this, 620)),
                 ViewGroup.LayoutParams.WRAP_CONTENT);
+        // Centre in the space above the dock; the scroll view caps the height to that space.
+        WindowManager.LayoutParams attributes = getWindow().getAttributes();
+        attributes.gravity = Gravity.CENTER;
+        attributes.y = -dockHeight() / 2;
+        getWindow().setAttributes(attributes);
         refresh();
     }
 
@@ -83,7 +98,6 @@ public final class WidgetSetupActivity extends ScaledActivity {
     private ScrollView buildContent() {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(Ui.rounded(Ui.SURFACE, Ui.dp(this, 16)));
         card.setPadding(Ui.dp(this, 24), Ui.dp(this, 18), Ui.dp(this, 24), Ui.dp(this, 22));
 
         LinearLayout header = new LinearLayout(this);
@@ -248,9 +262,37 @@ public final class WidgetSetupActivity extends ScaledActivity {
         confirmAndOpen.setOnClickListener(view -> confirm(true));
         card.addView(confirmAndOpen, fullWrap(10));
 
-        ScrollView scroll = new ScrollView(this);
+        ScrollView scroll = new ScrollView(this) {
+            @Override
+            protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+                // The first pass of a wrap-content window is unbounded; cap it by the screen.
+                int maxHeight = maxDialogHeight();
+                if (MeasureSpec.getMode(heightMeasureSpec) != MeasureSpec.UNSPECIFIED) {
+                    maxHeight = Math.min(maxHeight, MeasureSpec.getSize(heightMeasureSpec));
+                }
+                super.onMeasure(widthMeasureSpec,
+                        MeasureSpec.makeMeasureSpec(maxHeight, MeasureSpec.AT_MOST));
+            }
+        };
+        scroll.setBackground(Ui.rounded(Ui.SURFACE, Ui.dp(this, 16)));
+        scroll.setClipToOutline(true);
         scroll.addView(card);
         return scroll;
+    }
+
+    private int maxDialogHeight() {
+        WindowMetrics metrics = getWindowManager().getCurrentWindowMetrics();
+        Insets bars = metrics.getWindowInsets().getInsetsIgnoringVisibility(
+                WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+        int height = metrics.getBounds().height() - bars.top - bars.bottom - dockHeight()
+                - 2 * Ui.dp(this, SCREEN_GAP_DP);
+        return Math.max(Ui.dp(this, 200), height);
+    }
+
+    /** The dock height in real pixels; it does not follow the app's interface scale. */
+    private int dockHeight() {
+        return Math.round(CLIMATE_DOCK_DP
+                * getApplicationContext().getResources().getDisplayMetrics().density);
     }
 
     private boolean isShown(WidgetConfig.Block block) {
