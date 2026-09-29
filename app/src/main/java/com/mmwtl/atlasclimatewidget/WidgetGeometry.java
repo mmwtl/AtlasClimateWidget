@@ -20,10 +20,14 @@ final class WidgetGeometry {
     static final float TEMP_ROW_GAP_DP = 8f;
     static final float FAN_ROW_DP = 42f;
     static final float FAN_CONTROLS_ROW_DP = 56f;
-    /** Console temperature row: a large value riding above a thin bar. */
-    static final float CONSOLE_TEMP_ROW_DP = 60f;
-    static final float CONSOLE_DIRECTIONS_ROW_DP = 40f;
-    static final float CONSOLE_PRESETS_ROW_DP = 34f;
+    /** Console temperature: a row with −, the large value and +, then a thin full-width bar. */
+    static final float CONSOLE_VALUE_ROW_DP = 40f;
+    static final float CONSOLE_ZONE_LABEL_DP = 14f;
+    static final float CONSOLE_BAR_ROW_DP = 24f;
+    static final float CONSOLE_VALUE_GAP_DP = 2f;
+    /** Diameter of every round console button, so the −/+ of all bars line up. */
+    static final float CONSOLE_BUTTON_DP = 36f;
+    static final float CONSOLE_SEGMENT_ROW_DP = 38f;
     static final float MIN_VERTICAL_SCALE = 0.55f;
     static final float FIT_MARGIN = 0.98f;
     static final float MIN_CONTENT_WIDTH = 0.3f;
@@ -32,6 +36,8 @@ final class WidgetGeometry {
 
     enum RowKind {
         HEADER,
+        /** Console only: −, the zone's value and +; the zone's bar follows as TEMPERATURE. */
+        TEMP_VALUE,
         TEMPERATURE,
         FAN,
         FAN_CONTROLS,
@@ -311,6 +317,17 @@ final class WidgetGeometry {
                     gaps.add(HEADER_GAP_DP * density * scale);
                 }
                 int zones = config.temperatureDual ? 2 : 1;
+                if (config.style == WidgetConfig.Style.CONSOLE) {
+                    for (int zone = 0; zone < zones; zone++) {
+                        rows.add(new Row(block, RowKind.TEMP_VALUE, zone,
+                                consoleValueRowDp(config) * density * scale));
+                        gaps.add(CONSOLE_VALUE_GAP_DP * density * scale);
+                        rows.add(new Row(block, RowKind.TEMPERATURE, zone,
+                                CONSOLE_BAR_ROW_DP * density * scale));
+                        gaps.add(TEMP_ROW_GAP_DP * density * scale);
+                    }
+                    break;
+                }
                 float rowHeight = temperatureRowDp(config) * density * scale;
                 for (int zone = 0; zone < zones; zone++) {
                     rows.add(new Row(block, RowKind.TEMPERATURE, zone, rowHeight));
@@ -325,7 +342,7 @@ final class WidgetGeometry {
                 }
                 for (int index : config.fanControlRows()) {
                     rows.add(new Row(block, RowKind.FAN_CONTROLS, index,
-                            fanControlsRowDp(config, index) * density * scale));
+                            fanControlsRowDp(config) * density * scale));
                     gaps.add(TEMP_ROW_GAP_DP * density * scale);
                 }
                 break;
@@ -367,8 +384,22 @@ final class WidgetGeometry {
             int zoneCount = 0;
             int buttonCells = 0;
             float zonePadding = padding;
+            boolean console = config.style == WidgetConfig.Style.CONSOLE;
             switch (row.kind) {
+                case TEMP_VALUE: {
+                    // Square-ish cells: the outer two hold − and +, the value between is inert.
+                    float valueHeight = row.height * CONSOLE_VALUE_ROW_DP
+                            / consoleValueRowDp(config);
+                    buttonCells = config.temperatureButtons ? 1 : 0;
+                    zoneCount = config.temperatureButtons
+                            ? Math.max(3, Math.round((width - 2f * padding) / valueHeight)) : 0;
+                    break;
+                }
                 case TEMPERATURE:
+                    if (console) {
+                        zoneCount = temperatureSteps;
+                        break;
+                    }
                     buttonCells = config.temperatureButtons
                             ? buttonCells(width - 2f * padding, temperatureSteps,
                             row.height * TEMP_ROW_DP / temperatureRowDp(config))
@@ -404,16 +435,16 @@ final class WidgetGeometry {
     }
 
     static float temperatureRowDp(WidgetConfig config) {
-        float row = config.style == WidgetConfig.Style.CONSOLE ? CONSOLE_TEMP_ROW_DP : TEMP_ROW_DP;
-        return row + (config.temperatureDual ? TEMP_LABEL_DP : 0f);
+        return TEMP_ROW_DP + (config.temperatureDual ? TEMP_LABEL_DP : 0f);
     }
 
-    static float fanControlsRowDp(WidgetConfig config, int row) {
-        if (config.style != WidgetConfig.Style.CONSOLE) {
-            return FAN_CONTROLS_ROW_DP;
-        }
-        return row == WidgetConfig.FAN_ROW_DIRECTIONS
-                ? CONSOLE_DIRECTIONS_ROW_DP : CONSOLE_PRESETS_ROW_DP;
+    static float consoleValueRowDp(WidgetConfig config) {
+        return CONSOLE_VALUE_ROW_DP + (config.temperatureDual ? CONSOLE_ZONE_LABEL_DP : 0f);
+    }
+
+    static float fanControlsRowDp(WidgetConfig config) {
+        return config.style == WidgetConfig.Style.CONSOLE
+                ? CONSOLE_SEGMENT_ROW_DP : FAN_CONTROLS_ROW_DP;
     }
 
     /** Chooses how many equal cells a −/+ button spans so that it stays roughly square. */

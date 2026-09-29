@@ -121,6 +121,16 @@ final class WidgetViews {
     static String control(WidgetConfig config, WidgetGeometry.Strip strip, int cell) {
         int buttons = strip.buttonCells;
         switch (strip.row.kind) {
+            case TEMP_VALUE: {
+                int zone = strip.row.index == 0 ? Hvac.ZONE_DRIVER : Hvac.ZONE_PASSENGER;
+                if (buttons == 0) {
+                    return null;
+                }
+                if (cell == 0) {
+                    return "tempstep/" + zone + "/-1";
+                }
+                return cell == strip.zoneCount - 1 ? "tempstep/" + zone + "/1" : null;
+            }
             case TEMPERATURE: {
                 int zone = strip.row.index == 0 ? Hvac.ZONE_DRIVER : Hvac.ZONE_PASSENGER;
                 if (cell < buttons) {

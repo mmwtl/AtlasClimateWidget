@@ -218,24 +218,48 @@ public final class WidgetGeometryTest {
         assertEquals(config.columns, tiles.zoneCount);
     }
 
-    @Test public void consoleSplitsFanButtonsAndGrowsTemperature() {
+    @Test public void consoleSplitsTemperatureAndFanButtons() {
         WidgetConfig config = new WidgetConfig();
         config.temperatureHeader = false;
         config.style = WidgetConfig.Style.CONSOLE;
         config.scalePercent = 100;
         WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
-        assertEquals(WidgetGeometry.CONSOLE_TEMP_ROW_DP, plan.strips.get(0).contentHeight,
-                0.01f);
-        assertEquals(25 + 2 * plan.strips.get(0).buttonCells, plan.strips.get(0).zoneCount);
-        WidgetGeometry.Strip directions = plan.strips.get(2);
-        WidgetGeometry.Strip presets = plan.strips.get(3);
+        WidgetGeometry.Strip value = plan.strips.get(0);
+        WidgetGeometry.Strip bar = plan.strips.get(1);
+        assertEquals(WidgetGeometry.RowKind.TEMP_VALUE, value.row.kind);
+        assertEquals(WidgetGeometry.CONSOLE_VALUE_ROW_DP, value.contentHeight, 0.01f);
+        assertEquals("− and + take the outer cells", 1, value.buttonCells);
+        assertTrue(value.zoneCount >= 3);
+        assertEquals(WidgetGeometry.RowKind.TEMPERATURE, bar.row.kind);
+        assertEquals("the bar is all steps", 25, bar.zoneCount);
+        assertEquals(0, bar.buttonCells);
+        WidgetGeometry.Strip directions = plan.strips.get(3);
+        WidgetGeometry.Strip presets = plan.strips.get(4);
         assertEquals(WidgetGeometry.RowKind.FAN_CONTROLS, directions.row.kind);
         assertEquals(WidgetConfig.FAN_ROW_DIRECTIONS, directions.row.index);
         assertEquals(WidgetConfig.FAN_DIRECTIONS.length, directions.zoneCount);
         assertEquals(WidgetConfig.FAN_ROW_PRESETS, presets.row.index);
         assertEquals(config.fanControlCells(WidgetConfig.FAN_ROW_PRESETS), presets.zoneCount);
+        assertEquals(directions.contentHeight, presets.contentHeight, 0.01f);
         config.fanDirections = false;
+        config.temperatureButtons = false;
         plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
-        assertEquals(WidgetConfig.FAN_ROW_PRESETS, plan.strips.get(2).row.index);
+        assertEquals("without buttons the value row is inert", 0, plan.strips.get(0).zoneCount);
+        assertEquals(WidgetConfig.FAN_ROW_PRESETS, plan.strips.get(3).row.index);
+    }
+
+    @Test public void consoleDualZoneStacksValueAndBarPerZone() {
+        WidgetConfig config = new WidgetConfig();
+        config.temperatureHeader = false;
+        config.temperatureDual = true;
+        config.style = WidgetConfig.Style.CONSOLE;
+        WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
+        WidgetGeometry.RowKind[] kinds = {WidgetGeometry.RowKind.TEMP_VALUE,
+                WidgetGeometry.RowKind.TEMPERATURE, WidgetGeometry.RowKind.TEMP_VALUE,
+                WidgetGeometry.RowKind.TEMPERATURE};
+        for (int index = 0; index < kinds.length; index++) {
+            assertEquals(kinds[index], plan.strips.get(index).row.kind);
+            assertEquals(index / 2, plan.strips.get(index).row.index);
+        }
     }
 }

@@ -30,6 +30,9 @@ final class WidgetRenderer {
     private static final float TOGGLE_WIDTH_RATIO = 36f / 86f;
     private static final float UNKNOWN_ALPHA = 0.4f;
 
+    private static final Typeface MEDIUM = Typeface.create("sans-serif-medium",
+            Typeface.NORMAL);
+
     private final Context context;
     private final WidgetConfig config;
     private final ClimateState state;
@@ -81,6 +84,9 @@ final class WidgetRenderer {
         switch (strip.row.kind) {
             case HEADER:
                 drawHeader(canvas, strip);
+                break;
+            case TEMP_VALUE:
+                drawConsoleValue(canvas, strip);
                 break;
             case TEMPERATURE:
                 drawTemperature(canvas, strip);
@@ -175,6 +181,10 @@ final class WidgetRenderer {
 
     private void drawTemperature(Canvas canvas, WidgetGeometry.Strip strip) {
         int zone = strip.row.index == 0 ? Hvac.ZONE_DRIVER : Hvac.ZONE_PASSENGER;
+        if (config.style == WidgetConfig.Style.CONSOLE) {
+            drawConsoleBar(canvas, strip, zone);
+            return;
+        }
         float top = 0f;
         float barHeight = strip.contentHeight;
         if (config.temperatureDual) {
@@ -192,20 +202,12 @@ final class WidgetRenderer {
         float inner = plan.width - 2f * plan.padding;
         float cell = inner / strip.zoneCount;
         float centerY = top + barHeight / 2f;
-        boolean console = config.style == WidgetConfig.Style.CONSOLE;
         if (strip.buttonCells > 0) {
             float buttonWidth = cell * strip.buttonCells;
-            // Console buttons keep the classic size although the row is taller.
-            float buttonSize = Math.min(buttonWidth, console
-                    ? barHeight * WidgetGeometry.TEMP_ROW_DP / WidgetGeometry.CONSOLE_TEMP_ROW_DP
-                    : barHeight);
-            drawRoundButton(canvas, plan.padding + buttonWidth / 2f, centerY, buttonSize, false);
+            drawRoundButton(canvas, plan.padding + buttonWidth / 2f, centerY,
+                    Math.min(buttonWidth, barHeight), false);
             drawRoundButton(canvas, plan.width - plan.padding - buttonWidth / 2f, centerY,
-                    buttonSize, true);
-        }
-        if (console) {
-            drawConsoleTemperature(canvas, strip, zone, cell, top, barHeight);
-            return;
+                    Math.min(buttonWidth, barHeight), true);
         }
         float x0 = plan.padding + cell * strip.buttonCells + cell / 2f;
         float x1 = plan.width - plan.padding - cell * strip.buttonCells - cell / 2f;
@@ -248,50 +250,102 @@ final class WidgetRenderer {
     }
 
     /**
-     * Console temperature: the set value in large type above a thin bar, riding over the knob so
-     * a tap on the number keeps the value and opens the scrubber.
+     * Console value row: −, the zone's set value centred in large type, +. The buttons sit on
+     * the card's content edges, like every other console control.
      */
-    private void drawConsoleTemperature(Canvas canvas, WidgetGeometry.Strip strip, int zone,
-            float cell, float top, float barHeight) {
-        float x0 = plan.padding + cell * strip.buttonCells + cell / 2f;
-        float x1 = plan.width - plan.padding - cell * strip.buttonCells - cell / 2f;
-        float thickness = Math.max(3f * dp, barHeight * 0.09f);
-        float barY = top + barHeight * 0.8f;
+    private void drawConsoleValue(Canvas canvas, WidgetGeometry.Strip strip) {
+        int zone = strip.row.index == 0 ? Hvac.ZONE_DRIVER : Hvac.ZONE_PASSENGER;
+        float top = 0f;
+        float height = strip.contentHeight;
+        float valueHeight = height * WidgetGeometry.CONSOLE_VALUE_ROW_DP
+                / WidgetGeometry.consoleValueRowDp(config);
+        float cx = plan.width / 2f;
+        if (config.temperatureDual) {
+            float labelHeight = height - valueHeight;
+            textPaint.setTypeface(MEDIUM);
+            textPaint.setTextSize(Math.min(11f * dp, labelHeight * 0.8f));
+            textPaint.setColor(Ui.TEXT_SECONDARY);
+            drawCenteredLine(canvas, context.getString(strip.row.index == 0
+                    ? R.string.zone_driver : R.string.zone_passenger), cx, labelHeight / 2f);
+            top = labelHeight;
+        }
+        float cy = top + valueHeight / 2f;
+        if (strip.buttonCells > 0) {
+            float diameter = consoleButton();
+            drawCircleButton(canvas, plan.padding + diameter / 2f, cy, diameter, false);
+            drawCircleButton(canvas, plan.width - plan.padding - diameter / 2f, cy, diameter,
+                    true);
+        }
+        Float value = ClimateCommands.temperature(state, zone);
+        textPaint.setTypeface(MEDIUM);
+        textPaint.setTextSize(valueHeight * 0.74f);
+        textPaint.setColor(value == null ? Ui.TEXT_SECONDARY : Ui.TEXT);
+        String label = value == null ? "--°" : formatTemperature(value);
+        // Centre the digits; the degree sign hangs to the right so the number stays put.
+        String digits = label.endsWith("°") ? label.substring(0, label.length() - 1) : label;
+        float width = textPaint.measureText(digits);
+        textPaint.getTextBounds("0", 0, 1, bounds);
+        float baseline = cy - bounds.exactCenterY();
+        canvas.drawText(label, cx - width / 2f, baseline, textPaint);
+    }
+
+    /** Console bar row: a thin track across the content width with a round knob. */
+    private void drawConsoleBar(Canvas canvas, WidgetGeometry.Strip strip, int zone) {
+        float height = strip.contentHeight;
+        float cy = height / 2f;
+        float thickness = Math.max(3f * dp * plan.verticalScale, height * 0.2f);
+        float knob = Math.min(height * 0.8f, thickness * 3f);
+        // The knob stays inside the content edges at both ends of the range.
+        float x0 = plan.padding + knob / 2f;
+        float x1 = plan.width - plan.padding - knob / 2f;
         paint.setShader(null);
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(Ui.SURFACE_RAISED);
-        rect.set(x0 - thickness / 2f, barY - thickness / 2f, x1 + thickness / 2f,
-                barY + thickness / 2f);
+        rect.set(plan.padding, cy - thickness / 2f, plan.width - plan.padding,
+                cy + thickness / 2f);
         canvas.drawRoundRect(rect, thickness / 2f, thickness / 2f, paint);
-
         Float value = ClimateCommands.temperature(state, zone);
-        float knobX = (x0 + x1) / 2f;
-        String label = "--°";
-        int textColor = Ui.TEXT_SECONDARY;
-        if (value != null) {
-            knobX = x0 + range.fraction(value) * (x1 - x0);
-            paint.setShader(new LinearGradient(x0, 0f, x1, 0f,
-                    new int[]{TEMP_COLD, Ui.ACCENT, TEMP_WARM}, null, Shader.TileMode.CLAMP));
-            rect.set(x0 - thickness / 2f, barY - thickness / 2f, knobX, barY + thickness / 2f);
-            canvas.drawRoundRect(rect, thickness / 2f, thickness / 2f, paint);
-            paint.setShader(null);
-            paint.setColor(Ui.TEXT);
-            canvas.drawCircle(knobX, barY, thickness * 1.5f, paint);
-            label = formatTemperature(value);
-            textColor = Ui.TEXT;
+        if (value == null) {
+            return;
         }
-        textPaint.setTypeface(Typeface.DEFAULT_BOLD);
-        textPaint.setTextSize(barHeight * 0.44f);
-        textPaint.setColor(textColor);
-        float width = textPaint.measureText(label);
-        float left = Math.max(x0 - cell / 2f, Math.min(x1 + cell / 2f - width,
-                knobX - width / 2f));
-        float baseline = barY - thickness * 1.5f - barHeight * 0.1f;
-        canvas.drawText(label, left, baseline, textPaint);
+        float knobX = x0 + range.fraction(value) * (x1 - x0);
+        paint.setShader(new LinearGradient(plan.padding, 0f, plan.width - plan.padding, 0f,
+                new int[]{TEMP_COLD, Ui.ACCENT, TEMP_WARM}, null, Shader.TileMode.CLAMP));
+        rect.set(plan.padding, cy - thickness / 2f, knobX, cy + thickness / 2f);
+        canvas.drawRoundRect(rect, thickness / 2f, thickness / 2f, paint);
+        paint.setShader(null);
+        paint.setColor(Ui.TEXT);
+        canvas.drawCircle(knobX, cy, knob / 2f, paint);
+    }
+
+    /**
+     * Diameter shared by all round console buttons: the design size, unless a value row or the
+     * fan bar is too low or its button cell too narrow for it.
+     */
+    private float consoleButton() {
+        float diameter = WidgetGeometry.CONSOLE_BUTTON_DP * dp * plan.verticalScale;
+        float inner = plan.width - 2f * plan.padding;
+        for (WidgetGeometry.Strip strip : plan.strips) {
+            boolean value = strip.row.kind == WidgetGeometry.RowKind.TEMP_VALUE;
+            if (strip.buttonCells == 0
+                    || !value && strip.row.kind != WidgetGeometry.RowKind.FAN) {
+                continue;
+            }
+            float height = value ? strip.contentHeight * WidgetGeometry.CONSOLE_VALUE_ROW_DP
+                    / WidgetGeometry.consoleValueRowDp(config) : strip.contentHeight;
+            diameter = Math.min(diameter, Math.min(height,
+                    inner / strip.zoneCount * strip.buttonCells));
+        }
+        return diameter;
     }
 
     private void drawRoundButton(Canvas canvas, float cx, float cy, float size, boolean plus) {
-        float radius = size * 0.4f;
+        drawCircleButton(canvas, cx, cy, size * 0.8f, plus);
+    }
+
+    private void drawCircleButton(Canvas canvas, float cx, float cy, float diameter,
+            boolean plus) {
+        float radius = diameter / 2f;
         paint.setShader(null);
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(Ui.SURFACE_RAISED);
@@ -314,7 +368,12 @@ final class WidgetRenderer {
         float inner = plan.width - 2f * plan.padding;
         float cell = inner / strip.zoneCount;
         float centerY = height / 2f;
-        if (strip.buttonCells > 0) {
+        if (strip.buttonCells > 0 && config.style == WidgetConfig.Style.CONSOLE) {
+            float diameter = consoleButton();
+            drawFanButton(canvas, plan.padding + diameter / 2f, centerY, diameter / 0.8f, 0.5f);
+            drawFanButton(canvas, plan.width - plan.padding - diameter / 2f, centerY,
+                    diameter / 0.8f, 0.72f);
+        } else if (strip.buttonCells > 0) {
             float buttonWidth = cell * strip.buttonCells;
             float size = Math.min(buttonWidth, height);
             drawFanButton(canvas, plan.padding + buttonWidth / 2f, centerY, size, 0.5f);
@@ -482,6 +541,29 @@ final class WidgetRenderer {
         canvas.drawRoundRect(rect, radius, radius, paint);
 
         float inset = Math.max(2f, 3f * dp);
+        // One text size for the whole row, and direction names on all segments or on none.
+        String[] names = new String[strip.zoneCount];
+        for (int index = 0; index < names.length; index++) {
+            names[index] = context.getString(directions
+                    ? WidgetConfig.FAN_DIRECTIONS[index].shortRes
+                    : labels[Math.min(index, labels.length - 1)]);
+        }
+        float icon = directions ? height * 0.62f : 0f;
+        float iconGap = directions ? height * 0.14f : 0f;
+        float room = cell - 2f * inset - height * 0.3f - icon - iconGap;
+        textPaint.setTypeface(MEDIUM);
+        textPaint.setTextSize(Math.min(14f * dp * plan.verticalScale, height * 0.36f));
+        float widest = 0f;
+        for (String name : names) {
+            widest = Math.max(widest, textPaint.measureText(name));
+        }
+        boolean withNames = true;
+        if (widest > room && directions) {
+            withNames = textPaint.getTextSize() * room / widest >= 10f * dp * plan.verticalScale;
+        }
+        if (widest > room) {
+            textPaint.setTextSize(textPaint.getTextSize() * room / widest);
+        }
         boolean previousOn = false;
         for (int index = 0; index < strip.zoneCount; index++) {
             boolean on;
@@ -519,32 +601,20 @@ final class WidgetRenderer {
             }
             float cx = (left + right) / 2f;
             float cy = height / 2f;
-            float room = (right - left) - 2f * inset - height * 0.3f;
-            textPaint.setTypeface(Typeface.DEFAULT_BOLD);
-            textPaint.setTextSize(Math.min(14f * dp, height * 0.34f));
             textPaint.setColor(content);
             if (!directions) {
-                String label = context.getString(labels[Math.min(index, labels.length - 1)]);
-                float width = textPaint.measureText(label);
-                if (width > room) {
-                    textPaint.setTextSize(textPaint.getTextSize() * room / width);
-                }
-                drawCentered(canvas, label, cx, cy);
+                drawCenteredLine(canvas, names[index], cx, cy);
                 continue;
             }
-            ClimateFunction function = WidgetConfig.FAN_DIRECTIONS[index];
-            float icon = height * 0.72f;
-            String label = context.getString(function.shortRes);
-            float iconGap = height * 0.12f;
-            float width = textPaint.measureText(label);
-            if (icon + iconGap + width > room) {
-                drawIcon(canvas, function.iconRes, cx, cy, icon, content);
+            int iconRes = WidgetConfig.FAN_DIRECTIONS[index].iconRes;
+            if (!withNames) {
+                drawIcon(canvas, iconRes, cx, cy, icon, content);
                 continue;
             }
+            float width = textPaint.measureText(names[index]);
             float start = cx - (icon + iconGap + width) / 2f;
-            drawIcon(canvas, function.iconRes, start + icon / 2f, cy, icon, content);
-            canvas.drawText(label, start + icon + iconGap,
-                    cy - textBounds(label).exactCenterY(), textPaint);
+            drawIcon(canvas, iconRes, start + icon / 2f, cy, icon, content);
+            drawCenteredLine(canvas, names[index], start + icon + iconGap + width / 2f, cy);
         }
     }
 
@@ -633,7 +703,10 @@ final class WidgetRenderer {
         if (function.glyph != null) {
             textPaint.setTypeface(Typeface.DEFAULT_BOLD);
             textPaint.setColor(content);
-            textPaint.setTextSize(glyph * (function.glyph.length() > 3 ? 0.36f : 0.44f));
+            // The console sets every text glyph in one size, so MAX and AUTO match.
+            boolean small = function.glyph.length() > 3
+                    || config.style == WidgetConfig.Style.CONSOLE;
+            textPaint.setTextSize(glyph * (small ? 0.36f : 0.44f));
             float maxWidth = tile.width() * 0.84f;
             float measured = textPaint.measureText(function.glyph);
             if (measured > maxWidth) {
@@ -713,6 +786,14 @@ final class WidgetRenderer {
         drawable.setBounds(Math.round(cx) - half, Math.round(cy) - half,
                 Math.round(cx) + half, Math.round(cy) + half);
         drawable.draw(canvas);
+    }
+
+    /** Centres a word by the font's metrics, so labels with and without descenders align. */
+    private void drawCenteredLine(Canvas canvas, String text, float cx, float cy) {
+        Paint.FontMetrics metrics = textPaint.getFontMetrics();
+        float width = textPaint.measureText(text);
+        canvas.drawText(text, cx - width / 2f, cy - (metrics.ascent + metrics.descent) / 2f,
+                textPaint);
     }
 
     private void drawCentered(Canvas canvas, String text, float cx, float cy) {
