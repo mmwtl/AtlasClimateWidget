@@ -18,6 +18,7 @@ public final class WidgetConfigTest {
         config.tileStyle = WidgetConfig.TileStyle.ICON;
         config.palette = Palette.SEMANTIC;
         config.cardOpacityPercent = 40;
+        config.fanStyle = WidgetConfig.FanStyle.PRESETS;
         WidgetConfig copy = WidgetConfig.fromJson(config.toJson());
         assertEquals(WidgetConfig.Block.TILES, copy.blockOrder.get(0));
         assertFalse(copy.fanEnabled);
@@ -28,6 +29,8 @@ public final class WidgetConfigTest {
         assertEquals(WidgetConfig.TileStyle.ICON, copy.tileStyle);
         assertEquals(Palette.SEMANTIC, copy.palette);
         assertEquals(40, copy.cardOpacityPercent);
+        assertEquals(WidgetConfig.FanStyle.PRESETS, copy.fanStyle);
+        assertEquals(WidgetConfig.FanStyle.LEVELS, WidgetConfig.fromJson("{}").fanStyle);
     }
 
     @Test public void toleratesUnknownAndInvalidValues() {

@@ -330,12 +330,33 @@ public final class MainActivity extends ScaledActivity {
                             value -> config.temperatureHeader = value));
                     options.addView(configSwitch(R.string.temp_buttons,
                             config.temperatureButtons, value -> config.temperatureButtons = value));
+                    options.addView(hint(R.string.temp_hint));
                     break;
-                case FAN:
-                    options.addView(configSwitch(R.string.fan_buttons, config.fanButtons,
-                            value -> config.fanButtons = value));
-                    options.addView(hint(R.string.fan_hint));
+                case FAN: {
+                    options.addView(label(R.string.fan_style_title));
+                    RadioGroup fanStyles = radioGroup();
+                    for (WidgetConfig.FanStyle style : WidgetConfig.FanStyle.values()) {
+                        RadioButton button = radio(style.titleRes);
+                        button.setChecked(config.fanStyle == style);
+                        button.setOnCheckedChangeListener((view, checked) -> {
+                            if (checked && config.fanStyle != style) {
+                                config.fanStyle = style;
+                                changed();
+                                view.post(this::rebuildBlocks);
+                            }
+                        });
+                        fanStyles.addView(button);
+                    }
+                    options.addView(fanStyles);
+                    if (config.fanStyle == WidgetConfig.FanStyle.LEVELS) {
+                        options.addView(configSwitch(R.string.fan_buttons, config.fanButtons,
+                                value -> config.fanButtons = value));
+                        options.addView(hint(R.string.fan_hint));
+                    } else {
+                        options.addView(hint(R.string.fan_presets_hint));
+                    }
                     break;
+                }
                 default:
                     addSlider(options, getString(R.string.tile_columns),
                             WidgetConfig.COLUMNS_MIN, WidgetConfig.COLUMNS_MAX, config.columns,

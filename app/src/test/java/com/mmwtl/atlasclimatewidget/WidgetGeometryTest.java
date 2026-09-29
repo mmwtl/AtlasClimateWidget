@@ -73,4 +73,25 @@ public final class WidgetGeometryTest {
         assertEquals("fn/DRIVER_HEAT", WidgetViews.control(config,
                 plan.strips.get(plan.strips.size() - 2), 0));
     }
+
+    @Test public void fanPresetsUseThreeCellsWithoutScrubbing() {
+        WidgetConfig config = new WidgetConfig();
+        config.temperatureEnabled = false;
+        config.fanStyle = WidgetConfig.FanStyle.PRESETS;
+        WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
+        WidgetGeometry.Strip fan = plan.strips.get(0);
+        assertEquals(WidgetGeometry.RowKind.FAN, fan.row.kind);
+        assertEquals(3, fan.zoneCount);
+        assertEquals(0, fan.buttonCells);
+        assertEquals("fanpreset/2", WidgetViews.control(config, fan, 2));
+        assertTrue(!WidgetViews.isScrubbable("fanpreset/2"));
+    }
+
+    @Test public void onlyBarCellsOpenTheScrubber() {
+        assertTrue(WidgetViews.isScrubbable("temp/1/4"));
+        assertTrue(WidgetViews.isScrubbable("fan/3"));
+        assertTrue(!WidgetViews.isScrubbable("tempstep/1/1"));
+        assertTrue(!WidgetViews.isScrubbable("fanstep/-1"));
+        assertTrue(!WidgetViews.isScrubbable("fn/AC"));
+    }
 }

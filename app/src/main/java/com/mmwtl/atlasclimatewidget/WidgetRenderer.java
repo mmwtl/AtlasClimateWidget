@@ -53,12 +53,25 @@ final class WidgetRenderer {
     }
 
     Bitmap render(WidgetGeometry.Strip strip) {
+        return render(strip, true, true);
+    }
+
+    /**
+     * While a bar is dragged, the widget keeps only the strip's card and the scrubber window
+     * draws only its content, so a translucent card is never drawn twice.
+     */
+    Bitmap render(WidgetGeometry.Strip strip, boolean card, boolean content) {
         int width = Math.max(1, Math.round(plan.fullWidth));
         int height = Math.max(1, Math.round(strip.totalHeight()));
         Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         canvas.translate(plan.offsetX(), 0f);
-        drawCard(canvas, strip);
+        if (card) {
+            drawCard(canvas, strip);
+        }
+        if (!content) {
+            return bitmap;
+        }
         canvas.save();
         canvas.translate(0f, strip.contentTop);
         switch (strip.row.kind) {
@@ -225,6 +238,10 @@ final class WidgetRenderer {
     // ---- fan ---------------------------------------------------------------------------------
 
     private void drawFan(Canvas canvas, WidgetGeometry.Strip strip) {
+        if (config.fanStyle == WidgetConfig.FanStyle.PRESETS) {
+            drawFanPresets(canvas, strip);
+            return;
+        }
         float height = strip.contentHeight;
         float inner = plan.width - 2f * plan.padding;
         float cell = inner / strip.zoneCount;
@@ -268,6 +285,70 @@ final class WidgetRenderer {
             textPaint.setColor(Color.WHITE);
             drawCentered(canvas, text, cx, centerY);
         }
+    }
+
+    private void drawFanPresets(Canvas canvas, WidgetGeometry.Strip strip) {
+        int[] labels = {R.string.fn_fan_soft_short, R.string.fn_fan_normal_short,
+                R.string.fn_fan_strong_short};
+        int active = ClimateCommands.fanPreset(state);
+        boolean known = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL) != null;
+        float height = strip.contentHeight;
+        float inner = plan.width - 2f * plan.padding;
+        float cell = inner / labels.length;
+        float gap = Math.max(4f, 8f * dp);
+        float pillHeight = height * 0.86f;
+        float top = (height - pillHeight) / 2f;
+        float radius = Math.min(pillHeight / 2f,
+                pillHeight * config.tileRadiusPercent / 100f * 2f);
+        for (int index = 0; index < labels.length; index++) {
+            boolean on = index == active;
+            float left = plan.padding + index * cell + (index == 0 ? 0f : gap / 2f);
+            float right = plan.padding + (index + 1) * cell
+                    - (index == labels.length - 1 ? 0f : gap / 2f);
+            int background;
+            int content;
+            if (on && config.filledActive) {
+                background = config.palette.tile(ClimateFunction.Tone.NEUTRAL);
+                content = Color.WHITE;
+            } else if (on) {
+                background = config.palette.softTile(ClimateFunction.Tone.NEUTRAL);
+                content = config.palette.softContent(ClimateFunction.Tone.NEUTRAL);
+            } else {
+                background = Ui.SURFACE_RAISED;
+                content = Ui.TEXT;
+            }
+            if (!known) {
+                content = withAlpha(content, Math.round(255 * UNKNOWN_ALPHA));
+            }
+            paint.setShader(null);
+            paint.setColor(background);
+            rect.set(left, top, right, top + pillHeight);
+            canvas.drawRoundRect(rect, radius, radius, paint);
+
+            textPaint.setTypeface(Typeface.DEFAULT_BOLD);
+            textPaint.setTextSize(Math.min(15f * dp, pillHeight * 0.36f));
+            textPaint.setColor(content);
+            String label = context.getString(labels[index]);
+            float icon = pillHeight * (0.36f + 0.1f * index);
+            float iconGap = pillHeight * 0.18f;
+            float textWidth = textPaint.measureText(label);
+            float total = pillHeight * 0.56f + iconGap + textWidth;
+            if (total > right - left - pillHeight * 0.3f) {
+                // Narrow cells keep only the label.
+                drawCentered(canvas, label, (left + right) / 2f, top + pillHeight / 2f);
+                continue;
+            }
+            float start = (left + right) / 2f - total / 2f;
+            drawIcon(canvas, R.drawable.ic_fan, start + pillHeight * 0.28f,
+                    top + pillHeight / 2f, icon, content);
+            canvas.drawText(label, start + pillHeight * 0.56f + iconGap,
+                    top + pillHeight / 2f - textBounds(label).exactCenterY(), textPaint);
+        }
+    }
+
+    private Rect textBounds(String text) {
+        textPaint.getTextBounds(text, 0, text.length(), bounds);
+        return bounds;
     }
 
     private void drawFanButton(Canvas canvas, float cx, float cy, float size, float iconRatio) {

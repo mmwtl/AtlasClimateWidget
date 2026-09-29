@@ -47,8 +47,13 @@
     <string name="temp_dual">Две зоны: водитель и пассажир</string>
     <string name="temp_header">Строка «Салон · Улица»</string>
     <string name="temp_buttons">Кнопки − и +</string>
+    <string name="temp_hint">Нажатие на полосу задаёт температуру, после нажатия её можно тянуть пальцем.</string>
     <string name="fan_buttons">Кнопки − и +</string>
-    <string name="fan_hint">Нажатие на сегмент задаёт скорость вручную. В режиме AUTO кнопки меняют профиль авто-обдува.</string>
+    <string name="fan_style_title">Как выбирать силу обдува</string>
+    <string name="fan_style_levels">Уровни 1–9</string>
+    <string name="fan_style_presets">Пресеты: Мягко · Комфорт · Сильно</string>
+    <string name="fan_hint">Нажатие на сегмент задаёт скорость вручную, после нажатия полосу можно тянуть пальцем. В режиме AUTO кнопки меняют профиль авто-обдува.</string>
+    <string name="fan_presets_hint">Пресеты задают профиль авто-обдува, как одноимённые кнопки штатного климата.</string>
     <string name="tile_columns">Столбцы плиток</string>
     <string name="tile_style_title">Вид плиток</string>
     <string name="tile_style_tile">Плитка</string>

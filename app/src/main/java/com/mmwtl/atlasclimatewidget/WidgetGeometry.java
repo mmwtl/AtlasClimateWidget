@@ -259,6 +259,10 @@ final class WidgetGeometry {
                     zoneCount = temperatureSteps + 2 * buttonCells;
                     break;
                 case FAN:
+                    if (config.fanStyle == WidgetConfig.FanStyle.PRESETS) {
+                        zoneCount = ClimateCommands.FAN_PRESETS.length;
+                        break;
+                    }
                     buttonCells = config.fanButtons
                             ? buttonCells(width - 2f * padding, Hvac.FAN_SPEED_LEVEL_COUNT,
                             row.height)

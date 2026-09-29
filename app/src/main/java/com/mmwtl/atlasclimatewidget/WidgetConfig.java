@@ -34,6 +34,18 @@ final class WidgetConfig {
         }
     }
 
+    /** How the fan bar sets the airflow. */
+    enum FanStyle {
+        LEVELS(R.string.fan_style_levels),
+        PRESETS(R.string.fan_style_presets);
+
+        final int titleRes;
+
+        FanStyle(int titleRes) {
+            this.titleRes = titleRes;
+        }
+    }
+
     static final int COLUMNS_MIN = 2;
     static final int COLUMNS_MAX = 8;
     static final int CARD_RADIUS_MAX_DP = 40;
@@ -68,6 +80,7 @@ final class WidgetConfig {
     boolean temperatureHeader = true;
     boolean temperatureButtons = true;
     boolean fanButtons = true;
+    FanStyle fanStyle = FanStyle.LEVELS;
 
     /** Enabled tiles in display order. */
     final List<ClimateFunction> functions = new ArrayList<>(DEFAULT_FUNCTIONS);
@@ -154,6 +167,7 @@ final class WidgetConfig {
             json.put("temperatureHeader", temperatureHeader);
             json.put("temperatureButtons", temperatureButtons);
             json.put("fanButtons", fanButtons);
+            json.put("fanStyle", fanStyle.name());
             JSONArray tiles = new JSONArray();
             for (ClimateFunction function : functions) {
                 tiles.put(function.name());
@@ -211,6 +225,7 @@ final class WidgetConfig {
         config.temperatureButtons = json.optBoolean("temperatureButtons",
                 config.temperatureButtons);
         config.fanButtons = json.optBoolean("fanButtons", config.fanButtons);
+        config.fanStyle = enumValue(FanStyle.class, json.optString("fanStyle"), config.fanStyle);
         JSONArray tiles = json.optJSONArray("functions");
         if (tiles != null) {
             config.functions.clear();

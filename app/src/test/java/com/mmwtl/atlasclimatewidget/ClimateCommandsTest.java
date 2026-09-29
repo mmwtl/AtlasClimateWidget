@@ -119,6 +119,15 @@ public final class ClimateCommandsTest {
                 auto.snapshot(0), CarModel.PREFACE, 1).get(0).value);
     }
 
+    @Test public void fanPresetsMapToAutoFanProfiles() {
+        assertEquals(Hvac.AUTO_FAN_QUIETER, (int) ClimateCommands.setFanPreset(0).get(0).value);
+        assertEquals(Hvac.AUTO_FAN_HIGHER, (int) ClimateCommands.setFanPreset(9).get(0).value);
+        ClimateStore store = new ClimateStore();
+        store.putProperty(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL, Hvac.AUTO_FAN_NORMAL, 0);
+        assertEquals(1, ClimateCommands.fanPreset(store.snapshot(0)));
+        assertEquals(-1, ClimateCommands.fanPreset(ClimateState.EMPTY));
+    }
+
     @Test public void unknownStateIsReported() {
         ClimateCommands.TileState state = ClimateCommands.tileState(ClimateFunction.AC,
                 ClimateState.EMPTY, CarModel.ATLAS);

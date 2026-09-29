@@ -35,6 +35,7 @@ public final class ClimateService extends Service {
     static final String ACTION_START = "com.mmwtl.atlasclimatewidget.START";
     static final String ACTION_REFRESH = "com.mmwtl.atlasclimatewidget.REFRESH";
     static final String ACTION_CONTROL = "com.mmwtl.atlasclimatewidget.CONTROL";
+    static final String ACTION_RENDER = "com.mmwtl.atlasclimatewidget.RENDER";
 
     static final ClimateStore STORE = new ClimateStore();
 
@@ -50,6 +51,9 @@ public final class ClimateService extends Service {
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static volatile Runnable stateListener;
     private static volatile boolean running;
+    /** Widget id and strip key of the bar under an open scrubber. */
+    private static volatile int scrubbedWidget = AppWidgetManager.INVALID_APPWIDGET_ID;
+    private static volatile String scrubbedStrip;
 
     private HandlerThread workerThread;
     private Handler worker;
@@ -83,6 +87,13 @@ public final class ClimateService extends Service {
         } catch (RuntimeException error) {
             AppLog.warn("Cannot start climate service", error);
         }
+    }
+
+    /** Marks a bar as covered by the scrubber, or clears it with a null key, and redraws. */
+    static void setScrubbed(Context context, int widgetId, String stripKey) {
+        scrubbedWidget = stripKey == null ? AppWidgetManager.INVALID_APPWIDGET_ID : widgetId;
+        scrubbedStrip = stripKey;
+        start(context, ACTION_RENDER);
     }
 
     static boolean isRunning() {
@@ -145,6 +156,8 @@ public final class ClimateService extends Service {
         if (ACTION_CONTROL.equals(action)) {
             Uri data = intent.getData();
             worker.post(() -> handleControl(data));
+        } else if (ACTION_RENDER.equals(action)) {
+            worker.post(this::renderWidgets);
         } else if (ACTION_REFRESH.equals(action) || ACTION_START.equals(action)) {
             worker.post(() -> {
                 poll();
@@ -331,6 +344,8 @@ public final class ClimateService extends Service {
                         Integer.parseInt(parts.get(2)), prefs.temperatureStep());
             case "fan":
                 return ClimateCommands.setFan(Integer.parseInt(parts.get(1)));
+            case "fanpreset":
+                return ClimateCommands.setFanPreset(Integer.parseInt(parts.get(1)));
             case "fanstep":
                 return ClimateCommands.stepFan(state, model, Integer.parseInt(parts.get(1)));
             default:
@@ -363,6 +378,8 @@ public final class ClimateService extends Service {
         };
         worker.postDelayed(confirm, CONFIRM_FIRST_MS);
         worker.postDelayed(confirm, CONFIRM_SECOND_MS);
+        // An unconfirmed optimistic value must disappear when it expires, not at the next poll.
+        worker.postDelayed(this::scheduleRender, ClimateStore.PENDING_TIMEOUT_MS + 50L);
     }
 
     // ---- rendering ---------------------------------------------------------------------------
@@ -400,8 +417,9 @@ public final class ClimateService extends Service {
         float quality = 1f;
         for (int attempt = 0; attempt < 3; attempt++) {
             try {
-                RemoteViews views = WidgetViews.build(context, config, state, prefs.carModel(),
-                        size, true, quality);
+                RemoteViews views = WidgetViews.build(context, widgetId, config, state,
+                        prefs.carModel(), size, true, quality,
+                        widgetId == scrubbedWidget ? scrubbedStrip : null);
                 manager.updateAppWidget(widgetId, views);
                 return;
             } catch (RuntimeException error) {

@@ -1,6 +1,7 @@
 package com.mmwtl.atlasclimatewidget;
 
 import android.app.PendingIntent;
+import android.appwidget.AppWidgetManager;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -34,6 +35,17 @@ final class WidgetViews {
      */
     static RemoteViews build(Context context, WidgetConfig config, ClimateState state,
             CarModel model, Size size, boolean interactive, float quality) {
+        return build(context, AppWidgetManager.INVALID_APPWIDGET_ID, config, state, model, size,
+                interactive, quality, null);
+    }
+
+    /**
+     * @param widgetId widget whose bars open the drag scrubber; invalid for the preview
+     * @param scrubbedStrip {@link #stripKey} of the bar under an open scrubber, drawn card-only
+     */
+    static RemoteViews build(Context context, int widgetId, WidgetConfig config,
+            ClimateState state, CarModel model, Size size, boolean interactive, float quality,
+            String scrubbedStrip) {
         float density = context.getResources().getDisplayMetrics().density;
         int steps = ClimateCommands.tempRange(state).steps();
         WidgetGeometry.Plan full = WidgetGeometry.plan(config, size.widthPx, size.heightPx,
@@ -62,7 +74,8 @@ final class WidgetViews {
         WidgetRenderer renderer = new WidgetRenderer(context, config, state, model, plan);
         for (WidgetGeometry.Strip strip : plan.strips) {
             RemoteViews views = new RemoteViews(packageName, R.layout.widget_strip);
-            Bitmap bitmap = renderer.render(strip);
+            Bitmap bitmap = renderer.render(strip, true,
+                    !stripKey(strip).equals(scrubbedStrip));
             views.setImageViewBitmap(R.id.strip_image, bitmap);
             int padding = Math.round((strip.zonePadding + plan.offsetX()) / scale);
             views.setViewPadding(R.id.strip_zones, padding, 0, padding, 0);
@@ -71,7 +84,11 @@ final class WidgetViews {
                 RemoteViews zone = new RemoteViews(packageName,
                         control == null ? R.layout.widget_zone_blank : R.layout.widget_zone);
                 if (control != null) {
-                    zone.setOnClickPendingIntent(R.id.zone, controlIntent(context, control));
+                    zone.setOnClickPendingIntent(R.id.zone,
+                            widgetId != AppWidgetManager.INVALID_APPWIDGET_ID
+                                    && isScrubbable(control)
+                                    ? scrubIntent(context, widgetId, control)
+                                    : controlIntent(context, control));
                 }
                 views.addView(R.id.strip_zones, zone);
             }
@@ -95,6 +112,9 @@ final class WidgetViews {
                 return "temp/" + zone + "/" + (cell - buttons);
             }
             case FAN:
+                if (config.fanStyle == WidgetConfig.FanStyle.PRESETS) {
+                    return "fanpreset/" + cell;
+                }
                 if (cell < buttons) {
                     return "fanstep/-1";
                 }
@@ -112,6 +132,29 @@ final class WidgetViews {
             default:
                 return null;
         }
+    }
+
+    static String stripKey(WidgetGeometry.Strip strip) {
+        return strip.row.kind + ":" + strip.row.index;
+    }
+
+    /** Temperature steps and fan levels open the scrubber; −/+ buttons and presets do not. */
+    static boolean isScrubbable(String control) {
+        return control.startsWith("temp/") || control.startsWith("fan/");
+    }
+
+    /**
+     * Opens the drag scrubber over the bar. The host adds the tapped cell's screen bounds as a
+     * fill-in, which an immutable PendingIntent would drop; the explicit component, data and
+     * extras cannot be replaced by the host.
+     */
+    static PendingIntent scrubIntent(Context context, int widgetId, String control) {
+        Intent intent = new Intent(context, ScrubActivity.class)
+                .setAction(Intent.ACTION_VIEW)
+                .setData(Uri.parse(CONTROL_SCHEME + "://scrub/" + widgetId + "/" + control))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        return PendingIntent.getActivity(context, widgetId, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
     }
 
     static PendingIntent controlIntent(Context context, String control) {
