@@ -30,6 +30,7 @@ public final class ClimateWidgetProvider extends AppWidgetProvider {
         Prefs prefs = new Prefs(context);
         for (int widgetId : widgetIds) {
             prefs.removeWidget(widgetId);
+            ClimateService.forget(widgetId);
         }
     }
 

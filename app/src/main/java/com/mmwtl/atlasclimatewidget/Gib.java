@@ -93,6 +93,14 @@ final class Gib {
     }
 
     private static void send(Context context, Intent intent) {
+        if (AppLog.debugEnabled() && !intent.getAction().startsWith(PACKAGE + ".LISTEN")) {
+            String action = intent.getAction();
+            AppLog.debug("-> " + action.substring(action.lastIndexOf('.') + 1)
+                    + " id=" + intent.getIntExtra(EXTRA_ID, 0)
+                    + " area=" + intent.getIntExtra(EXTRA_AREA, 0)
+                    + " value=" + extra(intent, EXTRA_VALUE)
+                    + " fn=" + intent.getStringExtra(EXTRA_FUNCTION));
+        }
         try {
             context.sendBroadcast(intent);
         } catch (RuntimeException error) {

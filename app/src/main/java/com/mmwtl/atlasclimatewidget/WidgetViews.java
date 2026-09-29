@@ -38,16 +38,17 @@ final class WidgetViews {
     static RemoteViews build(Context context, WidgetConfig config, ClimateState state,
             CarModel model, Size size, boolean interactive, float quality) {
         return build(context, AppWidgetManager.INVALID_APPWIDGET_ID, config, state, model, size,
-                interactive, quality, null);
+                interactive, quality, null, null);
     }
 
     /**
      * @param widgetId widget whose bars open the drag scrubber; invalid for the preview
      * @param scrubbedStrip {@link #stripKey} of the bar under an open scrubber, drawn card-only
+     * @param rendered receives the strip bitmaps in order, or {@code null}
      */
     static RemoteViews build(Context context, int widgetId, WidgetConfig config,
             ClimateState state, CarModel model, Size size, boolean interactive, float quality,
-            String scrubbedStrip) {
+            String scrubbedStrip, List<Bitmap> rendered) {
         float density = context.getResources().getDisplayMetrics().density;
         int steps = ClimateCommands.tempRange(state).steps();
         WidgetGeometry.Plan full = WidgetGeometry.plan(config, size.widthPx, size.heightPx,
@@ -81,6 +82,9 @@ final class WidgetViews {
             RemoteViews views = new RemoteViews(packageName, R.layout.widget_strip);
             Bitmap bitmap = renderer.render(strip, true,
                     !stripKey(strip).equals(scrubbedStrip));
+            if (rendered != null) {
+                rendered.add(bitmap);
+            }
             views.setImageViewBitmap(R.id.strip_image, bitmap);
             int padding = Math.round((strip.zonePadding + plan.offsetX()) / scale);
             views.setViewPadding(R.id.strip_zones, padding, 0, padding, 0);
