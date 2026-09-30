@@ -67,7 +67,7 @@
     <string name="card_layout_separate">Отдельные карточки</string>
     <string name="card_layout_single">Одна карточка</string>
     <string name="card_layout_separate_hint">Температура, обдув и плитки — на своих карточках с интервалом между ними.</string>
-    <string name="card_layout_single_hint">Все блоки на одной общей карточке, между ними — тонкий разделитель.</string>
+    <string name="card_layout_single_hint">Все блоки на одной общей карточке, между ними — увеличенный отступ.</string>
     <string name="block_temperature">Температура</string>
     <string name="block_fan">Скорость обдува</string>
     <string name="block_tiles">Плитки функций</string>

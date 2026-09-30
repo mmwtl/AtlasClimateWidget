@@ -56,7 +56,7 @@ final class WidgetGeometry {
         /** Temperature zone index or tile row index. */
         final int index;
         float height;
-        /** First row of a block that shares its card with the block above; gets a divider. */
+        /** First row of a block that shares its card with the block above, a section gap below it. */
         boolean sectionStart;
 
         Row(WidgetConfig.Block block, RowKind kind, int index, float height) {

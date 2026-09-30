@@ -86,7 +86,6 @@ final class WidgetRenderer {
         canvas.translate(plan.offsetX(), top - Math.round(top));
         if (card) {
             drawCard(canvas, strip);
-            drawDivider(canvas, strip);
         }
         if (!content) {
             return bitmap;
@@ -139,42 +138,65 @@ final class WidgetRenderer {
         canvas.restore();
     }
 
-    /** Hairline between blocks sharing one card, centred in the gap between them. */
-    private void drawDivider(Canvas canvas, WidgetGeometry.Strip strip) {
-        if (!strip.row.sectionStart) {
-            return;
-        }
-        paint.setShader(null);
-        paint.setStyle(Paint.Style.FILL);
-        paint.setColor(withAlpha(Ui.TEXT, 22));
-        float thickness = Math.max(1f, dp);
-        canvas.drawRect(plan.padding, 0f, plan.width - plan.padding, thickness, paint);
-    }
-
     // ---- temperature -------------------------------------------------------------------------
 
+    /** Cabin and outside temperature, centred as one line; the bridge status follows them. */
     private void drawHeader(Canvas canvas, WidgetGeometry.Strip strip) {
         float height = strip.contentHeight;
         float baseline = height * 0.78f;
         float size = Math.min(14f * dp, height * 0.72f);
-        float x = plan.padding;
-        x = drawLabelValue(canvas, context.getString(R.string.header_inside),
-                formatWhole(state.sensor(Hvac.SENSOR_TEMPERATURE_INDOOR)), x, baseline, size);
-        textPaint.setTypeface(Typeface.DEFAULT);
-        textPaint.setColor(withAlpha(Ui.TEXT_SECONDARY, 150));
         String separator = "  •  ";
-        canvas.drawText(separator, x, baseline, textPaint);
-        x += textPaint.measureText(separator);
-        drawLabelValue(canvas, context.getString(R.string.header_outside),
-                formatWhole(state.sensor(Hvac.SENSOR_TEMPERATURE_AMBIENT)), x, baseline, size);
-        if (!state.isConnected()) {
-            textPaint.setTypeface(Typeface.DEFAULT);
-            textPaint.setTextSize(size * 0.9f);
-            textPaint.setColor(Ui.TEXT_SECONDARY);
-            String status = context.getString(R.string.header_no_bridge);
-            float statusWidth = textPaint.measureText(status);
-            canvas.drawText(status, plan.width - plan.padding - statusWidth, baseline, textPaint);
+        String inside = formatWhole(state.sensor(Hvac.SENSOR_TEMPERATURE_INDOOR));
+        String outside = formatWhole(state.sensor(Hvac.SENSOR_TEMPERATURE_AMBIENT));
+        String status = state.isConnected() ? null
+                : context.getString(R.string.header_no_bridge);
+        float width = labelValueWidth(context.getString(R.string.header_inside), inside, size)
+                + separatorWidth(separator, size)
+                + labelValueWidth(context.getString(R.string.header_outside), outside, size);
+        if (status != null) {
+            width += separatorWidth(separator, size) + statusWidth(status, size);
         }
+        float x = Math.max(plan.padding, (plan.width - width) / 2f);
+        x = drawLabelValue(canvas, context.getString(R.string.header_inside), inside, x,
+                baseline, size);
+        x = drawSeparator(canvas, separator, x, baseline, size);
+        x = drawLabelValue(canvas, context.getString(R.string.header_outside), outside, x,
+                baseline, size);
+        if (status != null) {
+            x = drawSeparator(canvas, separator, x, baseline, size);
+            statusWidth(status, size);
+            canvas.drawText(status, x, baseline, textPaint);
+        }
+    }
+
+    private float labelValueWidth(String label, String value, float size) {
+        textPaint.setTextSize(size);
+        textPaint.setTypeface(Typeface.DEFAULT);
+        float width = textPaint.measureText(label + " ");
+        textPaint.setTypeface(Typeface.DEFAULT_BOLD);
+        return width + textPaint.measureText(value);
+    }
+
+    private float separatorWidth(String separator, float size) {
+        textPaint.setTextSize(size);
+        textPaint.setTypeface(Typeface.DEFAULT);
+        return textPaint.measureText(separator);
+    }
+
+    private float drawSeparator(Canvas canvas, String separator, float x, float baseline,
+            float size) {
+        float width = separatorWidth(separator, size);
+        textPaint.setColor(withAlpha(Ui.TEXT_SECONDARY, 150));
+        canvas.drawText(separator, x, baseline, textPaint);
+        return x + width;
+    }
+
+    /** Sets up the paint for the status text and returns its width. */
+    private float statusWidth(String status, float size) {
+        textPaint.setTypeface(Typeface.DEFAULT);
+        textPaint.setTextSize(size * 0.9f);
+        textPaint.setColor(Ui.TEXT_SECONDARY);
+        return textPaint.measureText(status);
     }
 
     private float drawLabelValue(Canvas canvas, String label, String value, float x,

@@ -48,10 +48,10 @@ explicit migration request. All car access goes through the GInputBridge broadca
   last card ends at the cell bottom; bars keep their size. `CONTENT` keeps square tiles and uses
   the root gravity for alignment. Shrinking below the cell never depends on the mode.
 - The temperature block has two parts, the cabin/outside sensor line and the set-temperature
-  bar; either can be off, so the block can keep only the sensor line.
+  bar; either can be off, so the block can keep only the sensor line, which is centred.
 - Cards: `CardLayout.SEPARATE` gives every block its own card; `SINGLE` puts all rows in one card,
-  blocks a card padding apart with a hairline divider drawn in the card layer. Fill shares extra
-  height per block in both modes.
+  blocks a card padding apart without dividers. Fill shares extra height per block in both
+  modes.
 - Style: `Style.CLASSIC` keeps the user's tile order and the knob-labelled temperature bar.
   `CONSOLE` gives each zone a `TEMP_VALUE` row (−, the value centred, +; the middle is inert)
   above a thin all-steps bar and splits fan directions and auto-fan presets into equal segmented
