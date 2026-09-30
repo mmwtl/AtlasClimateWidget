@@ -31,9 +31,6 @@ import java.util.List;
  */
 public final class WidgetSetupActivity extends ScaledActivity {
     private static final WidgetConfig.Block[] BLOCKS = WidgetConfig.Block.values();
-    private static final Palette[] PALETTES = {Palette.ATLAS, Palette.BLUE, Palette.SEMANTIC};
-    private static final int[] PALETTE_LABELS = {R.string.palette_atlas, R.string.palette_blue,
-            R.string.setup_palette_semantic};
     /**
      * The OneOS climate dock is a 124 px overlay at the bottom of the 160 dpi screen that reports
      * no insets, so windows are laid out underneath it; the dialog keeps clear of it by hand.
@@ -213,37 +210,6 @@ public final class WidgetSetupActivity extends ScaledActivity {
             Ui.addSegment(fan, segment);
         }
         card.addView(fan, fullWrap(8));
-
-        addTitle(card, R.string.tile_style_title);
-        LinearLayout tiles = segmentRow();
-        for (WidgetConfig.TileStyle style : WidgetConfig.TileStyle.values()) {
-            TextView segment = Ui.segment(this, style.titleRes);
-            segment.setOnClickListener(view -> {
-                config.tileStyle = style;
-                refresh();
-            });
-            refreshers.add(() -> {
-                Ui.setSegmentSelected(this, segment, config.tileStyle == style);
-                segment.setEnabled(config.tilesEnabled);
-                segment.setAlpha(config.tilesEnabled ? 1f : 0.45f);
-            });
-            Ui.addSegment(tiles, segment);
-        }
-        card.addView(tiles, fullWrap(8));
-
-        addTitle(card, R.string.palette_title);
-        LinearLayout palettes = segmentRow();
-        for (int index = 0; index < PALETTES.length; index++) {
-            Palette palette = PALETTES[index];
-            TextView segment = Ui.segment(this, PALETTE_LABELS[index]);
-            segment.setOnClickListener(view -> {
-                config.palette = palette;
-                refresh();
-            });
-            refreshers.add(() -> Ui.setSegmentSelected(this, segment, config.palette == palette));
-            Ui.addSegment(palettes, segment);
-        }
-        card.addView(palettes, fullWrap(8));
 
         TextView hint = Ui.text(this, R.string.setup_hint, 13, Ui.TEXT_SECONDARY);
         hint.setLineSpacing(0, 1.12f);
