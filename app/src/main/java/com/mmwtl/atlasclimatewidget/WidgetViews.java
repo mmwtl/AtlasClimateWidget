@@ -77,7 +77,8 @@ final class WidgetViews {
             root.addView(R.id.widget_root, empty);
             return root;
         }
-        WidgetRenderer renderer = new WidgetRenderer(context, config, state, model, plan);
+        WidgetRenderer renderer = new WidgetRenderer(context, config, state, model, plan)
+                .withDraggedBar(scrubbedStrip);
         for (WidgetGeometry.Strip strip : plan.strips) {
             RemoteViews views = new RemoteViews(packageName, R.layout.widget_strip);
             Bitmap bitmap = renderer.render(strip, true,

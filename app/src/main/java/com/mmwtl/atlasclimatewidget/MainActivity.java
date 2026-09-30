@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.BooleanSupplier;
 
 /**
  * Settings editor with Blocks, Tiles, Look and System tabs pinned under the title, like the
@@ -717,25 +718,33 @@ public final class MainActivity extends ScaledActivity {
             LinearLayout options = settingsGroup();
             switch (block) {
                 case TEMPERATURE:
-                    options.addView(configSwitch(R.string.temp_dual, config.temperatureDual,
-                            value -> config.temperatureDual = value));
-                    options.addView(configSwitch(R.string.temp_header, config.temperatureHeader,
-                            value -> config.temperatureHeader = value));
-                    options.addView(configSwitch(R.string.temp_buttons,
-                            config.temperatureButtons, value -> config.temperatureButtons = value));
+                    options.addView(partSwitch(R.string.temp_header, config.temperatureHeader,
+                            value -> config.temperatureHeader = value,
+                            config::hasTemperatureParts));
+                    options.addView(partSwitch(R.string.temp_part_bar, config.temperatureBar,
+                            value -> config.temperatureBar = value,
+                            config::hasTemperatureParts));
+                    if (config.temperatureBar) {
+                        options.addView(configSwitch(R.string.temp_dual, config.temperatureDual,
+                                value -> config.temperatureDual = value));
+                        options.addView(configSwitch(R.string.temp_buttons,
+                                config.temperatureButtons,
+                                value -> config.temperatureButtons = value));
+                    }
                     options.addView(hint(R.string.temp_hint));
                     break;
                 case FAN:
-                    options.addView(fanPartSwitch(R.string.fan_part_bar, config.fanBar,
-                            value -> config.fanBar = value));
+                    options.addView(partSwitch(R.string.fan_part_bar, config.fanBar,
+                            value -> config.fanBar = value, config::hasFanParts));
                     if (config.fanBar) {
                         options.addView(configSwitch(R.string.fan_buttons, config.fanButtons,
                                 value -> config.fanButtons = value));
                     }
-                    options.addView(fanPartSwitch(R.string.fan_part_directions,
-                            config.fanDirections, value -> config.fanDirections = value));
-                    options.addView(fanPartSwitch(R.string.fan_part_presets, config.fanPresets,
-                            value -> config.fanPresets = value));
+                    options.addView(partSwitch(R.string.fan_part_directions,
+                            config.fanDirections, value -> config.fanDirections = value,
+                            config::hasFanParts));
+                    options.addView(partSwitch(R.string.fan_part_presets, config.fanPresets,
+                            value -> config.fanPresets = value, config::hasFanParts));
                     options.addView(hint(R.string.fan_hint));
                     break;
                 default:
@@ -754,9 +763,6 @@ public final class MainActivity extends ScaledActivity {
         tilesHost.removeAllViews();
         if (!config.tilesEnabled) {
             tilesHost.addView(hint(R.string.tiles_disabled_hint));
-        }
-        if (config.style == WidgetConfig.Style.CONSOLE) {
-            tilesHost.addView(hint(R.string.style_console_tiles_hint));
         }
         LinearLayout options = vertical();
         addSlider(options, getString(R.string.tile_columns),
@@ -1087,11 +1093,13 @@ public final class MainActivity extends ScaledActivity {
     }
 
     /** A fan block part; switching one rebuilds the options that depend on it. */
-    private Switch fanPartSwitch(int text, boolean checked, BoolListener listener) {
+    /** Switch of a block part; the block keeps at least one part and redraws its options. */
+    private Switch partSwitch(int text, boolean checked, BoolListener listener,
+            BooleanSupplier hasParts) {
         Switch view = switchRow(text, checked);
         view.setOnCheckedChangeListener((button, value) -> {
             listener.onValue(value);
-            if (!config.hasFanParts()) {
+            if (!hasParts.getAsBoolean()) {
                 // The block needs at least one part; keep the one just switched on.
                 listener.onValue(true);
                 button.setChecked(true);

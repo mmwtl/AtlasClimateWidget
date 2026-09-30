@@ -88,58 +88,49 @@ public final class WidgetConfigTest {
         assertFalse(config.dropTile(ClimateFunction.DRIVER_HEAT, 2, 0));
     }
 
-    @Test public void consoleTilesMoveOnlyInsideTheirGroup() {
+    @Test public void consoleTilesFollowTheUserOrderAndMoveFreely() {
         WidgetConfig config = new WidgetConfig();
         config.style = WidgetConfig.Style.CONSOLE;
-        config.columns = 5;
+        config.columns = 3;
         config.functions.clear();
         config.functions.addAll(java.util.Arrays.asList(
-                ClimateFunction.AC, ClimateFunction.WINDSHIELD_HEAT, ClimateFunction.AUTO,
-                ClimateFunction.DRIVER_HEAT, ClimateFunction.PASSENGER_HEAT));
-        // Row 0: AC, AUTO, WINDSHIELD_HEAT; row 1: mirrored seats.
-        assertTrue(config.dropTile(ClimateFunction.AUTO, 0, 0));
-        assertEquals(ClimateFunction.AUTO, config.tileRows().get(0)[0]);
-        assertFalse(config.dropTile(ClimateFunction.AUTO, 0, 2));
-        assertFalse(config.dropTile(ClimateFunction.AUTO, 0, 4));
-        assertFalse(config.canDragTile(ClimateFunction.DRIVER_HEAT));
-        assertFalse(config.dropTile(ClimateFunction.DRIVER_HEAT, 1, 4));
+                ClimateFunction.DRIVER_HEAT, ClimateFunction.WINDSHIELD_HEAT,
+                ClimateFunction.AC, ClimateFunction.PASSENGER_HEAT));
+        java.util.List<ClimateFunction[]> rows = config.tileRows();
+        assertEquals(2, rows.size());
+        assertEquals(ClimateFunction.DRIVER_HEAT, rows.get(0)[0]);
+        assertEquals(ClimateFunction.PASSENGER_HEAT, rows.get(1)[0]);
+        // Seats and glass move across the former groups, and onto an empty slot.
+        assertTrue(config.dropTile(ClimateFunction.PASSENGER_HEAT, 0, 1));
+        assertEquals(ClimateFunction.PASSENGER_HEAT, config.tileRows().get(0)[1]);
+        assertTrue(config.dropTile(ClimateFunction.DRIVER_HEAT, 1, 2));
+        assertEquals(ClimateFunction.DRIVER_HEAT, config.functions.get(3));
     }
 
-    @Test public void consoleGroupsTilesAndMirrorsSeats() {
+    @Test public void legacyConsoleLayoutKeepsItsGroupedOrder() {
+        WidgetConfig config = WidgetConfig.fromJson("{\"version\":1,\"style\":\"CONSOLE\","
+                + "\"functions\":[\"PASSENGER_HEAT\",\"WINDSHIELD_HEAT\",\"AC\","
+                + "\"DRIVER_HEAT\",\"AUTO\",\"REAR_DEFROST\",\"WHEEL_HEAT\"]}");
+        assertEquals(java.util.Arrays.asList(ClimateFunction.AC, ClimateFunction.AUTO,
+                ClimateFunction.WINDSHIELD_HEAT, ClimateFunction.REAR_DEFROST,
+                ClimateFunction.DRIVER_HEAT, ClimateFunction.WHEEL_HEAT,
+                ClimateFunction.PASSENGER_HEAT), config.functions);
+        // Once saved, the order is the user's own.
+        config.dropTile(ClimateFunction.PASSENGER_HEAT, 0, 0);
+        assertEquals(config.functions, WidgetConfig.fromJson(config.toJson()).functions);
+        // Classic layouts never had groups.
+        assertEquals(ClimateFunction.PASSENGER_HEAT, WidgetConfig.fromJson(
+                "{\"functions\":[\"PASSENGER_HEAT\",\"AC\"]}").functions.get(0));
+    }
+
+    @Test public void temperatureBlockCanKeepOnlyTheSensorLine() {
         WidgetConfig config = new WidgetConfig();
-        config.style = WidgetConfig.Style.CONSOLE;
-        config.columns = 5;
-        config.functions.clear();
-        config.functions.addAll(java.util.Arrays.asList(
-                ClimateFunction.PASSENGER_HEAT, ClimateFunction.WINDSHIELD_HEAT,
-                ClimateFunction.AC, ClimateFunction.DRIVER_HEAT, ClimateFunction.AUTO,
-                ClimateFunction.REAR_DEFROST, ClimateFunction.WHEEL_HEAT,
-                ClimateFunction.DEFROST_MAX, ClimateFunction.POWER));
-        java.util.List<ClimateFunction[]> rows = config.tileRows();
-        assertEquals(3, rows.size());
-        // Climate modes in the user's order; glass does not fit whole, so it wraps.
-        assertEquals(ClimateFunction.AC, rows.get(0)[0]);
-        assertEquals(ClimateFunction.AUTO, rows.get(0)[1]);
-        assertEquals(ClimateFunction.POWER, rows.get(0)[2]);
-        assertEquals(null, rows.get(0)[3]);
-        assertEquals(ClimateFunction.WINDSHIELD_HEAT, rows.get(1)[0]);
-        assertEquals(ClimateFunction.REAR_DEFROST, rows.get(1)[1]);
-        assertEquals(ClimateFunction.DEFROST_MAX, rows.get(1)[2]);
-        assertEquals(ClimateFunction.DRIVER_HEAT, rows.get(2)[0]);
-        assertEquals(ClimateFunction.WHEEL_HEAT, rows.get(2)[2]);
-        assertEquals(ClimateFunction.PASSENGER_HEAT, rows.get(2)[4]);
-        config.functions.remove(ClimateFunction.POWER);
-        config.functions.remove(ClimateFunction.DEFROST_MAX);
-        rows = config.tileRows();
-        // Two climate modes plus two glass tiles fit one row; seats get a mirrored row.
-        assertEquals(2, rows.size());
-        assertEquals(ClimateFunction.REAR_DEFROST, rows.get(0)[3]);
-        assertEquals(null, rows.get(0)[4]);
-        assertEquals(ClimateFunction.DRIVER_HEAT, rows.get(1)[0]);
-        assertEquals(null, rows.get(1)[1]);
-        assertEquals(ClimateFunction.WHEEL_HEAT, rows.get(1)[2]);
-        assertEquals(null, rows.get(1)[3]);
-        assertEquals(ClimateFunction.PASSENGER_HEAT, rows.get(1)[4]);
+        config.temperatureBar = false;
+        assertTrue(config.isEnabled(WidgetConfig.Block.TEMPERATURE));
+        assertFalse(WidgetConfig.fromJson(config.toJson()).temperatureBar);
+        assertTrue(WidgetConfig.fromJson("{}").temperatureBar);
+        config.temperatureHeader = false;
+        assertFalse(config.isEnabled(WidgetConfig.Block.TEMPERATURE));
     }
 
     @Test public void toleratesUnknownAndInvalidValues() {

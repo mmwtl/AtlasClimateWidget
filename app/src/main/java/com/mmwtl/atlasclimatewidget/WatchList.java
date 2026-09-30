@@ -45,17 +45,17 @@ final class WatchList {
     }
 
     private void add(WidgetConfig config, CarModel model) {
-        if (config.isEnabled(WidgetConfig.Block.TEMPERATURE)) {
+        if (config.isEnabled(WidgetConfig.Block.TEMPERATURE) && config.temperatureBar) {
             property(Hvac.TEMP, Hvac.ZONE_DRIVER, true);
             if (config.temperatureDual) {
                 property(Hvac.TEMP, Hvac.ZONE_PASSENGER, true);
             }
             property(Hvac.TEMP_MIN, Hvac.ZONE_DRIVER, true);
             property(Hvac.TEMP_MAX, Hvac.ZONE_DRIVER, true);
-            if (config.temperatureHeader) {
-                sensors.add(Hvac.SENSOR_TEMPERATURE_INDOOR);
-                sensors.add(Hvac.SENSOR_TEMPERATURE_AMBIENT);
-            }
+        }
+        if (config.isEnabled(WidgetConfig.Block.TEMPERATURE) && config.temperatureHeader) {
+            sensors.add(Hvac.SENSOR_TEMPERATURE_INDOOR);
+            sensors.add(Hvac.SENSOR_TEMPERATURE_AMBIENT);
         }
         if (config.isEnabled(WidgetConfig.Block.FAN)) {
             property(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL, false);

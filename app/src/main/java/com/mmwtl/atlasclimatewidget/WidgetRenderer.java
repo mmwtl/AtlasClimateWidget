@@ -44,6 +44,8 @@ final class WidgetRenderer {
     private final TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
     private final Rect bounds = new Rect();
+    /** Console zone whose bar is being dragged; its large value gives way to the drag bubble. */
+    private int draggedZone = -1;
 
     WidgetRenderer(Context context, WidgetConfig config, ClimateState state, CarModel model,
             WidgetGeometry.Plan plan) {
@@ -54,6 +56,16 @@ final class WidgetRenderer {
         this.plan = plan;
         this.range = ClimateCommands.tempRange(state);
         this.dp = plan.density;
+    }
+
+    /** Hides the console value of the zone whose bar is under the scrubber. */
+    WidgetRenderer withDraggedBar(String stripKey) {
+        for (int zone = 0; zone < 2; zone++) {
+            if ((WidgetGeometry.RowKind.TEMPERATURE + ":" + zone).equals(stripKey)) {
+                draggedZone = zone;
+            }
+        }
+        return this;
     }
 
     Bitmap render(WidgetGeometry.Strip strip) {
@@ -275,6 +287,9 @@ final class WidgetRenderer {
             drawCircleButton(canvas, plan.padding + diameter / 2f, cy, diameter, false);
             drawCircleButton(canvas, plan.width - plan.padding - diameter / 2f, cy, diameter,
                     true);
+        }
+        if (strip.row.index == draggedZone) {
+            return;
         }
         Float value = ClimateCommands.temperature(state, zone);
         textPaint.setTypeface(MEDIUM);
@@ -807,6 +822,10 @@ final class WidgetRenderer {
     }
 
     String formatTemperature(float value) {
+        return formatTemperature(value, range);
+    }
+
+    static String formatTemperature(float value, ClimateCommands.TempRange range) {
         if (value <= range.min) {
             return "LO";
         }

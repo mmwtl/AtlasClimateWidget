@@ -62,14 +62,13 @@
     <string name="style_classic">Классика</string>
     <string name="style_console">Пульт</string>
     <string name="style_classic_hint">Плитки идут в заданном порядке, температура — ползунком с числом на бегунке.</string>
-    <string name="style_console_hint">Как на пульте: крупная температура над шкалой, обдув и пресеты — переключателями, плитки сгруппированы (режимы, стёкла, сиденья зеркально водитель ↔ пассажир).</string>
-    <string name="style_console_tiles_hint">В компоновке «Пульт» плитки расставляются по группам; порядок ниже действует внутри групп режимов и стёкол, там же плитки перетаскиваются на предпросмотре. Сиденья стоят зеркально и не двигаются.</string>
+    <string name="style_console_hint">Как на пульте: крупная температура над шкалой, обдув и пресеты — переключателями. Плитки идут в заданном порядке.</string>
     <string name="card_layout_title">Карточки</string>
     <string name="card_layout_separate">Отдельные карточки</string>
     <string name="card_layout_single">Одна карточка</string>
     <string name="card_layout_separate_hint">Температура, обдув и плитки — на своих карточках с интервалом между ними.</string>
     <string name="card_layout_single_hint">Все блоки на одной общей карточке, между ними — тонкий разделитель.</string>
-    <string name="block_temperature">Полоса температуры</string>
+    <string name="block_temperature">Температура</string>
     <string name="block_fan">Скорость обдува</string>
     <string name="block_tiles">Плитки функций</string>
     <string name="block_temperature_short">Температура</string>
@@ -90,8 +89,9 @@
     <string name="setup_open_settings">Открыть все настройки</string>
     <string name="temp_dual">Две зоны: водитель и пассажир</string>
     <string name="temp_header">Строка «Салон · Улица»</string>
+    <string name="temp_part_bar">Полоса температуры</string>
     <string name="temp_buttons">Кнопки − и +</string>
-    <string name="temp_hint">Нажатие на полосу задаёт температуру, после нажатия её можно тянуть пальцем.</string>
+    <string name="temp_hint">Нажатие на полосу задаёт температуру, после нажатия её можно тянуть пальцем — значение видно над полосой. Без полосы блок показывает только строку «Салон · Улица».</string>
     <string name="fan_buttons">Кнопки − и +</string>
     <string name="fan_part_bar">Полоса скорости 1–9</string>
     <string name="fan_part_directions">Направление обдува: стекло, лицо, ноги</string>

@@ -126,7 +126,7 @@ final class TileDragLayer extends FrameLayout {
             return false;
         }
         ClimateFunction function = config.tileRows().get(hit[0])[hit[1]];
-        if (function == null || !config.canDragTile(function) || !tileRect(hit[0], hit[1], slot)) {
+        if (function == null || !tileRect(hit[0], hit[1], slot)) {
             return false;
         }
         draggedImage = snapshot(slot);

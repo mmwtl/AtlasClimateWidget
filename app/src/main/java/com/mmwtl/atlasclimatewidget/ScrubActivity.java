@@ -7,7 +7,11 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.PixelFormat;
 import android.graphics.Rect;
+import android.graphics.RectF;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -52,6 +56,11 @@ public final class ScrubActivity extends Activity {
     private float scale;
     private float cell;
     private ScrubView view;
+    /** Screen position of the scrubber window. */
+    private int windowLeft;
+    private int windowTop;
+    private int windowHeight;
+    private ValueBubble bubble;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -126,6 +135,9 @@ public final class ScrubActivity extends Activity {
         WindowManager.LayoutParams attributes = window.getAttributes();
         attributes.x = left;
         attributes.y = source.top;
+        windowLeft = left;
+        windowTop = source.top;
+        windowHeight = source.height();
         window.setAttributes(attributes);
         window.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
                 | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
@@ -138,6 +150,7 @@ public final class ScrubActivity extends Activity {
             if (!closing && !isFinishing()) {
                 scrubbing = true;
                 ClimateService.setScrubbed(this, widgetId, stripKey);
+                showBubble();
             }
         });
         main.postDelayed(idleFinish, IDLE_FINISH_MS);
@@ -182,6 +195,7 @@ public final class ScrubActivity extends Activity {
         }
         closing = true;
         main.removeCallbacks(idleFinish);
+        hideBubble();
         if (!scrubbing) {
             finish();
             return;
@@ -198,12 +212,57 @@ public final class ScrubActivity extends Activity {
     @SuppressWarnings("deprecation") // overrideActivityTransition needs API 34.
     public void finish() {
         main.removeCallbacks(idleFinish);
+        hideBubble();
         if (scrubbing) {
             scrubbing = false;
             ClimateService.setScrubbed(this, widgetId, null);
         }
         super.finish();
         overridePendingTransition(0, 0);
+    }
+
+    /**
+     * Shows the dragged temperature above the bar, where the finger does not cover it; the
+     * classic knob sits under the finger and the widget hides the console's large value while
+     * the bar is dragged. The bubble is a separate untouchable window, so taps around the bar
+     * still reach the widget.
+     */
+    private void showBubble() {
+        if (!temperature || bubble != null) {
+            return;
+        }
+        bubble = new ValueBubble(this);
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.TYPE_APPLICATION_PANEL,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                        | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT);
+        params.token = getWindow().getDecorView().getWindowToken();
+        params.gravity = Gravity.TOP | Gravity.START;
+        params.windowAnimations = 0;
+        params.setTitle("ScrubValue");
+        bubble.place(params);
+        getWindowManager().addView(bubble, params);
+    }
+
+    private void updateBubble() {
+        if (bubble == null) {
+            return;
+        }
+        WindowManager.LayoutParams params =
+                (WindowManager.LayoutParams) bubble.getLayoutParams();
+        bubble.place(params);
+        getWindowManager().updateViewLayout(bubble, params);
+        bubble.invalidate();
+    }
+
+    private void hideBubble() {
+        if (bubble != null) {
+            getWindowManager().removeViewImmediate(bubble);
+            bubble = null;
+        }
     }
 
     /** Value under the finger: a temperature step or a zero-based fan level. */
@@ -309,6 +368,7 @@ public final class ScrubActivity extends Activity {
                     if (next != value) {
                         value = next;
                         invalidate();
+                        updateBubble();
                     }
                     return true;
                 case MotionEvent.ACTION_UP:
@@ -323,6 +383,76 @@ public final class ScrubActivity extends Activity {
                 default:
                     return true;
             }
+        }
+    }
+
+    /** Pill with the dragged value and a pointer towards the bar, like the classic knob. */
+    private final class ValueBubble extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF pill = new RectF();
+        private final Path pointer = new Path();
+        private final Rect bounds = new Rect();
+        private final float pillHeight;
+        private final float pointerSize;
+        private final float gap;
+        private boolean below;
+        private float pointerX;
+        private String label = "";
+
+        ValueBubble(Context context) {
+            super(context);
+            // The bubble follows the widget's size on screen, like the bar under it.
+            float unit = plan.density * scale;
+            pillHeight = 40f * unit;
+            pointerSize = 7f * unit;
+            gap = 6f * unit;
+            paint.setTypeface(Typeface.DEFAULT_BOLD);
+            paint.setTextSize(pillHeight * 0.5f);
+        }
+
+        /** Sizes and places the window over the dragged step, above the bar if it fits. */
+        void place(WindowManager.LayoutParams params) {
+            ClimateState state = ClimateService.STORE.snapshot(SystemClock.elapsedRealtime());
+            ClimateCommands.TempRange range = ClimateCommands.tempRange(state);
+            label = WidgetRenderer.formatTemperature(range.valueAt(value), range);
+            float width = Math.max(pillHeight * 1.8f,
+                    paint.measureText(label) + pillHeight * 0.9f);
+            int height = Math.round(pillHeight + pointerSize);
+            float knob = windowLeft + (plan.offsetX() + strip.zonePadding
+                    + (strip.buttonCells + value + 0.5f) * cell) * scale;
+            int screen = getResources().getDisplayMetrics().widthPixels;
+            int left = Math.round(Math.max(0f, Math.min(screen - width, knob - width / 2f)));
+            int top = Math.round(windowTop - gap - height);
+            below = top < 0;
+            if (below) {
+                top = Math.round(windowTop + windowHeight + gap);
+            }
+            pointerX = knob - left;
+            params.width = Math.round(width);
+            params.height = height;
+            params.x = left;
+            params.y = top;
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            float top = below ? pointerSize : 0f;
+            pill.set(0f, top, getWidth(), top + pillHeight);
+            paint.setColor(Ui.TEXT);
+            canvas.drawRoundRect(pill, pillHeight / 2f, pillHeight / 2f, paint);
+            float x = Math.max(pillHeight / 2f, Math.min(getWidth() - pillHeight / 2f, pointerX));
+            pointer.reset();
+            float tip = below ? 0f : getHeight();
+            float base = below ? pointerSize + 1f : pillHeight - 1f;
+            pointer.moveTo(x - pointerSize, base);
+            pointer.lineTo(x, tip);
+            pointer.lineTo(x + pointerSize, base);
+            pointer.close();
+            canvas.drawPath(pointer, paint);
+            paint.setColor(Ui.BACKGROUND);
+            paint.getTextBounds(label, 0, label.length(), bounds);
+            canvas.drawText(label, pill.centerX() - paint.measureText(label) / 2f,
+                    pill.centerY() - bounds.exactCenterY(), paint);
         }
     }
 }

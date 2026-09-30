@@ -39,21 +39,26 @@ explicit migration request. All car access goes through the GInputBridge broadca
   reinstall, so layouts are restored by position.
 - `ScrubActivity` is a borderless window placed over a tapped bar (from the host's source
   bounds) that lets the finger drag the value; while it is open the widget draws that strip
-  card-only and the window draws content only. Commands are sent on release. The strip is
+  card-only and the window draws content only. Commands are sent on release. A temperature
+  drag shows its value in an untouchable bubble window above the bar, and the widget hides
+  that zone's console value meanwhile. The strip is
   hidden only after the window's first frame and restored 300 ms before it closes; `finish()`
   skips the task transition, otherwise the window slides down over HOME.
 - Height: `HeightMode.FILL` grows tile rows up to `MAX_TILE_ASPECT`, then card padding, so the
   last card ends at the cell bottom; bars keep their size. `CONTENT` keeps square tiles and uses
   the root gravity for alignment. Shrinking below the cell never depends on the mode.
+- The temperature block has two parts, the cabin/outside sensor line and the set-temperature
+  bar; either can be off, so the block can keep only the sensor line.
 - Cards: `CardLayout.SEPARATE` gives every block its own card; `SINGLE` puts all rows in one card,
   blocks a card padding apart with a hairline divider drawn in the card layer. Fill shares extra
   height per block in both modes.
 - Style: `Style.CLASSIC` keeps the user's tile order and the knob-labelled temperature bar.
   `CONSOLE` gives each zone a `TEMP_VALUE` row (−, the value centred, +; the middle is inert)
-  above a thin all-steps bar, splits fan directions and auto-fan presets into equal segmented
-  rows, and arranges tiles via `WidgetConfig.tileRows()`: climate modes, glass, then seats
-  mirrored driver ↔ passenger. All console round buttons share one diameter and sit on the
-  content edges; labels centre on font metrics, not glyph bounds.
+  above a thin all-steps bar and splits fan directions and auto-fan presets into equal segmented
+  rows. Tiles follow the user's order in both styles; console layouts saved before version 2
+  are put once into the old grouped order (modes, glass, seats) so they open unchanged. All
+  console round buttons share one diameter and sit on the content edges; labels centre on font
+  metrics, not glyph bounds.
   When a console layout is too tall, tile rows flatten first (down to
   `CONSOLE_MIN_TILE_ASPECT`) so bars and fan buttons keep their size; fill never grows console
   tiles past square.

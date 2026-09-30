@@ -361,6 +361,9 @@ final class WidgetGeometry {
                             HEADER_HEIGHT_DP * density * scale));
                     gaps.add(HEADER_GAP_DP * density * scale);
                 }
+                if (!config.temperatureBar) {
+                    break;
+                }
                 int zones = config.temperatureDual ? 2 : 1;
                 if (config.style == WidgetConfig.Style.CONSOLE) {
                     for (int zone = 0; zone < zones; zone++) {

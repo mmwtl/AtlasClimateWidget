@@ -73,7 +73,7 @@ final class WidgetConfig {
         }
     }
 
-    /** Overall arrangement: the user's own order, or a console-like grouped layout. */
+    /** Overall look: slider bars with the value on the knob, or a console with large values. */
     enum Style {
         CLASSIC(R.string.style_classic),
         CONSOLE(R.string.style_console);
@@ -85,6 +85,8 @@ final class WidgetConfig {
         }
     }
 
+    /** 2: console tiles follow the user's order instead of fixed groups. */
+    static final int VERSION = 2;
     static final int COLUMNS_MIN = 2;
     static final int COLUMNS_MAX = 8;
     static final int CARD_RADIUS_MAX_DP = 40;
@@ -123,6 +125,8 @@ final class WidgetConfig {
 
     boolean temperatureDual;
     boolean temperatureHeader = true;
+    /** The set-temperature bar; without it the block may keep only the cabin/outside line. */
+    boolean temperatureBar = true;
     boolean temperatureButtons = true;
     boolean fanButtons = true;
     /** Fan block parts, as in FX11: speed bar, blowing directions and auto-fan presets. */
@@ -155,12 +159,16 @@ final class WidgetConfig {
     boolean isEnabled(Block block) {
         switch (block) {
             case TEMPERATURE:
-                return temperatureEnabled;
+                return temperatureEnabled && hasTemperatureParts();
             case FAN:
                 return fanEnabled && hasFanParts();
             default:
                 return tilesEnabled && !functions.isEmpty();
         }
+    }
+
+    boolean hasTemperatureParts() {
+        return temperatureBar || temperatureHeader;
     }
 
     boolean hasFanParts() {
@@ -208,119 +216,49 @@ final class WidgetConfig {
                 : ClimateCommands.fanPresets(fanPresetCount).length;
     }
 
-    /** Where a tile goes in the console layout. */
-    enum TileGroup {
-        CLIMATE,
-        GLASS,
-        SEATS
-    }
-
     /**
-     * Console seat order, mirrored like the cabin: driver side from the left edge, the wheel in
-     * the middle, passenger side towards the right edge.
+     * Console seat order of layouts saved before console tiles were free, mirrored like the
+     * cabin: driver side, the wheel, then the passenger side.
      */
-    private static final List<ClimateFunction> SEATS_LEFT = Arrays.asList(
+    private static final List<ClimateFunction> LEGACY_CONSOLE_SEATS = Arrays.asList(
             ClimateFunction.DRIVER_HEAT, ClimateFunction.DRIVER_VENT,
-            ClimateFunction.REAR_LEFT_HEAT);
-    private static final List<ClimateFunction> SEATS_CENTER = Arrays.asList(
-            ClimateFunction.WHEEL_HEAT);
-    private static final List<ClimateFunction> SEATS_RIGHT = Arrays.asList(
+            ClimateFunction.REAR_LEFT_HEAT, ClimateFunction.WHEEL_HEAT,
             ClimateFunction.REAR_RIGHT_HEAT, ClimateFunction.PASSENGER_VENT,
             ClimateFunction.PASSENGER_HEAT);
+    private static final List<ClimateFunction> LEGACY_CONSOLE_GLASS = Arrays.asList(
+            ClimateFunction.WINDSHIELD_HEAT, ClimateFunction.DEFROST_MAX,
+            ClimateFunction.REAR_DEFROST);
 
-    static TileGroup group(ClimateFunction function) {
-        switch (function) {
-            case WINDSHIELD_HEAT:
-            case DEFROST_MAX:
-            case REAR_DEFROST:
-                return TileGroup.GLASS;
-            default:
-                if (SEATS_LEFT.contains(function) || SEATS_CENTER.contains(function)
-                        || SEATS_RIGHT.contains(function)) {
-                    return TileGroup.SEATS;
-                }
-                return TileGroup.CLIMATE;
-        }
-    }
-
-    /**
-     * Tile slots row by row; {@code null} marks an empty cell. Classic rows follow the user's
-     * order. Console rows put climate modes, then glass, then seats; a group starts a new row
-     * unless it fits whole into the rest of the current one, and a seat row of its own is
-     * mirrored with an empty middle.
-     */
+    /** Tile slots row by row in the user's order; {@code null} marks an empty cell. */
     List<ClimateFunction[]> tileRows() {
         List<ClimateFunction[]> rows = new ArrayList<>();
-        if (style != Style.CONSOLE) {
-            appendWrapped(rows, functions, 0);
-            return rows;
-        }
-        int used = 0;
-        for (TileGroup group : TileGroup.values()) {
-            List<ClimateFunction> members = groupMembers(group);
-            if (members.isEmpty()) {
-                continue;
-            }
-            if (used > 0 && used + members.size() <= columns) {
-                ClimateFunction[] last = rows.get(rows.size() - 1);
-                for (ClimateFunction function : members) {
-                    last[used++] = function;
-                }
-                continue;
-            }
-            if (group == TileGroup.SEATS && members.size() <= columns) {
-                rows.add(mirroredSeats(members));
-                used = columns;
-                continue;
-            }
-            used = appendWrapped(rows, members, 0);
-        }
+        appendWrapped(rows, functions, 0);
         return rows;
     }
 
-    private List<ClimateFunction> groupMembers(TileGroup group) {
-        List<ClimateFunction> members = new ArrayList<>();
-        if (group != TileGroup.SEATS) {
-            for (ClimateFunction function : functions) {
-                if (group(function) == group) {
-                    members.add(function);
-                }
-            }
-            return members;
-        }
-        for (List<ClimateFunction> side : Arrays.asList(SEATS_LEFT, SEATS_CENTER, SEATS_RIGHT)) {
-            for (ClimateFunction function : side) {
-                if (functions.contains(function)) {
-                    members.add(function);
-                }
+    /**
+     * Console layouts used to group tiles (climate modes, glass, mirrored seats) whatever the
+     * saved order; puts the saved order into that sequence so they open looking the same.
+     */
+    private void adoptLegacyConsoleOrder() {
+        List<ClimateFunction> climate = new ArrayList<>();
+        List<ClimateFunction> glass = new ArrayList<>();
+        for (ClimateFunction function : functions) {
+            if (LEGACY_CONSOLE_GLASS.contains(function)) {
+                glass.add(function);
+            } else if (!LEGACY_CONSOLE_SEATS.contains(function)) {
+                climate.add(function);
             }
         }
-        return members;
-    }
-
-    private ClimateFunction[] mirroredSeats(List<ClimateFunction> seats) {
-        ClimateFunction[] row = new ClimateFunction[columns];
-        List<ClimateFunction> left = new ArrayList<>();
-        List<ClimateFunction> center = new ArrayList<>();
-        List<ClimateFunction> right = new ArrayList<>();
-        for (ClimateFunction function : seats) {
-            (SEATS_LEFT.contains(function) ? left
-                    : SEATS_CENTER.contains(function) ? center : right).add(function);
+        List<ClimateFunction> ordered = new ArrayList<>(climate);
+        ordered.addAll(glass);
+        for (ClimateFunction function : LEGACY_CONSOLE_SEATS) {
+            if (functions.contains(function)) {
+                ordered.add(function);
+            }
         }
-        int free = columns - seats.size();
-        int slot = 0;
-        for (ClimateFunction function : left) {
-            row[slot++] = function;
-        }
-        slot += free / 2;
-        for (ClimateFunction function : center) {
-            row[slot++] = function;
-        }
-        slot += free - free / 2;
-        for (ClimateFunction function : right) {
-            row[slot++] = function;
-        }
-        return row;
+        functions.clear();
+        functions.addAll(ordered);
     }
 
     /** Wraps the functions into new rows; returns the cells used in the last row. */
@@ -368,20 +306,15 @@ final class WidgetConfig {
         move(functions, function, direction);
     }
 
-    /** Console seats are mirrored like the cabin, so only classic tiles and console modes move. */
-    boolean canDragTile(ClimateFunction function) {
-        return style != Style.CONSOLE || group(function) != TileGroup.SEATS;
-    }
-
     /**
      * Drops a dragged tile onto a slot of {@link #tileRows()}: it takes the place of the tile
-     * there, or goes last on an empty classic slot. Console tiles stay inside their group.
+     * there, or goes last on an empty slot.
      *
      * @return whether the order changed
      */
     boolean dropTile(ClimateFunction function, int row, int column) {
         List<ClimateFunction[]> rows = tileRows();
-        if (!canDragTile(function) || !functions.contains(function) || row < 0
+        if (!functions.contains(function) || row < 0
                 || row >= rows.size() || column < 0 || column >= columns) {
             return false;
         }
@@ -391,14 +324,8 @@ final class WidgetConfig {
         }
         int index;
         if (target == null) {
-            if (style == Style.CONSOLE) {
-                return false;
-            }
             index = functions.size() - 1;
         } else {
-            if (style == Style.CONSOLE && group(target) != group(function)) {
-                return false;
-            }
             index = functions.indexOf(target);
         }
         if (functions.indexOf(function) == index) {
@@ -424,7 +351,7 @@ final class WidgetConfig {
     String toJson() {
         try {
             JSONObject json = new JSONObject();
-            json.put("version", 1);
+            json.put("version", VERSION);
             JSONArray order = new JSONArray();
             for (Block block : blockOrder) {
                 order.put(block.name());
@@ -435,6 +362,7 @@ final class WidgetConfig {
             json.put("tilesEnabled", tilesEnabled);
             json.put("temperatureDual", temperatureDual);
             json.put("temperatureHeader", temperatureHeader);
+            json.put("temperatureBar", temperatureBar);
             json.put("temperatureButtons", temperatureButtons);
             json.put("fanButtons", fanButtons);
             json.put("fanBar", fanBar);
@@ -499,6 +427,7 @@ final class WidgetConfig {
         config.tilesEnabled = json.optBoolean("tilesEnabled", config.tilesEnabled);
         config.temperatureDual = json.optBoolean("temperatureDual", config.temperatureDual);
         config.temperatureHeader = json.optBoolean("temperatureHeader", config.temperatureHeader);
+        config.temperatureBar = json.optBoolean("temperatureBar", config.temperatureBar);
         config.temperatureButtons = json.optBoolean("temperatureButtons",
                 config.temperatureButtons);
         config.fanButtons = json.optBoolean("fanButtons", config.fanButtons);
@@ -529,6 +458,9 @@ final class WidgetConfig {
                     config.functions.add(function);
                 }
             }
+        }
+        if (config.style == Style.CONSOLE && json.optInt("version", 1) < 2) {
+            config.adoptLegacyConsoleOrder();
         }
         config.columns = clamp(json.optInt("columns", config.columns), COLUMNS_MIN, COLUMNS_MAX);
         config.tileStyle = enumValue(TileStyle.class, json.optString("tileStyle"),

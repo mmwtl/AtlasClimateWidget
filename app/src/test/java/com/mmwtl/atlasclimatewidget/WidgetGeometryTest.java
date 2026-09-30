@@ -25,6 +25,17 @@ public final class WidgetGeometryTest {
         assertEquals(6, plan.strips.size());
     }
 
+    @Test public void temperatureBlockWithoutBarKeepsTheSensorLine() {
+        WidgetConfig config = new WidgetConfig();
+        config.temperatureBar = false;
+        config.fanEnabled = false;
+        config.tilesEnabled = false;
+        WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
+        assertEquals(1, plan.strips.size());
+        assertEquals(WidgetGeometry.RowKind.HEADER, plan.strips.get(0).row.kind);
+        assertEquals(0, plan.strips.get(0).zoneCount);
+    }
+
     @Test public void tileCellsCentreOnTiles() {
         WidgetConfig config = new WidgetConfig();
         WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
