@@ -93,13 +93,17 @@ public final class MainActivityTest {
     }
 
     @Test
-    public void sharedBackupTextImportsAfterConfirmation() {
+    public void openedBackupFileImportsAfterConfirmation() throws Exception {
         SettingsBackup backup = new SettingsBackup();
         backup.carModel = CarModel.CITYRAY.name();
         backup.levelsFromMax = true;
         backup.template.columns = 4;
-        Intent share = new Intent(Intent.ACTION_SEND).setType("text/plain")
-                .putExtra(Intent.EXTRA_TEXT, "копия: " + backup.toJson(false));
+        java.io.File file = java.io.File.createTempFile("backup", SettingsBackup.EXTENSION);
+        file.deleteOnExit();
+        java.nio.file.Files.write(file.toPath(),
+                backup.toJson("test").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        Intent share = new Intent(Intent.ACTION_VIEW)
+                .setDataAndType(android.net.Uri.fromFile(file), SettingsBackup.MIME);
         ActivityController<MainActivity> controller =
                 Robolectric.buildActivity(MainActivity.class, share).create().start().resume();
         try {
@@ -130,7 +134,7 @@ public final class MainActivityTest {
         prefs.setWidget(12, second);
         prefs.setWidget(5, first);
         prefs.setFanPresets(Prefs.FanPresets.FIVE);
-        String json = prefs.exportBackup(new int[]{12, 5}).toJson(true);
+        String json = prefs.exportBackup(new int[]{12, 5}).toJson("test");
         prefs.raw().edit().clear().commit();
 
         prefs.importBackup(SettingsBackup.parse(json), new int[]{40, 31, 50});

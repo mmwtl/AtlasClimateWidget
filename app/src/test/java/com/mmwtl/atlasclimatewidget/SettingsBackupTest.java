@@ -24,8 +24,8 @@ public final class SettingsBackupTest {
         backup.widgets.add(first);
         backup.widgets.add(second);
 
-        for (boolean indented : new boolean[]{false, true}) {
-            SettingsBackup copy = SettingsBackup.parse(backup.toJson(indented));
+        {
+            SettingsBackup copy = SettingsBackup.parse(backup.toJson("1.2"));
             assertNotNull(copy);
             assertEquals(CarModel.CITYRAY.name(), copy.carModel);
             assertEquals(10, copy.tempStepTenths);
@@ -37,7 +37,6 @@ public final class SettingsBackupTest {
             assertEquals(WidgetConfig.Style.CONSOLE, copy.widgets.get(0).style);
             assertTrue(copy.widgets.get(1).functions.contains(ClimateFunction.ME_HOT));
         }
-        System.out.println("compact backup: " + backup.toJson(false).length() + " chars");
     }
 
     @Test public void extraWidgetsTakeTheTemplate() {
@@ -52,11 +51,12 @@ public final class SettingsBackupTest {
         assertEquals("layouts are copies", 5, backup.template.columns);
     }
 
-    @Test public void findsBackupInsideMessengerText() {
-        String json = new SettingsBackup().toJson(false);
-        SettingsBackup parsed = SettingsBackup.parse("Мои настройки:\n«" + json + "»\n");
-        assertNotNull(parsed);
-        assertFalse(parsed.levelsFromMax);
+    @Test public void writesTheSiblingFileHeader() throws Exception {
+        org.json.JSONObject json = new org.json.JSONObject(new SettingsBackup().toJson("1.2"));
+        assertEquals("atlas-climate-widget-settings", json.getString("format"));
+        assertEquals(1, json.getInt("schemaVersion"));
+        assertEquals("1.2", json.getString("appVersion"));
+        assertFalse(SettingsBackup.parse(json.toString()).levelsFromMax);
     }
 
     @Test public void rejectsForeignText() {
@@ -64,11 +64,13 @@ public final class SettingsBackupTest {
         assertNull(SettingsBackup.parse("просто текст"));
         assertNull(SettingsBackup.parse("{broken"));
         assertNull(SettingsBackup.parse("{\"columns\":3}"));
+        assertNull("another Atlas app's settings",
+                SettingsBackup.parse("{\"format\":\"atlas-app-widget-settings\"}"));
     }
 
     @Test public void toleratesMissingAndUnknownFields() {
         SettingsBackup parsed = SettingsBackup.parse(
-                "{\"app\":\"AtlasClimateWidget\",\"format\":9,\"future\":1,"
+                "{\"format\":\"atlas-climate-widget-settings\",\"schemaVersion\":9,\"future\":1,"
                         + "\"settings\":{\"carModel\":\"MARS\",\"tempStepTenths\":7}}");
         assertNotNull(parsed);
         assertEquals(CarModel.ATLAS.name(), parsed.carModel);

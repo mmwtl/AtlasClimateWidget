@@ -16,11 +16,11 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Serves the latest settings export to the app picked in the share sheet. Head units have no
- * file picker, so the backup travels as a shared file; access is granted per share intent.
+ * Serves the latest settings export to the app picked in the share sheet, like GInputBridge's
+ * file provider for .gibb. Head units have no file picker, so the backup travels as a shared
+ * file; access is granted per share intent.
  */
 public final class BackupProvider extends ContentProvider {
-    static final String MIME = "application/json";
     private static final String DIR = "export";
 
     /** Writes the backup under a dated name and returns its shareable uri. */
@@ -97,7 +97,7 @@ public final class BackupProvider extends ContentProvider {
 
     @Override
     public String getType(Uri uri) {
-        return MIME;
+        return SettingsBackup.MIME;
     }
 
     @Override

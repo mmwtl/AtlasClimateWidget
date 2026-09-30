@@ -8,13 +8,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * All settings as one shareable JSON document: global behaviour, the template for new widgets
- * and the layouts of placed widgets in widget-id order. Widget ids do not survive a reinstall,
- * so layouts are matched to the widgets on screen by position.
+ * All settings as one JSON file, in the format family of AtlasAppWidget and AtlasMediaWidget:
+ * global behaviour, the template for new widgets and the layouts of placed widgets in widget-id
+ * order. Widget ids do not survive a reinstall, so layouts are matched to the widgets on screen
+ * by position.
  */
 final class SettingsBackup {
-    static final String APP = "AtlasClimateWidget";
-    static final int FORMAT = 1;
+    /** Own extension and type, as GInputBridge's .gibb, so messengers open it with the app. */
+    static final String EXTENSION = ".acws";
+    static final String MIME = "application/acws";
+    static final String FORMAT = "atlas-climate-widget-settings";
+    static final int SCHEMA_VERSION = 1;
 
     String carModel = CarModel.ATLAS.name();
     int tempStepTenths = 5;
@@ -25,12 +29,12 @@ final class SettingsBackup {
     WidgetConfig template = new WidgetConfig();
     final List<WidgetConfig> widgets = new ArrayList<>();
 
-    /** Compact text keeps shared messages short; a shared file is indented for reading. */
-    String toJson(boolean indented) {
+    String toJson(String appVersion) {
         try {
             JSONObject json = new JSONObject();
-            json.put("app", APP);
             json.put("format", FORMAT);
+            json.put("schemaVersion", SCHEMA_VERSION);
+            json.put("appVersion", appVersion == null ? "" : appVersion);
             JSONObject settings = new JSONObject();
             settings.put("carModel", carModel);
             settings.put("tempStepTenths", tempStepTenths);
@@ -46,32 +50,24 @@ final class SettingsBackup {
                 layouts.put(new JSONObject(widget.toJson()));
             }
             json.put("widgets", layouts);
-            return indented ? json.toString(2) : json.toString();
+            return json.toString(2);
         } catch (JSONException error) {
             throw new IllegalStateException(error);
         }
     }
 
-    /**
-     * Reads a backup from shared text. Messengers may wrap the JSON in a caption or quotes, so
-     * the outermost object is cut out first. Returns {@code null} when it is not a backup.
-     */
+    /** Reads a backup file; {@code null} when it is not one of ours. */
     static SettingsBackup parse(String text) {
         if (text == null) {
             return null;
         }
-        int start = text.indexOf('{');
-        int end = text.lastIndexOf('}');
-        if (start < 0 || end <= start) {
-            return null;
-        }
         JSONObject json;
         try {
-            json = new JSONObject(text.substring(start, end + 1));
+            json = new JSONObject(text.trim());
         } catch (JSONException error) {
             return null;
         }
-        if (!APP.equals(json.optString("app"))) {
+        if (!FORMAT.equals(json.optString("format"))) {
             return null;
         }
         SettingsBackup backup = new SettingsBackup();

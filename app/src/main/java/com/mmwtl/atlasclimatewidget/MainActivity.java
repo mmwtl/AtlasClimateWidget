@@ -4,11 +4,9 @@ import android.app.AlertDialog;
 import android.appwidget.AppWidgetManager;
 import android.content.ActivityNotFoundException;
 import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -492,60 +490,35 @@ public final class MainActivity extends ScaledActivity {
         LinearLayout card = Ui.card(this);
         card.addView(Ui.heading(this, R.string.backup_title, 20));
         card.addView(hint(R.string.backup_hint));
-        LinearLayout actions = new LinearLayout(this);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
-        Ui.topMargin(actions, 12);
-        Button file = Ui.button(this, R.string.backup_share_file);
-        file.setOnClickListener(view -> shareBackupFile());
-        Button text = Ui.button(this, R.string.backup_share_text);
-        text.setOnClickListener(view -> shareBackupText());
-        actions.addView(file, weighted(0, 8));
-        actions.addView(text, weighted(0, 0));
-        card.addView(actions);
-        Button paste = Ui.button(this, R.string.backup_paste);
-        Ui.topMargin(paste, 8);
-        paste.setOnClickListener(view -> importClipboard());
-        card.addView(paste);
+        Button export = Ui.button(this, R.string.backup_export);
+        Ui.topMargin(export, 12);
+        export.setOnClickListener(view -> shareBackup());
+        card.addView(export);
         return card;
     }
 
     // ---- backup ------------------------------------------------------------------------------
 
-    private void shareBackupFile() {
-        String name = "atlas-climate-settings-"
-                + new SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.US).format(new Date())
-                + ".json";
+    /** Head units have no file picker: the backup file leaves through the share sheet. */
+    private void shareBackup() {
+        String name = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(new Date())
+                + "_AtlasClimateWidget" + SettingsBackup.EXTENSION;
         Uri uri;
         try {
             uri = BackupProvider.publish(this, name,
-                    prefs.exportBackup(ClimateService.widgetIds(this)).toJson(true));
+                    prefs.exportBackup(ClimateService.widgetIds(this)).toJson(appVersion()));
         } catch (IOException error) {
             AppLog.warn("Backup export failed", error);
             Toast.makeText(this, R.string.backup_export_failed, Toast.LENGTH_SHORT).show();
             return;
         }
         Intent send = new Intent(Intent.ACTION_SEND)
-                .setType(BackupProvider.MIME)
+                .setType(SettingsBackup.MIME)
                 .putExtra(Intent.EXTRA_STREAM, uri)
-                .putExtra(Intent.EXTRA_SUBJECT, getString(R.string.backup_share_subject))
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         send.setClipData(ClipData.newRawUri(name, uri));
-        shareBackup(send);
-    }
-
-    private void shareBackupText() {
-        shareBackup(new Intent(Intent.ACTION_SEND)
-                .setType("text/plain")
-                .putExtra(Intent.EXTRA_TEXT,
-                        prefs.exportBackup(ClimateService.widgetIds(this)).toJson(false))
-                .putExtra(Intent.EXTRA_SUBJECT, getString(R.string.backup_share_subject)));
-    }
-
-    private void shareBackup(Intent send) {
-        Intent chooser = Intent.createChooser(send, getString(R.string.backup_share_title));
-        // The app itself accepts backups; sharing one to itself would only re-import it.
-        chooser.putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS,
-                new ComponentName[]{new ComponentName(this, MainActivity.class)});
+        Intent chooser = Intent.createChooser(send, getString(R.string.backup_share_title))
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         try {
             startActivity(chooser);
         } catch (ActivityNotFoundException error) {
@@ -553,55 +526,31 @@ public final class MainActivity extends ScaledActivity {
         }
     }
 
-    private void importClipboard() {
-        ClipboardManager clipboard = getSystemService(ClipboardManager.class);
-        ClipData clip = clipboard == null ? null : clipboard.getPrimaryClip();
-        CharSequence text = clip == null || clip.getItemCount() == 0 ? null
-                : clip.getItemAt(0).coerceToText(this);
-        if (text == null || text.length() == 0) {
-            Toast.makeText(this, R.string.backup_clipboard_empty, Toast.LENGTH_SHORT).show();
-            return;
+    private String appVersion() {
+        try {
+            String name = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            return name == null ? "" : name;
+        } catch (android.content.pm.PackageManager.NameNotFoundException error) {
+            return "";
         }
-        confirmImport(text.toString());
     }
 
-    /** A backup shared to the app or opened with it, as a file or as text. */
+    /** A backup file opened with the app, e.g. tapped in a messenger, as GInputBridge does. */
     private void importShared(Intent intent) {
-        String action = intent == null ? null : intent.getAction();
-        if (!Intent.ACTION_SEND.equals(action) && !Intent.ACTION_VIEW.equals(action)
+        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())
+                || intent.getData() == null
                 || (intent.getFlags() & Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0) {
             // Reopening the task from recents replays the share; it was handled already.
             return;
         }
         setIntent(new Intent(this, MainActivity.class));
-        Uri uri = Intent.ACTION_VIEW.equals(action) ? intent.getData() : sharedStream(intent);
-        String text;
-        if (uri != null) {
-            text = readBackup(uri);
-        } else {
-            CharSequence extra = intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
-            text = extra == null ? null : extra.toString();
-        }
+        Uri uri = intent.getData();
+        String text = readBackup(uri);
         if (text == null) {
             Toast.makeText(this, R.string.backup_import_failed, Toast.LENGTH_LONG).show();
             return;
         }
         confirmImport(text);
-    }
-
-    private static Uri sharedStream(Intent intent) {
-        Uri uri = Build.VERSION.SDK_INT >= 33
-                ? intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri.class)
-                : legacyStream(intent);
-        if (uri == null && intent.getClipData() != null && intent.getClipData().getItemCount() > 0) {
-            uri = intent.getClipData().getItemAt(0).getUri();
-        }
-        return uri;
-    }
-
-    @SuppressWarnings("deprecation")
-    private static Uri legacyStream(Intent intent) {
-        return intent.getParcelableExtra(Intent.EXTRA_STREAM);
     }
 
     private String readBackup(Uri uri) {
