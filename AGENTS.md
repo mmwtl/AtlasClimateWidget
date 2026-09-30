@@ -72,6 +72,9 @@ explicit migration request. All car access goes through the GInputBridge broadca
 - Never show stale values indefinitely: values expire when the bridge stops answering, and the
   widget shows an explicit "no bridge" state.
 - Optimistic values after a command are temporary and replaced by the bridge's confirmation.
+- Controls the car ignores in the current mode rest (`TileState.dormant`): blowing directions
+  in AUTO, auto-fan presets outside it, the speed bar in AUTO. They never light up; the choice
+  the car keeps is outlined.
 - The settings preview uses the same `RemoteViews` as the widget, inert; demo values are labelled.
 - Preserve per-widget layouts across upgrades; `WidgetConfig.fromJson` must tolerate unknown and
   missing fields.

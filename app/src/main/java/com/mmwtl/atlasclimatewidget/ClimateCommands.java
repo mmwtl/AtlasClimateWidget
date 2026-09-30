@@ -44,12 +44,38 @@ final class ClimateCommands {
         final boolean active;
         /** Lit indicator bars. */
         final int level;
+        /**
+         * The car keeps the value but ignores it in the current mode: directions in AUTO,
+         * auto-fan presets outside it. {@link #active} then marks the kept choice.
+         */
+        final boolean dormant;
 
         TileState(boolean known, boolean active, int level) {
+            this(known, active, level, false);
+        }
+
+        TileState(boolean known, boolean active, int level, boolean dormant) {
             this.known = known;
             this.active = active;
             this.level = level;
+            this.dormant = dormant;
         }
+    }
+
+    /** Whether climate AUTO is on, or null while unknown. */
+    static Boolean autoMode(ClimateState state) {
+        Double raw = state.property(Hvac.AUTO, Hvac.ZONE_DRIVER);
+        return raw == null ? null : (int) Math.round(raw) == ClimateFunction.AUTO.onValue;
+    }
+
+    /** Blowing directions only apply in manual mode. */
+    static boolean directionsDormant(ClimateState state) {
+        return Boolean.TRUE.equals(autoMode(state));
+    }
+
+    /** Auto-fan presets only apply in AUTO. */
+    static boolean presetsDormant(ClimateState state) {
+        return Boolean.FALSE.equals(autoMode(state));
     }
 
     static TileState tileState(ClimateFunction function, ClimateState state, CarModel model) {
@@ -72,11 +98,13 @@ final class ClimateCommands {
             }
             case BLOW: {
                 boolean on = (blowBits(value) & function.blowBit) != 0;
-                return new TileState(true, on, on ? 1 : 0);
+                return new TileState(true, on, on ? 1 : 0, directionsDormant(state));
             }
             case SELECT: {
                 boolean on = value == function.onValue;
-                return new TileState(true, on, function.rank);
+                boolean dormant = function.propertyId(model) == Hvac.AUTO_FAN_SETTING
+                        && presetsDormant(state);
+                return new TileState(true, on, function.rank, dormant);
             }
             default:
                 return TileState.UNKNOWN;
@@ -197,7 +225,8 @@ final class ClimateCommands {
     static FanState fanState(ClimateState state) {
         Double speed = state.property(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL);
         Double autoFan = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL);
-        boolean auto = autoFan != null && isAutoFan((int) Math.round(autoFan));
+        boolean auto = autoFan != null && isAutoFan((int) Math.round(autoFan))
+                || Boolean.TRUE.equals(autoMode(state));
         if (speed == null) {
             return new FanState(auto, auto, 0);
         }
@@ -290,7 +319,8 @@ final class ClimateCommands {
                 return single(Command.setInt(id, function.area, function.levels[next]));
             }
             case BLOW: {
-                int bits = raw == null ? 0 : blowBits(current);
+                // In AUTO the kept directions are not in use, so a tap picks only this one.
+                int bits = raw == null || directionsDormant(state) ? 0 : blowBits(current);
                 int nextBits = bits ^ function.blowBit;
                 if (nextBits == 0) {
                     return Collections.emptyList();

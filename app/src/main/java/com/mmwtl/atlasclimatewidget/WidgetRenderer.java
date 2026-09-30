@@ -29,6 +29,9 @@ final class WidgetRenderer {
     private static final float BAR_SPACING_RATIO = 5f / 86f;
     private static final float TOGGLE_WIDTH_RATIO = 36f / 86f;
     private static final float UNKNOWN_ALPHA = 0.4f;
+    /** Content of controls the car ignores in the current mode, see TileState.dormant. */
+    private static final int DORMANT_ALPHA = 90;
+    private static final int DORMANT_KEPT_ALPHA = 200;
 
     private static final Typeface MEDIUM = Typeface.create("sans-serif-medium",
             Typeface.NORMAL);
@@ -465,6 +468,7 @@ final class WidgetRenderer {
         int[] labels = presetLabels();
         int activePreset = ClimateCommands.fanPreset(state, config.fanPresetCount);
         boolean presetsKnown = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL) != null;
+        boolean presetsDormant = ClimateCommands.presetsDormant(state);
         boolean withLabels = directions == 0;
 
         float height = strip.contentHeight;
@@ -479,15 +483,20 @@ final class WidgetRenderer {
             boolean direction = index < directions;
             boolean on;
             boolean known;
+            boolean dormant;
             if (direction) {
                 ClimateCommands.TileState tileState = ClimateCommands.tileState(
                         WidgetConfig.FAN_DIRECTIONS[index], state, model);
                 on = tileState.active;
                 known = tileState.known;
+                dormant = tileState.dormant;
             } else {
                 on = index - directions == activePreset;
                 known = presetsKnown;
+                dormant = presetsDormant;
             }
+            boolean kept = dormant && on;
+            on &= !dormant;
             float left = plan.padding + index * cell + (index == 0 ? 0f : gap / 2f);
             float right = plan.padding + (index + 1) * cell
                     - (index == strip.zoneCount - 1 ? 0f : gap / 2f);
@@ -503,6 +512,9 @@ final class WidgetRenderer {
                 background = Ui.SURFACE_RAISED;
                 content = Ui.TEXT;
             }
+            if (dormant) {
+                content = withAlpha(Ui.TEXT, kept ? DORMANT_KEPT_ALPHA : DORMANT_ALPHA);
+            }
             if (!known) {
                 content = withAlpha(content, Math.round(255 * UNKNOWN_ALPHA));
             }
@@ -510,6 +522,9 @@ final class WidgetRenderer {
             paint.setColor(background);
             rect.set(left, top, right, top + pillHeight);
             canvas.drawRoundRect(rect, radius, radius, paint);
+            if (kept) {
+                drawKeptOutline(canvas, rect, radius, ClimateFunction.Tone.NEUTRAL);
+            }
             float cx = (left + right) / 2f;
             float cy = top + pillHeight / 2f;
             float iconMax = Math.min(right - left, pillHeight);
@@ -566,6 +581,7 @@ final class WidgetRenderer {
         int[] labels = presetLabels();
         int activePreset = ClimateCommands.fanPreset(state, config.fanPresetCount);
         boolean presetsKnown = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL) != null;
+        boolean presetsDormant = ClimateCommands.presetsDormant(state);
         float height = strip.contentHeight;
         float inner = plan.width - 2f * plan.padding;
         float cell = inner / strip.zoneCount;
@@ -605,18 +621,31 @@ final class WidgetRenderer {
         for (int index = 0; index < strip.zoneCount; index++) {
             boolean on;
             boolean known;
+            boolean dormant;
             if (directions) {
                 ClimateCommands.TileState tileState = ClimateCommands.tileState(
                         WidgetConfig.FAN_DIRECTIONS[index], state, model);
                 on = tileState.active;
                 known = tileState.known;
+                dormant = tileState.dormant;
             } else {
                 on = index == activePreset;
                 known = presetsKnown;
+                dormant = presetsDormant;
             }
+            boolean kept = dormant && on;
+            on &= !dormant;
             float left = plan.padding + index * cell;
             float right = left + cell;
             int content = Ui.TEXT;
+            if (kept) {
+                content = withAlpha(Ui.TEXT, DORMANT_KEPT_ALPHA);
+                float innerRadius = Math.max(0f, radius - inset);
+                rect.set(left + inset, inset, right - inset, height - inset);
+                drawKeptOutline(canvas, rect, innerRadius, ClimateFunction.Tone.NEUTRAL);
+            } else if (dormant) {
+                content = withAlpha(Ui.TEXT, DORMANT_ALPHA);
+            }
             if (on) {
                 paint.setColor(config.filledActive
                         ? config.palette.tile(ClimateFunction.Tone.NEUTRAL)
@@ -626,13 +655,13 @@ final class WidgetRenderer {
                 float innerRadius = Math.max(0f, radius - inset);
                 rect.set(left + inset, inset, right - inset, height - inset);
                 canvas.drawRoundRect(rect, innerRadius, innerRadius, paint);
-            } else if (index > 0 && !previousOn) {
+            } else if (index > 0 && !previousOn && !kept) {
                 paint.setColor(withAlpha(Ui.TEXT, 22));
                 float thickness = Math.max(1f, dp);
                 canvas.drawRect(left - thickness / 2f, height * 0.28f, left + thickness / 2f,
                         height * 0.72f, paint);
             }
-            previousOn = on;
+            previousOn = on || kept;
             if (!known) {
                 content = withAlpha(content, Math.round(255 * UNKNOWN_ALPHA));
             }
@@ -694,6 +723,13 @@ final class WidgetRenderer {
             ClimateCommands.TileState tileState) {
         boolean iconStyle = config.tileStyle == WidgetConfig.TileStyle.ICON;
         boolean withLabel = config.tileStyle == WidgetConfig.TileStyle.TILE_LABEL;
+        boolean dormant = tileState.dormant;
+        boolean kept = dormant && tileState.active;
+        if (dormant) {
+            // A resting control never lights up; its kept choice is only outlined.
+            tileState = new ClimateCommands.TileState(tileState.known, false,
+                    function.kind == ClimateFunction.Kind.SELECT ? tileState.level : 0);
+        }
         boolean active = tileState.active;
         float size = Math.min(tile.width(), tile.height());
         // Flattened console tiles have spare width; the glyph stack still fits their height.
@@ -723,6 +759,16 @@ final class WidgetRenderer {
             paint.setShader(null);
             paint.setColor(background);
             canvas.drawRoundRect(tile, radius, radius, paint);
+            if (kept) {
+                drawKeptOutline(canvas, tile, radius, function.tone);
+            }
+        }
+        if (kept && iconStyle) {
+            content = withAlpha(config.palette.tile(function.tone), DORMANT_KEPT_ALPHA);
+        } else if (kept) {
+            content = withAlpha(Ui.TEXT, DORMANT_KEPT_ALPHA);
+        } else if (dormant) {
+            content = withAlpha(content, DORMANT_ALPHA);
         }
         if (!tileState.known) {
             content = withAlpha(content, Math.round(255 * UNKNOWN_ALPHA));
@@ -815,6 +861,21 @@ final class WidgetRenderer {
     }
 
     // ---- helpers -----------------------------------------------------------------------------
+
+    /** Marks the choice a resting control keeps for when its mode returns. */
+    private void drawKeptOutline(Canvas canvas, RectF shape, float radius,
+            ClimateFunction.Tone tone) {
+        float stroke = Math.max(1.5f, 1.5f * dp);
+        paint.setShader(null);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(stroke);
+        paint.setColor(withAlpha(config.palette.tile(tone), 170));
+        RectF inset = new RectF(shape);
+        inset.inset(stroke / 2f, stroke / 2f);
+        float r = Math.max(0f, radius - stroke / 2f);
+        canvas.drawRoundRect(inset, r, r, paint);
+        paint.setStyle(Paint.Style.FILL);
+    }
 
     private void drawIcon(Canvas canvas, int res, float cx, float cy, float size, int color) {
         Drawable drawable = context.getDrawable(res);

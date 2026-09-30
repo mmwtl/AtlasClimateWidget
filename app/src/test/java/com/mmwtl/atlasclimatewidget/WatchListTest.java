@@ -17,13 +17,25 @@ public final class WatchListTest {
         assertTrue(watches(watch, Hvac.ZONE_PASSENGER));
         assertTrue(watches(watch, Gib.AREA_GLOBAL));
 
+        assertTrue(watch.properties.contains(
+                new WatchList.Key(Hvac.AUTO, Hvac.ZONE_DRIVER, false)));
+
         for (ClimateFunction function : ClimateFunction.values()) {
             if (function.kind == ClimateFunction.Kind.BLOW) {
                 config.setFunctionEnabled(function, false);
             }
         }
+        config.fanDirections = false;
         watch = WatchList.of(Collections.singletonList(config), CarModel.ATLAS);
         assertFalse(watches(watch, Hvac.ZONE_ROW_1_ALL));
+    }
+
+    @Test public void fanBlockDirectionsAreWatchedWithoutTiles() {
+        WidgetConfig config = new WidgetConfig();
+        config.tilesEnabled = false;
+        WatchList watch = WatchList.of(Collections.singletonList(config), CarModel.ATLAS);
+        assertTrue(watches(watch, Hvac.ZONE_DRIVER));
+        assertTrue(watches(watch, Hvac.ZONE_ROW_1_ALL));
     }
 
     private static boolean watches(WatchList watch, int area) {

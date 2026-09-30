@@ -144,4 +144,35 @@ public final class ClimateCommandsTest {
         assertTrue(ClimateCommands.tileState(ClimateFunction.ME_HOT, ClimateState.EMPTY,
                 CarModel.ATLAS).known);
     }
+
+    @Test public void directionsRestInAutoAndPresetsOutsideIt() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.BLOWING_MODE, Hvac.ZONE_DRIVER, Hvac.BLOWING_FACE_AND_LEG, 0);
+        store.putProperty(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL, Hvac.AUTO_FAN_NORMAL, 0);
+        ClimateState unknown = store.snapshot(0);
+        assertFalse(ClimateCommands.tileState(ClimateFunction.BLOW_LEGS, unknown,
+                CarModel.ATLAS).dormant);
+        assertFalse(ClimateCommands.tileState(ClimateFunction.FAN_NORMAL, unknown,
+                CarModel.ATLAS).dormant);
+
+        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 1, 0);
+        ClimateState auto = store.snapshot(0);
+        ClimateCommands.TileState legs = ClimateCommands.tileState(ClimateFunction.BLOW_LEGS,
+                auto, CarModel.ATLAS);
+        assertTrue(legs.dormant);
+        assertTrue(legs.active);
+        assertFalse(ClimateCommands.tileState(ClimateFunction.FAN_NORMAL, auto,
+                CarModel.ATLAS).dormant);
+        assertTrue(ClimateCommands.fanState(auto).auto);
+        // In AUTO a tap picks only the tapped direction instead of toggling the kept ones.
+        assertEquals(Hvac.BLOWING_LEG, (int) ClimateCommands.press(ClimateFunction.BLOW_LEGS,
+                auto, CarModel.ATLAS, false).get(0).value);
+
+        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 0, 0);
+        ClimateState manual = store.snapshot(0);
+        assertFalse(ClimateCommands.tileState(ClimateFunction.BLOW_LEGS, manual,
+                CarModel.ATLAS).dormant);
+        assertTrue(ClimateCommands.tileState(ClimateFunction.FAN_NORMAL, manual,
+                CarModel.ATLAS).dormant);
+    }
 }
