@@ -50,6 +50,8 @@
     <string name="align_top">Сверху</string>
     <string name="align_center">По центру</string>
     <string name="align_bottom">Снизу</string>
+    <string name="align_left">Слева</string>
+    <string name="align_right">Справа</string>
     <string name="height_report_unknown">Лаунчер ещё не сообщил размер ячейки — высота подстроится после размещения.</string>
     <string name="height_report_filled">Заполняет ячейку %1$d dp целиком.</string>
     <string name="height_report_content">Содержимое %1$d из %2$d dp, свободно %3$d dp.</string>

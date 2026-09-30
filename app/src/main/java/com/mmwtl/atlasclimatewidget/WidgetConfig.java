@@ -61,6 +61,19 @@ final class WidgetConfig {
         }
     }
 
+    /** Position of the cabin/outside sensor line across the widget. */
+    enum HeaderAlign {
+        LEFT(R.string.align_left),
+        CENTER(R.string.align_center),
+        RIGHT(R.string.align_right);
+
+        final int titleRes;
+
+        HeaderAlign(int titleRes) {
+            this.titleRes = titleRes;
+        }
+    }
+
     /** Whether each block gets its own card or all blocks share one. */
     enum CardLayout {
         SEPARATE(R.string.card_layout_separate),
@@ -125,6 +138,7 @@ final class WidgetConfig {
 
     boolean temperatureDual;
     boolean temperatureHeader = true;
+    HeaderAlign headerAlign = HeaderAlign.CENTER;
     /** The set-temperature bar; without it the block may keep only the cabin/outside line. */
     boolean temperatureBar = true;
     boolean temperatureButtons = true;
@@ -362,6 +376,7 @@ final class WidgetConfig {
             json.put("tilesEnabled", tilesEnabled);
             json.put("temperatureDual", temperatureDual);
             json.put("temperatureHeader", temperatureHeader);
+            json.put("headerAlign", headerAlign.name());
             json.put("temperatureBar", temperatureBar);
             json.put("temperatureButtons", temperatureButtons);
             json.put("fanButtons", fanButtons);
@@ -427,6 +442,8 @@ final class WidgetConfig {
         config.tilesEnabled = json.optBoolean("tilesEnabled", config.tilesEnabled);
         config.temperatureDual = json.optBoolean("temperatureDual", config.temperatureDual);
         config.temperatureHeader = json.optBoolean("temperatureHeader", config.temperatureHeader);
+        config.headerAlign = enumValue(HeaderAlign.class, json.optString("headerAlign"),
+                config.headerAlign);
         config.temperatureBar = json.optBoolean("temperatureBar", config.temperatureBar);
         config.temperatureButtons = json.optBoolean("temperatureButtons",
                 config.temperatureButtons);

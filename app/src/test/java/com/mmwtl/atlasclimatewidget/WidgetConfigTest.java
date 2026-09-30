@@ -23,6 +23,7 @@ public final class WidgetConfigTest {
         config.heightMode = WidgetConfig.HeightMode.CONTENT;
         config.verticalAlign = WidgetConfig.VerticalAlign.BOTTOM;
         config.cardLayout = WidgetConfig.CardLayout.SINGLE;
+        config.headerAlign = WidgetConfig.HeaderAlign.RIGHT;
         config.style = WidgetConfig.Style.CONSOLE;
         WidgetConfig copy = WidgetConfig.fromJson(config.toJson());
         assertEquals(WidgetConfig.Block.TILES, copy.blockOrder.get(0));
@@ -50,6 +51,8 @@ public final class WidgetConfigTest {
         assertEquals(WidgetConfig.HeightMode.FILL, WidgetConfig.fromJson("{}").heightMode);
         assertEquals(WidgetConfig.CardLayout.SINGLE, copy.cardLayout);
         assertEquals(WidgetConfig.CardLayout.SEPARATE, WidgetConfig.fromJson("{}").cardLayout);
+        assertEquals(WidgetConfig.HeaderAlign.RIGHT, copy.headerAlign);
+        assertEquals(WidgetConfig.HeaderAlign.CENTER, WidgetConfig.fromJson("{}").headerAlign);
         assertEquals(WidgetConfig.Style.CONSOLE, copy.style);
         assertEquals(WidgetConfig.Style.CLASSIC, WidgetConfig.fromJson("{}").style);
         assertEquals(WidgetConfig.Style.CLASSIC,

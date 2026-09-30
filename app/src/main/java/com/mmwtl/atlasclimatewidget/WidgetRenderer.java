@@ -143,7 +143,7 @@ final class WidgetRenderer {
 
     // ---- temperature -------------------------------------------------------------------------
 
-    /** Cabin and outside temperature, centred as one line; the bridge status follows them. */
+    /** Cabin and outside temperature as one aligned line; the bridge status follows them. */
     private void drawHeader(Canvas canvas, WidgetGeometry.Strip strip) {
         float height = strip.contentHeight;
         float baseline = height * 0.78f;
@@ -159,7 +159,13 @@ final class WidgetRenderer {
         if (status != null) {
             width += separatorWidth(separator, size) + statusWidth(status, size);
         }
-        float x = Math.max(plan.padding, (plan.width - width) / 2f);
+        float free = plan.width - 2f * plan.padding - width;
+        float x = plan.padding;
+        if (config.headerAlign == WidgetConfig.HeaderAlign.CENTER) {
+            x += Math.max(0f, free / 2f);
+        } else if (config.headerAlign == WidgetConfig.HeaderAlign.RIGHT) {
+            x += Math.max(0f, free);
+        }
         x = drawLabelValue(canvas, context.getString(R.string.header_inside), inside, x,
                 baseline, size);
         x = drawSeparator(canvas, separator, x, baseline, size);

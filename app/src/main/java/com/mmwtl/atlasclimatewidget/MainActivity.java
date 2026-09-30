@@ -721,6 +721,9 @@ public final class MainActivity extends ScaledActivity {
                     options.addView(partSwitch(R.string.temp_header, config.temperatureHeader,
                             value -> config.temperatureHeader = value,
                             config::hasTemperatureParts));
+                    if (config.temperatureHeader) {
+                        options.addView(headerAligns());
+                    }
                     options.addView(partSwitch(R.string.temp_part_bar, config.temperatureBar,
                             value -> config.temperatureBar = value,
                             config::hasTemperatureParts));
@@ -757,6 +760,27 @@ public final class MainActivity extends ScaledActivity {
             options.setAlpha(enabled ? 1f : 0.45f);
             blocksHost.addView(options);
         }
+    }
+
+    private LinearLayout headerAligns() {
+        LinearLayout aligns = new LinearLayout(this);
+        aligns.setOrientation(LinearLayout.HORIZONTAL);
+        Ui.topMargin(aligns, 6);
+        for (WidgetConfig.HeaderAlign align : WidgetConfig.HeaderAlign.values()) {
+            TextView segment = Ui.segment(this, align.titleRes);
+            Ui.setSegmentSelected(this, segment, config.headerAlign == align);
+            if (config.headerAlign != align) {
+                // The row sits on a nested surface, where the usual segment colour disappears.
+                segment.setBackground(Ui.rounded(Ui.SURFACE, Ui.dp(this, 8)));
+            }
+            segment.setOnClickListener(view -> {
+                config.headerAlign = align;
+                changed();
+                rebuildBlocks();
+            });
+            Ui.addSegment(aligns, segment);
+        }
+        return aligns;
     }
 
     private void rebuildTiles() {
