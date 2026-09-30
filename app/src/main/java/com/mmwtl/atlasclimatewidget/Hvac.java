@@ -62,6 +62,8 @@ final class Hvac {
     static final int BLOWING_FACE_AND_WINDOW = 268894469;
     static final int BLOWING_LEG_AND_WINDOW = 268894470;
     static final int BLOWING_ALL = 268894471;
+    /** Reported instead of a direction while AUTO is on. */
+    static final int BLOWING_AUTO = 268894472;
 
     static final int[] SEAT_HEAT_LEVELS = {0, 268763649, 268763650, 268763651};
     static final int[] SEAT_VENT_LEVELS = {0, 268763393, 268763394, 268763395};

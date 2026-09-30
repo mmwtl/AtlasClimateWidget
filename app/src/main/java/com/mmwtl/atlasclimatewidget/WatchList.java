@@ -77,11 +77,6 @@ final class WatchList {
         }
         if (blow) {
             property(Hvac.BLOWING_MODE, Hvac.ZONE_DRIVER, false);
-            // The bridge forwards a change only for the exact area it was set in, and the
-            // car's own climate screen sets the direction outside the driver zone. These
-            // subscriptions only wake the resync that reads the driver zone.
-            property(Hvac.BLOWING_MODE, Hvac.ZONE_ROW_1_ALL, false);
-            property(Hvac.BLOWING_MODE, Hvac.ZONE_PASSENGER, false);
         }
         if (blow || presets) {
             // Directions apply only in manual mode and presets only in AUTO.

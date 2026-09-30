@@ -161,6 +161,11 @@ public final class ClimateCommandsTest {
                 auto, CarModel.ATLAS);
         assertTrue(legs.dormant);
         assertTrue(legs.active);
+        // The Atlas reports no direction at all in AUTO.
+        store.putProperty(Hvac.BLOWING_MODE, Hvac.ZONE_DRIVER, Hvac.BLOWING_AUTO, 0);
+        assertFalse(ClimateCommands.tileState(ClimateFunction.BLOW_LEGS, store.snapshot(0),
+                CarModel.ATLAS).active);
+        store.putProperty(Hvac.BLOWING_MODE, Hvac.ZONE_DRIVER, Hvac.BLOWING_FACE_AND_LEG, 0);
         assertFalse(ClimateCommands.tileState(ClimateFunction.FAN_NORMAL, auto,
                 CarModel.ATLAS).dormant);
         assertTrue(ClimateCommands.fanState(auto).auto);
