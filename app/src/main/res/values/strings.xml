@@ -159,6 +159,24 @@
     <string name="interface_hint">Меняет размер этого экрана без изменения системного масштаба ГУ.</string>
     <string name="interface_scale">Масштаб</string>
 
+    <string name="backup_title">Резервная копия настроек</string>
+    <string name="backup_hint">Раскладки всех виджетов, шаблон и настройки управления. Файлового менеджера на ГУ нет, поэтому копия отправляется через «Поделиться» — например, себе в Telegram. Чтобы восстановить, поделитесь этим файлом или текстом с приложением «Импорт настроек Atlas Climate» либо скопируйте текст и вставьте его кнопкой ниже.</string>
+    <string name="backup_share_file">Поделиться файлом</string>
+    <string name="backup_share_text">Поделиться текстом</string>
+    <string name="backup_paste">Вставить из буфера обмена</string>
+    <string name="backup_share_title">Экспорт настроек</string>
+    <string name="backup_share_subject">Настройки Atlas Climate Widget</string>
+    <string name="backup_no_target">Нет приложений, которые могут принять копию</string>
+    <string name="backup_export_failed">Не удалось подготовить файл копии</string>
+    <string name="backup_import_target">Импорт настроек Atlas Climate</string>
+    <string name="backup_import_title">Импортировать настройки?</string>
+    <string name="backup_import_summary">В копии: шаблон, раскладок виджетов — %1$d, автомобиль — %2$s. Текущие настройки будут заменены. Виджеты на экране (%3$d) получат раскладки по порядку, лишние — шаблон.</string>
+    <string name="backup_import_confirm">Импортировать</string>
+    <string name="backup_import_done">Настройки импортированы</string>
+    <string name="backup_import_invalid">Это не резервная копия Atlas Climate Widget</string>
+    <string name="backup_import_failed">Не удалось прочитать копию</string>
+    <string name="backup_clipboard_empty">В буфере обмена нет текста</string>
+
     <string name="header_inside">Салон</string>
     <string name="header_outside">Улица</string>
     <string name="header_no_bridge">нет связи с GInputBridge</string>

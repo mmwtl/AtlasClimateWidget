@@ -1,9 +1,12 @@
 package com.mmwtl.atlasclimatewidget;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import android.app.AlertDialog;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,6 +18,7 @@ import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowAlertDialog;
 import org.robolectric.shadows.ShadowLooper;
 
 @RunWith(RobolectricTestRunner.class)
@@ -86,6 +90,55 @@ public final class MainActivityTest {
         } finally {
             close(controller);
         }
+    }
+
+    @Test
+    public void sharedBackupTextImportsAfterConfirmation() {
+        SettingsBackup backup = new SettingsBackup();
+        backup.carModel = CarModel.CITYRAY.name();
+        backup.levelsFromMax = true;
+        backup.template.columns = 4;
+        Intent share = new Intent(Intent.ACTION_SEND).setType("text/plain")
+                .putExtra(Intent.EXTRA_TEXT, "копия: " + backup.toJson(false));
+        ActivityController<MainActivity> controller =
+                Robolectric.buildActivity(MainActivity.class, share).create().start().resume();
+        try {
+            AlertDialog dialog = (AlertDialog) ShadowAlertDialog.getLatestDialog();
+            assertNotNull(dialog);
+            assertTrue(dialog.isShowing());
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+            ShadowLooper.runUiThreadTasks();
+            Prefs prefs = new Prefs(controller.get());
+            assertEquals(CarModel.CITYRAY, prefs.carModel());
+            assertTrue(prefs.levelsFromMax());
+            assertEquals(4, prefs.template().columns);
+            assertTrue("handled share is not offered again after recreation",
+                    ShadowAlertDialog.getLatestDialog() == dialog);
+        } finally {
+            close(controller);
+        }
+    }
+
+    @Test
+    public void exportedBackupRestoresWidgetsByPosition() {
+        MainActivity activity = Robolectric.buildActivity(MainActivity.class).create().get();
+        Prefs prefs = new Prefs(activity);
+        WidgetConfig first = new WidgetConfig();
+        first.columns = 3;
+        WidgetConfig second = new WidgetConfig();
+        second.style = WidgetConfig.Style.CONSOLE;
+        prefs.setWidget(12, second);
+        prefs.setWidget(5, first);
+        prefs.setFanPresets(Prefs.FanPresets.FIVE);
+        String json = prefs.exportBackup(new int[]{12, 5}).toJson(true);
+        prefs.raw().edit().clear().commit();
+
+        prefs.importBackup(SettingsBackup.parse(json), new int[]{40, 31, 50});
+        assertEquals(Prefs.FanPresets.FIVE, prefs.fanPresets());
+        assertEquals(3, prefs.widget(31).columns);
+        assertEquals(WidgetConfig.Style.CONSOLE, prefs.widget(40).style);
+        assertTrue("extra widget gets the template", prefs.hasWidget(50));
+        assertEquals(new WidgetConfig().columns, prefs.widget(50).columns);
     }
 
     private static ActivityController<MainActivity> open() {

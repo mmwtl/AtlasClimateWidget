@@ -1,7 +1,14 @@
 package com.mmwtl.atlasclimatewidget;
 
+import android.app.AlertDialog;
 import android.appwidget.AppWidgetManager;
+import android.content.ActivityNotFoundException;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.ComponentName;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -25,8 +32,15 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Settings editor with Blocks, Tiles, Look and System tabs pinned under the title, like the
@@ -45,6 +59,8 @@ public final class MainActivity extends ScaledActivity {
             R.string.tab_look, R.string.tab_system};
     /** The pinned preview may take this share of the screen; the settings scroll below it. */
     private static final float PREVIEW_MAX_SCREEN_SHARE = 0.28f;
+    /** Backups are a few kilobytes; anything far larger is not one. */
+    private static final int BACKUP_MAX_BYTES = 1 << 20;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable statusTask = new Runnable() {
@@ -94,6 +110,9 @@ public final class MainActivity extends ScaledActivity {
                 ? TAB_BLOCKS : savedInstanceState.getInt(STATE_TAB, TAB_BLOCKS));
         setContentView(content);
         Ui.applySystemBarInsets(content);
+        if (savedInstanceState == null) {
+            importShared(getIntent());
+        }
     }
 
     @Override
@@ -105,6 +124,7 @@ public final class MainActivity extends ScaledActivity {
     @Override
     protected void onNewIntent(android.content.Intent intent) {
         super.onNewIntent(intent);
+        importShared(intent);
         int requested = requestedWidget(intent);
         if (requested != TEMPLATE && requested != editedWidget) {
             editedWidget = requested;
@@ -329,6 +349,7 @@ public final class MainActivity extends ScaledActivity {
         page.addView(buildStatusCard());
         page.addView(buildBehaviourCard());
         page.addView(buildInterfaceCard());
+        page.addView(buildBackupCard());
     }
 
     private LinearLayout buildStatusCard() {
@@ -465,6 +486,170 @@ public final class MainActivity extends ScaledActivity {
                     recreate();
                 });
         return card;
+    }
+
+    private LinearLayout buildBackupCard() {
+        LinearLayout card = Ui.card(this);
+        card.addView(Ui.heading(this, R.string.backup_title, 20));
+        card.addView(hint(R.string.backup_hint));
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        Ui.topMargin(actions, 12);
+        Button file = Ui.button(this, R.string.backup_share_file);
+        file.setOnClickListener(view -> shareBackupFile());
+        Button text = Ui.button(this, R.string.backup_share_text);
+        text.setOnClickListener(view -> shareBackupText());
+        actions.addView(file, weighted(0, 8));
+        actions.addView(text, weighted(0, 0));
+        card.addView(actions);
+        Button paste = Ui.button(this, R.string.backup_paste);
+        Ui.topMargin(paste, 8);
+        paste.setOnClickListener(view -> importClipboard());
+        card.addView(paste);
+        return card;
+    }
+
+    // ---- backup ------------------------------------------------------------------------------
+
+    private void shareBackupFile() {
+        String name = "atlas-climate-settings-"
+                + new SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.US).format(new Date())
+                + ".json";
+        Uri uri;
+        try {
+            uri = BackupProvider.publish(this, name,
+                    prefs.exportBackup(ClimateService.widgetIds(this)).toJson(true));
+        } catch (IOException error) {
+            AppLog.warn("Backup export failed", error);
+            Toast.makeText(this, R.string.backup_export_failed, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent send = new Intent(Intent.ACTION_SEND)
+                .setType(BackupProvider.MIME)
+                .putExtra(Intent.EXTRA_STREAM, uri)
+                .putExtra(Intent.EXTRA_SUBJECT, getString(R.string.backup_share_subject))
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        send.setClipData(ClipData.newRawUri(name, uri));
+        shareBackup(send);
+    }
+
+    private void shareBackupText() {
+        shareBackup(new Intent(Intent.ACTION_SEND)
+                .setType("text/plain")
+                .putExtra(Intent.EXTRA_TEXT,
+                        prefs.exportBackup(ClimateService.widgetIds(this)).toJson(false))
+                .putExtra(Intent.EXTRA_SUBJECT, getString(R.string.backup_share_subject)));
+    }
+
+    private void shareBackup(Intent send) {
+        Intent chooser = Intent.createChooser(send, getString(R.string.backup_share_title));
+        // The app itself accepts backups; sharing one to itself would only re-import it.
+        chooser.putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS,
+                new ComponentName[]{new ComponentName(this, MainActivity.class)});
+        try {
+            startActivity(chooser);
+        } catch (ActivityNotFoundException error) {
+            Toast.makeText(this, R.string.backup_no_target, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void importClipboard() {
+        ClipboardManager clipboard = getSystemService(ClipboardManager.class);
+        ClipData clip = clipboard == null ? null : clipboard.getPrimaryClip();
+        CharSequence text = clip == null || clip.getItemCount() == 0 ? null
+                : clip.getItemAt(0).coerceToText(this);
+        if (text == null || text.length() == 0) {
+            Toast.makeText(this, R.string.backup_clipboard_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        confirmImport(text.toString());
+    }
+
+    /** A backup shared to the app or opened with it, as a file or as text. */
+    private void importShared(Intent intent) {
+        String action = intent == null ? null : intent.getAction();
+        if (!Intent.ACTION_SEND.equals(action) && !Intent.ACTION_VIEW.equals(action)
+                || (intent.getFlags() & Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0) {
+            // Reopening the task from recents replays the share; it was handled already.
+            return;
+        }
+        setIntent(new Intent(this, MainActivity.class));
+        Uri uri = Intent.ACTION_VIEW.equals(action) ? intent.getData() : sharedStream(intent);
+        String text;
+        if (uri != null) {
+            text = readBackup(uri);
+        } else {
+            CharSequence extra = intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
+            text = extra == null ? null : extra.toString();
+        }
+        if (text == null) {
+            Toast.makeText(this, R.string.backup_import_failed, Toast.LENGTH_LONG).show();
+            return;
+        }
+        confirmImport(text);
+    }
+
+    private static Uri sharedStream(Intent intent) {
+        Uri uri = Build.VERSION.SDK_INT >= 33
+                ? intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri.class)
+                : legacyStream(intent);
+        if (uri == null && intent.getClipData() != null && intent.getClipData().getItemCount() > 0) {
+            uri = intent.getClipData().getItemAt(0).getUri();
+        }
+        return uri;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static Uri legacyStream(Intent intent) {
+        return intent.getParcelableExtra(Intent.EXTRA_STREAM);
+    }
+
+    private String readBackup(Uri uri) {
+        try (InputStream in = getContentResolver().openInputStream(uri)) {
+            if (in == null) {
+                return null;
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = in.read(buffer)) > 0) {
+                out.write(buffer, 0, read);
+                if (out.size() > BACKUP_MAX_BYTES) {
+                    return null;
+                }
+            }
+            return new String(out.toByteArray(), StandardCharsets.UTF_8);
+        } catch (IOException | RuntimeException error) {
+            AppLog.warn("Backup read failed: " + uri, error);
+            return null;
+        }
+    }
+
+    private void confirmImport(String text) {
+        SettingsBackup backup = SettingsBackup.parse(text);
+        if (backup == null) {
+            Toast.makeText(this, R.string.backup_import_invalid, Toast.LENGTH_LONG).show();
+            return;
+        }
+        int[] ids = ClimateService.widgetIds(this);
+        AlertDialog dialog = new AlertDialog.Builder(this,
+                android.R.style.Theme_Material_Dialog_Alert)
+                .setTitle(R.string.backup_import_title)
+                .setMessage(getString(R.string.backup_import_summary, backup.widgets.size(),
+                        getString(CarModel.fromName(backup.carModel).titleRes), ids.length))
+                .setPositiveButton(R.string.backup_import_confirm, (button, which) -> {
+                    prefs.importBackup(backup, ClimateService.widgetIds(this));
+                    ClimateService.start(this, ClimateService.ACTION_REFRESH);
+                    Toast.makeText(this, R.string.backup_import_done, Toast.LENGTH_SHORT).show();
+                    // The interface scale may have changed too; rebuild everything from prefs.
+                    recreate();
+                })
+                .setNegativeButton(R.string.setup_cancel, null)
+                .show();
+        // The scaled activity density widens the default dialog past the screen edge.
+        int screen = getResources().getDisplayMetrics().widthPixels;
+        dialog.getWindow().setLayout(Math.min(screen - Ui.dp(this, 48), Ui.dp(this, 640)),
+                ViewGroup.LayoutParams.WRAP_CONTENT);
     }
 
     // ---- constructor -------------------------------------------------------------------------

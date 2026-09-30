@@ -3,6 +3,8 @@ package com.mmwtl.atlasclimatewidget;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import java.util.Arrays;
+
 /** Global preferences and the per-widget layouts. */
 final class Prefs {
     static final String NAME = "climate_widget";
@@ -127,6 +129,46 @@ final class Prefs {
 
     void removeWidget(int widgetId) {
         preferences.edit().remove(KEY_WIDGET_PREFIX + widgetId).apply();
+    }
+
+    /** Everything the user set, with placed widgets in id order. */
+    SettingsBackup exportBackup(int[] widgetIds) {
+        SettingsBackup backup = new SettingsBackup();
+        backup.carModel = carModel().name();
+        backup.tempStepTenths = temperatureStep() >= 1f ? 10 : 5;
+        backup.levelsFromMax = levelsFromMax();
+        backup.fanPresets = fanPresets().name();
+        backup.uiScaleTenths = preferences.getInt(KEY_UI_SCALE_TENTHS, 0);
+        backup.template = template();
+        for (int id : sorted(widgetIds)) {
+            backup.widgets.add(widget(id));
+        }
+        return backup;
+    }
+
+    /** Replaces all settings; widgets on screen take the backup's layouts by position. */
+    void importBackup(SettingsBackup backup, int[] widgetIds) {
+        SharedPreferences.Editor editor = preferences.edit()
+                .putString(KEY_CAR_MODEL, CarModel.fromName(backup.carModel).name())
+                .putInt(KEY_TEMP_STEP_TENTHS, backup.tempStepTenths >= 10 ? 10 : 5)
+                .putBoolean(KEY_LEVELS_FROM_MAX, backup.levelsFromMax)
+                .putString(KEY_FAN_PRESETS, backup.fanPresets)
+                .putString(KEY_TEMPLATE, backup.template.toJson());
+        if (backup.uiScaleTenths > 0) {
+            editor.putInt(KEY_UI_SCALE_TENTHS, backup.uiScaleTenths);
+        }
+        int[] ids = sorted(widgetIds);
+        for (int position = 0; position < ids.length; position++) {
+            editor.putString(KEY_WIDGET_PREFIX + ids[position],
+                    backup.layoutFor(position).toJson());
+        }
+        editor.apply();
+    }
+
+    private static int[] sorted(int[] ids) {
+        int[] copy = ids.clone();
+        Arrays.sort(copy);
+        return copy;
     }
 
     static boolean isWidgetKey(String key) {

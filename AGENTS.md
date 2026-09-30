@@ -31,6 +31,10 @@ explicit migration request. All car access goes through the GInputBridge broadca
   Home-screen widgets cannot be dragged: `RemoteViews` only deliver clicks.
 - `WidgetSetupActivity` is the `APPWIDGET_CONFIGURE` dialog (also the launcher's ⚙ reconfigure).
   It edits a copy and saves only on confirm; a widget with reported size counts as reconfigured.
+- Settings backup: head units have no file picker, so `SettingsBackup` (global settings, template,
+  placed widgets in id order) leaves via the share sheet as a file (`BackupProvider`) or text and
+  comes back through `MainActivity`'s `SEND`/`VIEW` filters or the clipboard, always behind a
+  confirmation. Widget ids do not survive a reinstall; layouts are restored by position.
 - `ScrubActivity` is a borderless window placed over a tapped bar (from the host's source
   bounds) that lets the finger drag the value; while it is open the widget draws that strip
   card-only and the window draws content only. Commands are sent on release. The strip is
