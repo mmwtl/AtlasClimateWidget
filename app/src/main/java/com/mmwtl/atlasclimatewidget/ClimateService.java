@@ -54,6 +54,12 @@ public final class ClimateService extends Service {
      * and only the last value is sent.
      */
     private static final long SET_SPACING_MS = 700L;
+    /**
+     * After the car reports a change, every watched value is read again: one change often
+     * switches others (a new air direction turns AUTO off), and the bridge only forwards
+     * changes for the exact area they happened in.
+     */
+    private static final long RESYNC_DELAY_MS = 400L;
     /** An unconfirmed set is sent once more after this delay. */
     private static final long SET_RETRY_MS = 1_000L;
     /** The settings screen keeps the service alive for its preview without widgets. */
@@ -88,6 +94,7 @@ public final class ClimateService extends Service {
     };
 
     private final Runnable renderTask = () -> renderWidgets(false);
+    private final Runnable resyncTask = this::resync;
 
     private final BroadcastReceiver bridgeReceiver = new BroadcastReceiver() {
         @Override
@@ -271,6 +278,12 @@ public final class ClimateService extends Service {
             if (sent != null && sent.command.value == parsed) {
                 sent.confirmed = true;
             }
+            if (action.equals(Gib.PROPERTY_INT_CHANGED)
+                    || action.equals(Gib.PROPERTY_FLOAT_CHANGED)) {
+                // Results never trigger a resync, so its answers cannot loop.
+                worker.removeCallbacks(resyncTask);
+                worker.postDelayed(resyncTask, RESYNC_DELAY_MS);
+            }
         }
         scheduleRender();
     }
@@ -295,6 +308,12 @@ public final class ClimateService extends Service {
             Gib.getFloatSensor(this, sensor);
         }
         scheduleRender();
+    }
+
+    private void resync() {
+        for (WatchList.Key key : WatchList.of(configs(), prefs.carModel()).properties) {
+            request(key.id, key.area, key.isFloat);
+        }
     }
 
     private void request(int id, int area, boolean isFloat) {

@@ -66,6 +66,13 @@ final class WatchList {
                 if (function.hasProperty()) {
                     property(function.propertyId(model), function.area, false);
                 }
+                if (function.kind == ClimateFunction.Kind.BLOW) {
+                    // The bridge forwards a change only for the exact area it was set in, and
+                    // the car's own climate screen sets the direction outside the driver zone.
+                    // These subscriptions only wake the resync that reads the driver zone.
+                    property(Hvac.BLOWING_MODE, Hvac.ZONE_ROW_1_ALL, false);
+                    property(Hvac.BLOWING_MODE, Hvac.ZONE_PASSENGER, false);
+                }
             }
         }
     }

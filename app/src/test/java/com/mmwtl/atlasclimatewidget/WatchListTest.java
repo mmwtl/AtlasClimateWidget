@@ -1,0 +1,32 @@
+package com.mmwtl.atlasclimatewidget;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.util.Collections;
+
+import org.junit.Test;
+
+public final class WatchListTest {
+    @Test public void airDirectionIsWatchedBeyondTheDriverZone() {
+        WidgetConfig config = new WidgetConfig();
+        config.setFunctionEnabled(ClimateFunction.BLOW_FACE, true);
+        WatchList watch = WatchList.of(Collections.singletonList(config), CarModel.ATLAS);
+        assertTrue(watches(watch, Hvac.ZONE_DRIVER));
+        assertTrue(watches(watch, Hvac.ZONE_ROW_1_ALL));
+        assertTrue(watches(watch, Hvac.ZONE_PASSENGER));
+        assertTrue(watches(watch, Gib.AREA_GLOBAL));
+
+        for (ClimateFunction function : ClimateFunction.values()) {
+            if (function.kind == ClimateFunction.Kind.BLOW) {
+                config.setFunctionEnabled(function, false);
+            }
+        }
+        watch = WatchList.of(Collections.singletonList(config), CarModel.ATLAS);
+        assertFalse(watches(watch, Hvac.ZONE_ROW_1_ALL));
+    }
+
+    private static boolean watches(WatchList watch, int area) {
+        return watch.properties.contains(new WatchList.Key(Hvac.BLOWING_MODE, area, false));
+    }
+}
