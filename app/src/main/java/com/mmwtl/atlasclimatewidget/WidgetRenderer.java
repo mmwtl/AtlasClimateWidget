@@ -148,7 +148,7 @@ final class WidgetRenderer {
         float height = strip.contentHeight;
         float baseline = height * 0.78f;
         float size = Math.min(14f * dp, height * 0.72f);
-        String separator = "  •  ";
+        String separator = "•";
         String inside = formatWhole(state.sensor(Hvac.SENSOR_TEMPERATURE_INDOOR));
         String outside = formatWhole(state.sensor(Hvac.SENSOR_TEMPERATURE_AMBIENT));
         String status = state.isConnected() ? null
@@ -180,17 +180,20 @@ final class WidgetRenderer {
         return width + textPaint.measureText(value);
     }
 
+    /** Space on each side of a header separator, relative to the text size. */
+    private static final float SEPARATOR_GAP = 0.9f;
+
     private float separatorWidth(String separator, float size) {
         textPaint.setTextSize(size);
         textPaint.setTypeface(Typeface.DEFAULT);
-        return textPaint.measureText(separator);
+        return textPaint.measureText(separator) + 2f * SEPARATOR_GAP * size;
     }
 
     private float drawSeparator(Canvas canvas, String separator, float x, float baseline,
             float size) {
         float width = separatorWidth(separator, size);
         textPaint.setColor(withAlpha(Ui.TEXT_SECONDARY, 150));
-        canvas.drawText(separator, x, baseline, textPaint);
+        canvas.drawText(separator, x + SEPARATOR_GAP * size, baseline, textPaint);
         return x + width;
     }
 
