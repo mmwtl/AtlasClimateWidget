@@ -31,11 +31,12 @@ explicit migration request. All car access goes through the GInputBridge broadca
   Home-screen widgets cannot be dragged: `RemoteViews` only deliver clicks.
 - `WidgetSetupActivity` is the `APPWIDGET_CONFIGURE` dialog (also the launcher's ⚙ reconfigure).
   It edits a copy and saves only on confirm; a widget with reported size counts as reconfigured.
-- Settings backup follows GInputBridge's .gibb flow: head units have no file picker, so
-  `SettingsBackup` (global settings, template, placed widgets in id order) is written as a JSON file
-  and leaves via the share sheet (`BackupProvider`); it comes back when
-  the file is opened with the app (`MainActivity`'s `VIEW` filter), always behind a confirmation.
-  Widget ids do not survive a reinstall; layouts are restored by position.
+- Settings backup: the card looks like the widgetkit "Импорт и экспорт настроек" card; the buttons
+  work as in GInputBridge. Export writes a dated `SettingsBackup` JSON to the cache and sends it
+  through the share sheet (`BackupProvider`); import opens the system document picker and replaces
+  settings only after confirmation. The app is not a share or open target. `SettingsBackup` holds
+  global settings, the template and the placed widgets in id order; widget ids do not survive a
+  reinstall, so layouts are restored by position.
 - `ScrubActivity` is a borderless window placed over a tapped bar (from the host's source
   bounds) that lets the finger drag the value; while it is open the widget draws that strip
   card-only and the window draws content only. Commands are sent on release. The strip is

@@ -57,8 +57,8 @@ public final class MainActivity extends ScaledActivity {
             R.string.tab_look, R.string.tab_system};
     /** The pinned preview may take this share of the screen; the settings scroll below it. */
     private static final float PREVIEW_MAX_SCREEN_SHARE = 0.28f;
-    /** Backups are a few kilobytes; anything far larger is not one. */
-    private static final int BACKUP_MAX_BYTES = 1 << 20;
+    private static final int REQUEST_IMPORT = 41;
+    private static final int BACKUP_MAX_BYTES = 256 * 1024;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable statusTask = new Runnable() {
@@ -108,9 +108,6 @@ public final class MainActivity extends ScaledActivity {
                 ? TAB_BLOCKS : savedInstanceState.getInt(STATE_TAB, TAB_BLOCKS));
         setContentView(content);
         Ui.applySystemBarInsets(content);
-        if (savedInstanceState == null) {
-            importShared(getIntent());
-        }
     }
 
     @Override
@@ -122,7 +119,6 @@ public final class MainActivity extends ScaledActivity {
     @Override
     protected void onNewIntent(android.content.Intent intent) {
         super.onNewIntent(intent);
-        importShared(intent);
         int requested = requestedWidget(intent);
         if (requested != TEMPLATE && requested != editedWidget) {
             editedWidget = requested;
@@ -492,24 +488,28 @@ public final class MainActivity extends ScaledActivity {
         card.addView(hint(R.string.backup_hint));
         Button export = Ui.button(this, R.string.backup_export);
         Ui.topMargin(export, 12);
-        export.setOnClickListener(view -> shareBackup());
+        export.setOnClickListener(view -> exportBackup());
         card.addView(export);
+        Button importButton = Ui.button(this, R.string.backup_import);
+        Ui.topMargin(importButton, 10);
+        importButton.setOnClickListener(view -> chooseBackup());
+        card.addView(importButton);
         return card;
     }
 
     // ---- backup ------------------------------------------------------------------------------
 
-    /** Head units have no file picker: the backup file leaves through the share sheet. */
-    private void shareBackup() {
+    /** As GInputBridge shares .gibb: a dated file in the cache, sent through the share sheet. */
+    private void exportBackup() {
         String name = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(new Date())
-                + "_AtlasClimateWidget" + SettingsBackup.EXTENSION;
+                + "_" + SettingsBackup.FILE_NAME;
         Uri uri;
         try {
             uri = BackupProvider.publish(this, name,
                     prefs.exportBackup(ClimateService.widgetIds(this)).toJson(appVersion()));
-        } catch (IOException error) {
+        } catch (IOException | RuntimeException error) {
             AppLog.warn("Backup export failed", error);
-            Toast.makeText(this, R.string.backup_export_failed, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.backup_export_failed, Toast.LENGTH_LONG).show();
             return;
         }
         Intent send = new Intent(Intent.ACTION_SEND)
@@ -517,12 +517,11 @@ public final class MainActivity extends ScaledActivity {
                 .putExtra(Intent.EXTRA_STREAM, uri)
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         send.setClipData(ClipData.newRawUri(name, uri));
-        Intent chooser = Intent.createChooser(send, getString(R.string.backup_share_title))
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         try {
-            startActivity(chooser);
+            startActivity(Intent.createChooser(send, getString(R.string.backup_share_title))
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
         } catch (ActivityNotFoundException error) {
-            Toast.makeText(this, R.string.backup_no_target, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.backup_no_target, Toast.LENGTH_LONG).show();
         }
     }
 
@@ -535,54 +534,70 @@ public final class MainActivity extends ScaledActivity {
         }
     }
 
-    /** A backup file opened with the app, e.g. tapped in a messenger, as GInputBridge does. */
-    private void importShared(Intent intent) {
-        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())
-                || intent.getData() == null
-                || (intent.getFlags() & Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0) {
-            // Reopening the task from recents replays the share; it was handled already.
-            return;
+    /** As GInputBridge's import: the system document picker, any type, since JSON has none. */
+    @SuppressWarnings("deprecation")
+    private void chooseBackup() {
+        Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("*/*")
+                .putExtra(Intent.EXTRA_MIME_TYPES, new String[]{SettingsBackup.MIME,
+                        "application/octet-stream", "text/plain", "*/*"});
+        try {
+            startActivityForResult(picker, REQUEST_IMPORT);
+        } catch (ActivityNotFoundException error) {
+            Toast.makeText(this, R.string.backup_no_picker, Toast.LENGTH_LONG).show();
         }
-        setIntent(new Intent(this, MainActivity.class));
-        Uri uri = intent.getData();
-        String text = readBackup(uri);
-        if (text == null) {
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_IMPORT && resultCode == RESULT_OK && data != null
+                && data.getData() != null) {
+            readBackup(data.getData());
+        }
+    }
+
+    private void readBackup(Uri uri) {
+        String text;
+        try (InputStream in = getContentResolver().openInputStream(uri)) {
+            if (in == null) {
+                throw new IOException("Cannot open " + uri);
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+                if (out.size() > BACKUP_MAX_BYTES) {
+                    throw new IOException("Settings file is larger than 256 KB");
+                }
+            }
+            text = new String(out.toByteArray(), StandardCharsets.UTF_8);
+        } catch (IOException | RuntimeException error) {
+            AppLog.warn("Backup read failed: " + uri, error);
             Toast.makeText(this, R.string.backup_import_failed, Toast.LENGTH_LONG).show();
             return;
         }
         confirmImport(text);
     }
 
-    private String readBackup(Uri uri) {
-        try (InputStream in = getContentResolver().openInputStream(uri)) {
-            if (in == null) {
-                return null;
-            }
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            byte[] buffer = new byte[8192];
-            int read;
-            while ((read = in.read(buffer)) > 0) {
-                out.write(buffer, 0, read);
-                if (out.size() > BACKUP_MAX_BYTES) {
-                    return null;
-                }
-            }
-            return new String(out.toByteArray(), StandardCharsets.UTF_8);
-        } catch (IOException | RuntimeException error) {
-            AppLog.warn("Backup read failed: " + uri, error);
-            return null;
-        }
+    /** The scaled activity density widens default dialogs past the screen edge. */
+    private void sized(AlertDialog dialog) {
+        int screen = getResources().getDisplayMetrics().widthPixels;
+        dialog.getWindow().setLayout(Math.min(screen - Ui.dp(this, 48), Ui.dp(this, 640)),
+                ViewGroup.LayoutParams.WRAP_CONTENT);
     }
 
-    private void confirmImport(String text) {
+    void confirmImport(String text) {
         SettingsBackup backup = SettingsBackup.parse(text);
         if (backup == null) {
             Toast.makeText(this, R.string.backup_import_invalid, Toast.LENGTH_LONG).show();
             return;
         }
         int[] ids = ClimateService.widgetIds(this);
-        AlertDialog dialog = new AlertDialog.Builder(this,
-                android.R.style.Theme_Material_Dialog_Alert)
+        sized(new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
                 .setTitle(R.string.backup_import_title)
                 .setMessage(getString(R.string.backup_import_summary, backup.widgets.size(),
                         getString(CarModel.fromName(backup.carModel).titleRes), ids.length))
@@ -594,11 +609,7 @@ public final class MainActivity extends ScaledActivity {
                     recreate();
                 })
                 .setNegativeButton(R.string.setup_cancel, null)
-                .show();
-        // The scaled activity density widens the default dialog past the screen edge.
-        int screen = getResources().getDisplayMetrics().widthPixels;
-        dialog.getWindow().setLayout(Math.min(screen - Ui.dp(this, 48), Ui.dp(this, 640)),
-                ViewGroup.LayoutParams.WRAP_CONTENT);
+                .show());
     }
 
     // ---- constructor -------------------------------------------------------------------------

@@ -16,8 +16,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.Shadows;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowActivity;
 import org.robolectric.shadows.ShadowAlertDialog;
 import org.robolectric.shadows.ShadowLooper;
 
@@ -93,20 +95,26 @@ public final class MainActivityTest {
     }
 
     @Test
-    public void openedBackupFileImportsAfterConfirmation() throws Exception {
+    public void importButtonPicksFileAndImportsAfterConfirmation() throws Exception {
         SettingsBackup backup = new SettingsBackup();
         backup.carModel = CarModel.CITYRAY.name();
         backup.levelsFromMax = true;
         backup.template.columns = 4;
-        java.io.File file = java.io.File.createTempFile("backup", SettingsBackup.EXTENSION);
+        java.io.File file = java.io.File.createTempFile("backup", ".json");
         file.deleteOnExit();
         java.nio.file.Files.write(file.toPath(),
                 backup.toJson("test").getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        Intent share = new Intent(Intent.ACTION_VIEW)
-                .setDataAndType(android.net.Uri.fromFile(file), SettingsBackup.MIME);
-        ActivityController<MainActivity> controller =
-                Robolectric.buildActivity(MainActivity.class, share).create().start().resume();
+        ActivityController<MainActivity> controller = open();
         try {
+            View root = root(controller);
+            find(root, "Система").performClick();
+            find(root, "Импортировать настройки из JSON").performClick();
+            ShadowActivity shadow = Shadows.shadowOf(controller.get());
+            Intent picker = shadow.getNextStartedActivityForResult().intent;
+            assertEquals(Intent.ACTION_OPEN_DOCUMENT, picker.getAction());
+            shadow.receiveResult(picker, android.app.Activity.RESULT_OK,
+                    new Intent().setData(android.net.Uri.fromFile(file)));
+
             AlertDialog dialog = (AlertDialog) ShadowAlertDialog.getLatestDialog();
             assertNotNull(dialog);
             assertTrue(dialog.isShowing());
@@ -116,8 +124,26 @@ public final class MainActivityTest {
             assertEquals(CarModel.CITYRAY, prefs.carModel());
             assertTrue(prefs.levelsFromMax());
             assertEquals(4, prefs.template().columns);
-            assertTrue("handled share is not offered again after recreation",
-                    ShadowAlertDialog.getLatestDialog() == dialog);
+        } finally {
+            close(controller);
+        }
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void exportButtonSharesJsonFile() {
+        ActivityController<MainActivity> controller = open();
+        try {
+            View root = root(controller);
+            find(root, "Система").performClick();
+            find(root, "Экспортировать настройки в JSON").performClick();
+            Intent chooser = Shadows.shadowOf(controller.get()).getNextStartedActivity();
+            assertEquals(Intent.ACTION_CHOOSER, chooser.getAction());
+            Intent send = chooser.getParcelableExtra(Intent.EXTRA_INTENT);
+            assertEquals(Intent.ACTION_SEND, send.getAction());
+            assertEquals("application/json", send.getType());
+            android.net.Uri uri = send.getParcelableExtra(Intent.EXTRA_STREAM);
+            assertTrue(uri.getLastPathSegment().endsWith("_AtlasClimateWidget-settings.json"));
         } finally {
             close(controller);
         }

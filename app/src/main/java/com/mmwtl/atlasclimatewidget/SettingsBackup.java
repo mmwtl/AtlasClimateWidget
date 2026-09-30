@@ -14,10 +14,10 @@ import java.util.List;
  * by position.
  */
 final class SettingsBackup {
-    static final String EXTENSION = ".json";
-    static final String MIME = "application/json";
     static final String FORMAT = "atlas-climate-widget-settings";
     static final int SCHEMA_VERSION = 1;
+    static final String FILE_NAME = "AtlasClimateWidget-settings.json";
+    static final String MIME = "application/json";
 
     String carModel = CarModel.ATLAS.name();
     int tempStepTenths = 5;

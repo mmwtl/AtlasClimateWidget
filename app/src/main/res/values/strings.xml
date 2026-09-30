@@ -160,12 +160,13 @@
     <string name="interface_scale">Масштаб</string>
 
     <string name="backup_title">Импорт и экспорт настроек</string>
-    <string name="backup_hint">Файл содержит раскладки всех виджетов, шаблон для новых виджетов, модель автомобиля, шаг температуры, пресеты обдува, порядок уровней и масштаб приложения. Файлового менеджера на ГУ нет, поэтому JSON-файл отправляется через «Поделиться» — например, себе в Telegram. Для импорта откройте этот файл (нажмите на него в Telegram) и выберите «Импорт настроек Atlas Climate». Файлы других приложений не примутся.</string>
-    <string name="backup_export">Экспортировать настройки</string>
+    <string name="backup_hint">JSON содержит раскладки всех виджетов, шаблон для новых виджетов, модель автомобиля, шаг температуры, пресеты обдува, порядок уровней и масштаб приложения. Экспорт отправляет файл через «Поделиться» — например, себе в Telegram. Разрешения и работа службы не переносятся.</string>
+    <string name="backup_export">Экспортировать настройки в JSON</string>
+    <string name="backup_import">Импортировать настройки из JSON</string>
     <string name="backup_share_title">Экспорт настроек</string>
     <string name="backup_no_target">Нет приложений, которые могут принять файл</string>
+    <string name="backup_no_picker">В прошивке нет системного выбора файлов</string>
     <string name="backup_export_failed">Не удалось экспортировать настройки</string>
-    <string name="backup_import_target">Импорт настроек Atlas Climate</string>
     <string name="backup_import_title">Импортировать настройки?</string>
     <string name="backup_import_summary">В файле: шаблон, раскладок виджетов — %1$d, автомобиль — %2$s. Текущие настройки будут заменены. Виджеты на экране (%3$d) получат раскладки по порядку, лишние — шаблон.</string>
     <string name="backup_import_confirm">Импортировать</string>

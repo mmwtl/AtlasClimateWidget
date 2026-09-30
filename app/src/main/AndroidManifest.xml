@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -26,20 +25,6 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <!-- Settings import as in GInputBridge: head units have no file picker, so the
-                 exported JSON file is opened with the app, e.g. by tapping it in a messenger. -->
-            <intent-filter
-                android:label="@string/backup_import_target"
-                android:priority="999"
-                tools:ignore="AppLinkUrlError,AppLinkUrlWarning">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <category android:name="android.intent.category.OPENABLE" />
-                <data android:scheme="content" />
-                <data android:mimeType="application/json" />
-                <data android:mimeType="application/octet-stream" />
             </intent-filter>
         </activity>
 
