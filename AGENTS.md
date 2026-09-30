@@ -74,7 +74,8 @@ explicit migration request. All car access goes through the GInputBridge broadca
 - Optimistic values after a command are temporary and replaced by the bridge's confirmation.
 - Controls the car ignores in the current mode rest (`TileState.dormant`): blowing directions
   in AUTO, auto-fan presets outside it, the speed bar in AUTO. They never light up; the choice
-  the car keeps is outlined.
+  the car keeps is outlined. A tap on a resting speed bar or preset switches AUTO first and
+  sends the value after `ClimateCommands.AUTO_SETTLE_MS`, since the switch restores the kept one.
 - The settings preview uses the same `RemoteViews` as the widget, inert; demo values are labelled.
 - Preserve per-widget layouts across upgrades; `WidgetConfig.fromJson` must tolerate unknown and
   missing fields.

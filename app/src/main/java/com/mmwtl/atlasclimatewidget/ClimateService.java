@@ -341,8 +341,18 @@ public final class ClimateService extends Service {
             AppLog.warn("Ignoring malformed control " + data, error);
             return;
         }
+        long delay = 0L;
         for (ClimateCommands.Command command : commands) {
-            execute(command, now);
+            delay += command.delayMs;
+            if (delay == 0L) {
+                execute(command, now);
+                continue;
+            }
+            if (command.isOptimistic()) {
+                // The widget shows the whole press at once, not step by step.
+                STORE.setPending(command.id, command.area, command.value, now);
+            }
+            worker.postDelayed(() -> execute(command, SystemClock.elapsedRealtime()), delay);
         }
         renderWidgets(false);
     }
@@ -368,9 +378,9 @@ public final class ClimateService extends Service {
                 return ClimateCommands.stepTemperature(state, Integer.parseInt(parts.get(1)),
                         Integer.parseInt(parts.get(2)), prefs.temperatureStep());
             case "fan":
-                return ClimateCommands.setFan(Integer.parseInt(parts.get(1)));
+                return ClimateCommands.setFan(state, Integer.parseInt(parts.get(1)));
             case "fanpreset":
-                return ClimateCommands.setFanPreset(Integer.parseInt(parts.get(1)),
+                return ClimateCommands.setFanPreset(state, Integer.parseInt(parts.get(1)),
                         prefs.fanPresetCount());
             case "fanstep":
                 return ClimateCommands.stepFan(state, model, Integer.parseInt(parts.get(1)),

@@ -11,6 +11,8 @@ final class ClimateCommands {
     static final int BLOW_WINDOW = 4;
 
     static final float FALLBACK_TEMPERATURE = 22f;
+    /** The car answers AUTO with its kept profile in about 300–450 ms. */
+    static final long AUTO_SETTLE_MS = 900L;
     static final int FAN_BLOWER = 269752064;
     static final int FAN_BLOWER_UP = 269752065;
     static final int FAN_BLOWER_DOWN = 269752066;
@@ -225,8 +227,9 @@ final class ClimateCommands {
     static FanState fanState(ClimateState state) {
         Double speed = state.property(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL);
         Double autoFan = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL);
-        boolean auto = autoFan != null && isAutoFan((int) Math.round(autoFan))
-                || Boolean.TRUE.equals(autoMode(state));
+        Boolean mode = autoMode(state);
+        boolean auto = mode != null ? mode
+                : autoFan != null && isAutoFan((int) Math.round(autoFan));
         if (speed == null) {
             return new FanState(auto, auto, 0);
         }
@@ -266,13 +269,25 @@ final class ClimateCommands {
         final int area;
         final double value;
         final String function;
+        /** Wait after the previous command of the same press, see {@link #after}. */
+        final long delayMs;
 
         private Command(Type type, int id, int area, double value, String function) {
+            this(type, id, area, value, function, 0L);
+        }
+
+        private Command(Type type, int id, int area, double value, String function,
+                long delayMs) {
             this.type = type;
             this.id = id;
             this.area = area;
             this.value = value;
             this.function = function;
+            this.delayMs = delayMs;
+        }
+
+        Command after(long delayMs) {
+            return new Command(type, id, area, value, function, delayMs);
         }
 
         static Command setInt(int id, int area, int value) {
@@ -327,8 +342,10 @@ final class ClimateCommands {
                 }
                 return single(Command.setInt(id, function.area, blowMode(nextBits)));
             }
-            case SELECT:
-                return single(Command.setInt(id, function.area, function.onValue));
+            case SELECT: {
+                Command select = Command.setInt(id, function.area, function.onValue);
+                return id == Hvac.AUTO_FAN_SETTING ? withAuto(state, select) : single(select);
+            }
             default:
                 return Collections.emptyList();
         }
@@ -359,6 +376,10 @@ final class ClimateCommands {
         return single(Command.setFloat(Hvac.TEMP, zone, next));
     }
 
+    static List<Command> setFan(ClimateState state, int level) {
+        return withoutAuto(state, setFan(level).get(0));
+    }
+
     static List<Command> setFan(int level) {
         int bounded = Math.max(1, Math.min(Hvac.FAN_SPEED_LEVEL_COUNT, level));
         return single(Command.setInt(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL,
@@ -370,6 +391,30 @@ final class ClimateCommands {
         int bounded = Math.max(0, Math.min(presets.length - 1, index));
         return single(Command.setInt(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL,
                 presets[bounded]));
+    }
+
+    static List<Command> setFanPreset(ClimateState state, int index, int count) {
+        return withAuto(state, setFanPreset(index, count).get(0));
+    }
+
+    /** Presets only apply in AUTO, so a preset tap in manual mode turns AUTO on first. */
+    static List<Command> withAuto(ClimateState state, Command preset) {
+        return presetsDormant(state) ? switchAuto(true, preset) : single(preset);
+    }
+
+    /** The car ignores a manual fan speed in AUTO, so a speed tap there leaves AUTO first. */
+    static List<Command> withoutAuto(ClimateState state, Command speed) {
+        return directionsDormant(state) ? switchAuto(false, speed) : single(speed);
+    }
+
+    private static List<Command> switchAuto(boolean on, Command then) {
+        List<Command> commands = new ArrayList<>(2);
+        commands.add(Command.setInt(Hvac.AUTO, ClimateFunction.AUTO.area,
+                on ? ClimateFunction.AUTO.onValue : ClimateFunction.AUTO.offValue));
+        // The mode switch restores the kept profile and speed, which would override an
+        // earlier set.
+        commands.add(then.after(AUTO_SETTLE_MS));
+        return commands;
     }
 
     /** Index of the active auto-fan preset, or -1. */

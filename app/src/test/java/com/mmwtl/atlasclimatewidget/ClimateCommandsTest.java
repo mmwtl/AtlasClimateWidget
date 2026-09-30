@@ -180,4 +180,40 @@ public final class ClimateCommandsTest {
         assertTrue(ClimateCommands.tileState(ClimateFunction.FAN_NORMAL, manual,
                 CarModel.ATLAS).dormant);
     }
+
+    @Test public void presetInManualModeTurnsAutoOnFirst() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 0, 0);
+        List<ClimateCommands.Command> commands = ClimateCommands.setFanPreset(
+                store.snapshot(0), 2, 3);
+        assertEquals(2, commands.size());
+        assertEquals(Hvac.AUTO, commands.get(0).id);
+        assertEquals(1, (int) commands.get(0).value);
+        assertEquals(0L, commands.get(0).delayMs);
+        assertEquals(Hvac.AUTO_FAN_HIGHER, (int) commands.get(1).value);
+        assertTrue(commands.get(1).delayMs > 0L);
+        assertEquals(2, ClimateCommands.press(ClimateFunction.FAN_SOFT, store.snapshot(0),
+                CarModel.ATLAS, false).size());
+
+        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 1, 0);
+        assertEquals(1, ClimateCommands.setFanPreset(store.snapshot(0), 2, 3).size());
+    }
+
+    @Test public void fanSpeedInAutoLeavesAutoFirst() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 1, 0);
+        store.putProperty(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL, Hvac.AUTO_FAN_NORMAL, 0);
+        List<ClimateCommands.Command> commands = ClimateCommands.setFan(store.snapshot(0), 4);
+        assertEquals(2, commands.size());
+        assertEquals(Hvac.AUTO, commands.get(0).id);
+        assertEquals(0, (int) commands.get(0).value);
+        assertEquals(Hvac.FAN_SPEED_LEVEL_1 + 3, (int) commands.get(1).value);
+        assertTrue(commands.get(1).delayMs > 0L);
+
+        // The kept profile does not mean AUTO once the car reports AUTO off.
+        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 0, 0);
+        store.putProperty(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL, Hvac.FAN_SPEED_LEVEL_1 + 3, 0);
+        assertFalse(ClimateCommands.fanState(store.snapshot(0)).auto);
+        assertEquals(1, ClimateCommands.setFan(store.snapshot(0), 5).size());
+    }
 }
