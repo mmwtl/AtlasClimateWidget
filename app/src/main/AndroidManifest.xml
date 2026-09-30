@@ -28,7 +28,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <!-- Settings import as in GInputBridge: head units have no file picker, so the
-                 exported .acws file is opened with the app, e.g. by tapping it in a messenger. -->
+                 exported JSON file is opened with the app, e.g. by tapping it in a messenger. -->
             <intent-filter
                 android:label="@string/backup_import_target"
                 android:priority="999"
@@ -38,11 +38,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <category android:name="android.intent.category.OPENABLE" />
                 <data android:scheme="content" />
+                <data android:mimeType="application/json" />
                 <data android:mimeType="application/octet-stream" />
-                <data android:mimeType="application/acws" />
-                <data android:pathPattern=".*\\.acws" />
-                <data android:pathPattern=".*\\..*\\.acws" />
-                <data android:pathPattern=".*\\..*\\..*\\.acws" />
             </intent-filter>
         </activity>
 

@@ -32,8 +32,8 @@ explicit migration request. All car access goes through the GInputBridge broadca
 - `WidgetSetupActivity` is the `APPWIDGET_CONFIGURE` dialog (also the launcher's ⚙ reconfigure).
   It edits a copy and saves only on confirm; a widget with reported size counts as reconfigured.
 - Settings backup follows GInputBridge's .gibb flow: head units have no file picker, so
-  `SettingsBackup` (global settings, template, placed widgets in id order) is written as an `.acws`
-  JSON file with its own MIME and leaves via the share sheet (`BackupProvider`); it comes back when
+  `SettingsBackup` (global settings, template, placed widgets in id order) is written as a JSON file
+  and leaves via the share sheet (`BackupProvider`); it comes back when
   the file is opened with the app (`MainActivity`'s `VIEW` filter), always behind a confirmation.
   Widget ids do not survive a reinstall; layouts are restored by position.
 - `ScrubActivity` is a borderless window placed over a tapped bar (from the host's source

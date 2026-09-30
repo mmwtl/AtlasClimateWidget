@@ -14,9 +14,8 @@ import java.util.List;
  * by position.
  */
 final class SettingsBackup {
-    /** Own extension and type, as GInputBridge's .gibb, so messengers open it with the app. */
-    static final String EXTENSION = ".acws";
-    static final String MIME = "application/acws";
+    static final String EXTENSION = ".json";
+    static final String MIME = "application/json";
     static final String FORMAT = "atlas-climate-widget-settings";
     static final int SCHEMA_VERSION = 1;
 
