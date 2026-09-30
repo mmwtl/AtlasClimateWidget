@@ -81,7 +81,6 @@
     <string name="setup_fan_presets">Пресеты</string>
     <string name="setup_preview_demo">Предпросмотр · демо-данные</string>
     <string name="setup_preview_live">Предпросмотр · данные автомобиля</string>
-    <string name="setup_hint">Функции, их порядок, зоны температуры и оформление настраиваются в приложении.</string>
     <string name="setup_add">Добавить</string>
     <string name="setup_done">Готово</string>
     <string name="setup_add_and_open">Добавить и открыть все настройки</string>

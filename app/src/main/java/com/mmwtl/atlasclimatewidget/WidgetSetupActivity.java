@@ -211,10 +211,6 @@ public final class WidgetSetupActivity extends ScaledActivity {
         }
         card.addView(fan, fullWrap(8));
 
-        TextView hint = Ui.text(this, R.string.setup_hint, 13, Ui.TEXT_SECONDARY);
-        hint.setLineSpacing(0, 1.12f);
-        card.addView(hint, fullWrap(16));
-
         Button confirm = Ui.button(this, reconfigure ? R.string.setup_done : R.string.setup_add);
         confirm.setTextSize(17);
         confirm.setTypeface(Typeface.DEFAULT_BOLD);
