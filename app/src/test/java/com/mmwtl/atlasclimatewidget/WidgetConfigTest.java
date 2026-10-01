@@ -25,6 +25,7 @@ public final class WidgetConfigTest {
         config.cardLayout = WidgetConfig.CardLayout.SINGLE;
         config.headerAlign = WidgetConfig.HeaderAlign.RIGHT;
         config.style = WidgetConfig.Style.CONSOLE;
+        config.iconSet = WidgetConfig.IconSet.OEM;
         WidgetConfig copy = WidgetConfig.fromJson(config.toJson());
         assertEquals(WidgetConfig.Block.TILES, copy.blockOrder.get(0));
         assertFalse(copy.fanEnabled);
@@ -34,6 +35,7 @@ public final class WidgetConfigTest {
         assertEquals(4, copy.columns);
         assertEquals(WidgetConfig.TileStyle.ICON, copy.tileStyle);
         assertEquals(Palette.SEMANTIC, copy.palette);
+        assertEquals(WidgetConfig.IconSet.OEM, copy.iconSet);
         assertEquals(40, copy.cardOpacityPercent);
         assertFalse(copy.fanBar);
         assertFalse(copy.fanDirections);
@@ -144,7 +146,23 @@ public final class WidgetConfigTest {
         assertEquals(1, config.functions.size());
         assertEquals(WidgetConfig.COLUMNS_MAX, config.columns);
         assertEquals(Palette.ATLAS, config.palette);
+        assertEquals(WidgetConfig.IconSet.ATLAS, config.iconSet);
         assertEquals(12, WidgetConfig.fromJson("broken").functions.size());
+    }
+
+    @Test public void iconSetPicksStockIconsWithAtlasFallback() {
+        WidgetConfig.IconSet oem = WidgetConfig.IconSet.OEM;
+        WidgetConfig.IconSet atlas = WidgetConfig.IconSet.ATLAS;
+        assertEquals(R.drawable.ic_oem_seat_heat_driver_2,
+                ClimateFunction.DRIVER_HEAT.icon(oem, 2));
+        assertEquals(R.drawable.ic_fn_seat_heat_driver_3,
+                ClimateFunction.DRIVER_HEAT.icon(atlas, 9));
+        assertEquals(R.drawable.ic_oem_rear_seat_left,
+                ClimateFunction.REAR_LEFT_HEAT.icon(oem, 3));
+        assertEquals(R.drawable.ic_oem_auto, ClimateFunction.AUTO.icon(oem, 0));
+        assertEquals(0, ClimateFunction.AUTO.icon(atlas, 0));
+        assertEquals(0, ClimateFunction.TEMP_SYNC.icon(oem, 0));
+        assertEquals(R.drawable.ic_power, ClimateFunction.POWER.icon(oem, 1));
     }
 
     @Test public void tilesBlockHidesWithoutFunctions() {

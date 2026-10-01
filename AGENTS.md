@@ -63,6 +63,11 @@ explicit migration request. All car access goes through the GInputBridge broadca
   When a console layout is too tall, tile rows flatten first (down to
   `CONSOLE_MIN_TILE_ASPECT`) so bars and fan buttons keep their size; fill never grows console
   tiles past square.
+- Icons: `WidgetConfig.IconSet` picks the Atlas icons or the stock Geely ones (`ic_oem_*`),
+  per widget on the Look tab; `ClimateFunction.icon` falls back to the Atlas icon or text glyph
+  where the head unit has none. The `ic_oem_*` vectors are traced from the head unit's raster
+  icons by `tools/trace_oem_icons.py`; unlit parts keep `fillAlpha` 0.302 so tinting keeps
+  levels visible. Rerun the script instead of editing them; do not commit the raster sources.
 - `ClimateCommands`, `ClimateStore`, `WidgetConfig` and `WidgetGeometry` are pure Java and covered by
   JVM unit tests; keep Android framework code at the service/provider/activity edges.
 - Property ids, zones and value encodings live in `Hvac` and `ClimateFunction`; they mirror

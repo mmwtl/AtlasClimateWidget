@@ -132,6 +132,10 @@
     <string name="palette_violet">Фиолетовый</string>
     <string name="palette_semantic">По смыслу: обогрев тёплый, охлаждение синее</string>
     <string name="filled_active">Заливать активную плитку</string>
+    <string name="icons_title">Иконки</string>
+    <string name="icons_atlas">Atlas</string>
+    <string name="icons_oem">Штатные Geely</string>
+    <string name="icons_hint">Штатные — иконки климата головного устройства. Где штатной иконки нет (питание, синхронизация, ионизатор, «мне жарко/холодно», меню), остаётся иконка Atlas.</string>
     <string name="card_opacity">Непрозрачность карточек</string>
     <string name="card_radius">Радиус карточек</string>
     <string name="card_padding">Внутренний отступ</string>

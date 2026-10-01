@@ -538,7 +538,7 @@ final class WidgetRenderer {
             float cy = top + pillHeight / 2f;
             float iconMax = Math.min(right - left, pillHeight);
             if (direction) {
-                drawIcon(canvas, WidgetConfig.FAN_DIRECTIONS[index].iconRes, cx, cy,
+                drawIcon(canvas, WidgetConfig.FAN_DIRECTIONS[index].icon(config.iconSet, 0), cx, cy,
                         iconMax * 0.92f, content);
                 continue;
             }
@@ -546,7 +546,7 @@ final class WidgetRenderer {
             float grow = presets <= 1 ? 1f : preset / (float) (presets - 1);
             float icon = iconMax * (0.52f + 0.34f * grow);
             if (!withLabels) {
-                drawIcon(canvas, R.drawable.ic_fan, cx, cy, icon, content);
+                drawIcon(canvas, fanIcon(), cx, cy, icon, content);
                 continue;
             }
             textPaint.setTypeface(Typeface.DEFAULT_BOLD);
@@ -566,7 +566,7 @@ final class WidgetRenderer {
                 continue;
             }
             float start = cx - (iconSlot + iconGap + textWidth) / 2f;
-            drawIcon(canvas, R.drawable.ic_fan, start + iconSlot / 2f, cy,
+            drawIcon(canvas, fanIcon(), start + iconSlot / 2f, cy,
                     pillHeight * (0.44f + 0.22f * grow), content);
             canvas.drawText(label, start + iconSlot + iconGap,
                     cy - textBounds(label).exactCenterY(), textPaint);
@@ -681,7 +681,7 @@ final class WidgetRenderer {
                 drawCenteredLine(canvas, names[index], cx, cy);
                 continue;
             }
-            int iconRes = WidgetConfig.FAN_DIRECTIONS[index].iconRes;
+            int iconRes = WidgetConfig.FAN_DIRECTIONS[index].icon(config.iconSet, 0);
             if (!withNames) {
                 drawIcon(canvas, iconRes, cx, cy, icon, content);
                 continue;
@@ -702,7 +702,7 @@ final class WidgetRenderer {
         paint.setShader(null);
         paint.setColor(Ui.SURFACE_RAISED);
         canvas.drawCircle(cx, cy, size * 0.4f, paint);
-        drawIcon(canvas, R.drawable.ic_fan, cx, cy, size * iconRatio, Ui.TEXT);
+        drawIcon(canvas, fanIcon(), cx, cy, size * iconRatio, Ui.TEXT);
     }
 
     // ---- tiles -------------------------------------------------------------------------------
@@ -795,7 +795,8 @@ final class WidgetRenderer {
         float cx = tile.centerX();
         float glyphCy = top + glyph / 2f;
 
-        if (function.glyph != null) {
+        int icon = function.icon(config.iconSet, tileState.level);
+        if (icon == 0) {
             textPaint.setTypeface(Typeface.DEFAULT_BOLD);
             textPaint.setColor(content);
             // The console sets every text glyph in one size, so MAX and AUTO match.
@@ -809,11 +810,6 @@ final class WidgetRenderer {
             }
             drawCentered(canvas, function.glyph, cx, glyphCy);
         } else {
-            int icon = function.iconRes;
-            if (function.levelIcons != null) {
-                icon = function.levelIcons[Math.max(0,
-                        Math.min(function.levelIcons.length - 1, tileState.level))];
-            }
             drawIcon(canvas, icon, cx, glyphCy, glyph, content);
         }
 
@@ -884,6 +880,11 @@ final class WidgetRenderer {
         float r = Math.max(0f, radius - stroke / 2f);
         canvas.drawRoundRect(inset, r, r, paint);
         paint.setStyle(Paint.Style.FILL);
+    }
+
+    private int fanIcon() {
+        return config.iconSet == WidgetConfig.IconSet.OEM ? R.drawable.ic_oem_fan
+                : R.drawable.ic_fan;
     }
 
     private void drawIcon(Canvas canvas, int res, float cx, float cy, float size, int color) {

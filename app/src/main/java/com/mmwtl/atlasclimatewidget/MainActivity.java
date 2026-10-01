@@ -871,6 +871,21 @@ public final class MainActivity extends ScaledActivity {
         appearanceHost.addView(palettes);
         appearanceHost.addView(configSwitch(R.string.filled_active, config.filledActive,
                 value -> config.filledActive = value));
+        appearanceHost.addView(label(R.string.icons_title));
+        RadioGroup iconSets = radioGroup();
+        for (WidgetConfig.IconSet set : WidgetConfig.IconSet.values()) {
+            RadioButton button = radio(set.titleRes);
+            button.setChecked(config.iconSet == set);
+            button.setOnCheckedChangeListener((view, checked) -> {
+                if (checked) {
+                    config.iconSet = set;
+                    changed();
+                }
+            });
+            iconSets.addView(button);
+        }
+        appearanceHost.addView(iconSets);
+        appearanceHost.addView(hint(R.string.icons_hint));
         addSlider(appearanceHost, getString(R.string.widget_scale),
                 WidgetConfig.SCALE_MIN_PERCENT, WidgetConfig.SCALE_MAX_PERCENT,
                 config.scalePercent, value -> value + "%", value -> {

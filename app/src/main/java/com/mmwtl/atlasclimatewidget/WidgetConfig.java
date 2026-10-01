@@ -98,6 +98,18 @@ final class WidgetConfig {
         }
     }
 
+    /** Drawn icons: the Atlas set, or the stock Geely HVAC icons traced from the head unit. */
+    enum IconSet {
+        ATLAS(R.string.icons_atlas),
+        OEM(R.string.icons_oem);
+
+        final int titleRes;
+
+        IconSet(int titleRes) {
+            this.titleRes = titleRes;
+        }
+    }
+
     /** 2: console tiles follow the user's order instead of fixed groups. */
     static final int VERSION = 2;
     static final int COLUMNS_MIN = 2;
@@ -161,6 +173,7 @@ final class WidgetConfig {
 
     Palette palette = Palette.ATLAS;
     boolean filledActive = true;
+    IconSet iconSet = IconSet.ATLAS;
     int cardColor = Ui.SURFACE;
     int cardOpacityPercent = 100;
     int cardRadiusDp = 18;
@@ -396,6 +409,7 @@ final class WidgetConfig {
             json.put("tileStyle", tileStyle.name());
             json.put("palette", palette.name());
             json.put("filledActive", filledActive);
+            json.put("iconSet", iconSet.name());
             json.put("cardColor", cardColor);
             json.put("cardOpacityPercent", cardOpacityPercent);
             json.put("cardRadiusDp", cardRadiusDp);
@@ -484,6 +498,7 @@ final class WidgetConfig {
                 config.tileStyle);
         config.palette = enumValue(Palette.class, json.optString("palette"), config.palette);
         config.filledActive = json.optBoolean("filledActive", config.filledActive);
+        config.iconSet = enumValue(IconSet.class, json.optString("iconSet"), config.iconSet);
         config.cardColor = json.optInt("cardColor", config.cardColor) | 0xFF000000;
         config.cardOpacityPercent = clamp(json.optInt("cardOpacityPercent",
                 config.cardOpacityPercent), 0, 100);
