@@ -1,11 +1,19 @@
-# Atlas Climate Widget
+<p align="center">
+  <img src="docs/images/app-icon.svg" width="160" alt="Иконка Atlas Climate Widget">
+</p>
+
+<h1 align="center">Atlas Climate Widget</h1>
+
+<p align="center">Настраиваемый климатический виджет для портретных головных устройств Geely OneOS</p>
 
 Конструктор климатического виджета для главного экрана портретных ГУ Geely OneOS на Android 11.
-Все данные и команды автомобиля проходят через [GInputBridge](../GInputBridge)
+Все данные и команды автомобиля проходят через [GInputBridge](https://github.com/mmwtl/GInputBridge)
 (`com.salat.gbinder`).
 
-В отличие от Atlas App Widget и Atlas Media Widget, это **настоящий Android** `AppWidget`:  
-его размещает любой лаунчер с поддержкой виджетов, например AtlasLauncher.
+Это системный Android `AppWidget`: его размещает лаунчер с поддержкой виджетов,
+например [Atlas Launcher](https://github.com/mmwtl/AtlasLauncher).
+
+## Интерфейс
 
 <p align="center">
   <img src="docs/images/widget-demo.png" width="560" alt="Виджет: полоса температуры, обдув и плитки функций (демо-данные)">
@@ -41,6 +49,8 @@
   плитки квадратными и прижимает содержимое сверху, по центру или снизу. Предпросмотр
   показывает рамку ячейки и подсказку: сколько места занято, свободно или насколько сжато;
 - своя раскладка у каждого виджета на экране и шаблон для новых виджетов;
+- выбор иконок Atlas или штатных Geely для каждого виджета;
+- экспорт и импорт настроек через вкладку «Система»;
 - короткая настройка при добавлении, как у Atlas Media Widget: предпросмотр, блоки, вид обдува,
   вид плиток и цвет; она же открывается шестерёнкой ⚙ виджета в режиме редактирования
   лаунчера, а кнопка «Открыть все настройки» ведёт в полный конструктор этого виджета;
@@ -59,7 +69,8 @@
 
 ## Установка и запуск
 
-1. Установите APK и откройте **Atlas Climate Widget**.
+1. Установите подписанный APK из [Releases](https://github.com/mmwtl/AtlasClimateWidget/releases)
+   и откройте **Atlas Climate Widget**.
 2. Добавьте виджет «Atlas Climate» через меню виджетов лаунчера и выберите основной вид в
    появившемся окне настройки.
 3. Для точной сборки нажмите «Добавить и открыть все настройки» или откройте приложение.
@@ -80,7 +91,7 @@
 - состояние «Мне жарко» и «Я замёрз» хранится внутри GInputBridge, поэтому эти плитки не
   показывают индикатор.
 
-## Сборка
+## Сборка и проверки
 
 Требуются JDK 17 и Android SDK 36.
 
@@ -92,6 +103,10 @@ APK появляется в `app/build/outputs/apk/release/` с именем
 `<versionName>[<versionCode>]AtlasClimateWidget-release.apk`. Подпись подключается локальным
 игнорируемым `secure.signing.gradle` по образцу
 [`app/secure.signing.gradle.example`](app/secure.signing.gradle.example); без него APK не подписан.
+
+## Документация
+
+- [Контракт GInputBridge](docs/ginputbridge-contract.md) — свойства, зоны и ограничения прошивки.
 
 ## Совместимость
 
