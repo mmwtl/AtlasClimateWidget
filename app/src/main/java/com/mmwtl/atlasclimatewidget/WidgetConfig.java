@@ -165,6 +165,9 @@ final class WidgetConfig {
     HeightMode heightMode = HeightMode.FILL;
     /** Resolved from the global car setting by {@link Prefs}; not part of the saved layout. */
     int fanPresetCount = 3;
+    /** Fuel formula, resolved from the global setting by {@link Prefs}; not saved either. */
+    float fuelMultiplier = Fuel.MULTIPLIER;
+    float fuelOffset = Fuel.OFFSET;
     VerticalAlign verticalAlign = VerticalAlign.TOP;
     CardLayout cardLayout = CardLayout.SEPARATE;
     Style style = Style.CLASSIC;

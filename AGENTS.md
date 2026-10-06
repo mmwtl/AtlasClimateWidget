@@ -53,6 +53,8 @@ line, read as in AtlasAppWidget (`Fuel`).
   centred or right (`HeaderAlign`, centred by default). Per widget it can append the liters in
   the tank and the free tank volume from the Fuel Percentage sensor (`Fuel`: value × 0.5 + 4,
   a 54 l tank; at 0 the values become `<4`/`>50`). A line wider than the widget shrinks its font.
+  A custom formula (System tab, global, in the backup) replaces the default; the tank is the
+  formula's larger end over API 0–100. `Prefs.resolved` puts it into the layout, unsaved.
 - Cards: `CardLayout.SEPARATE` gives every block its own card; `SINGLE` puts all rows in one card,
   blocks a card padding apart without dividers. Fill shares extra height per block in both
   modes.

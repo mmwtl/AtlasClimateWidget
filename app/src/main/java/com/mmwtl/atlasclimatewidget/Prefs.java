@@ -14,6 +14,9 @@ final class Prefs {
     static final String KEY_UI_SCALE_TENTHS = "ui_scale_tenths";
     static final String KEY_TEMPLATE = "widget_template";
     static final String KEY_FAN_PRESETS = "fan_presets";
+    static final String KEY_FUEL_CUSTOM_FORMULA = "fuel_custom_formula";
+    static final String KEY_FUEL_MULTIPLIER = "fuel_multiplier";
+    static final String KEY_FUEL_OFFSET = "fuel_offset";
     static final String KEY_WIDGET_PREFIX = "widget_config_";
 
     private final SharedPreferences preferences;
@@ -104,8 +107,48 @@ final class Prefs {
         }
     }
 
+    /** Whether the user's fuel formula replaces the AtlasAppWidget default. */
+    boolean fuelCustomFormula() {
+        return preferences.getBoolean(KEY_FUEL_CUSTOM_FORMULA, false);
+    }
+
+    void setFuelCustomFormula(boolean value) {
+        preferences.edit().putBoolean(KEY_FUEL_CUSTOM_FORMULA, value).apply();
+    }
+
+    /** The stored custom multiplier, kept while the default formula is in use. */
+    float savedFuelMultiplier() {
+        return preferences.getFloat(KEY_FUEL_MULTIPLIER, Fuel.MULTIPLIER);
+    }
+
+    float savedFuelOffset() {
+        return preferences.getFloat(KEY_FUEL_OFFSET, Fuel.OFFSET);
+    }
+
+    void setFuelFormula(float multiplier, float offset) {
+        preferences.edit()
+                .putFloat(KEY_FUEL_MULTIPLIER, multiplier)
+                .putFloat(KEY_FUEL_OFFSET, offset)
+                .apply();
+    }
+
+    /** The formula in effect; a broken custom one falls back to the default. */
+    float fuelMultiplier() {
+        return customFuelFormulaValid() ? savedFuelMultiplier() : Fuel.MULTIPLIER;
+    }
+
+    float fuelOffset() {
+        return customFuelFormulaValid() ? savedFuelOffset() : Fuel.OFFSET;
+    }
+
+    private boolean customFuelFormulaValid() {
+        return fuelCustomFormula() && Fuel.isValid(savedFuelMultiplier(), savedFuelOffset());
+    }
+
     WidgetConfig resolved(WidgetConfig config) {
         config.fanPresetCount = fanPresetCount();
+        config.fuelMultiplier = fuelMultiplier();
+        config.fuelOffset = fuelOffset();
         return config;
     }
 
@@ -139,6 +182,9 @@ final class Prefs {
         backup.levelsFromMax = levelsFromMax();
         backup.fanPresets = fanPresets().name();
         backup.uiScaleTenths = preferences.getInt(KEY_UI_SCALE_TENTHS, 0);
+        backup.fuelCustomFormula = fuelCustomFormula();
+        backup.fuelMultiplier = savedFuelMultiplier();
+        backup.fuelOffset = savedFuelOffset();
         backup.template = template();
         for (int id : sorted(widgetIds)) {
             backup.widgets.add(widget(id));
@@ -153,6 +199,9 @@ final class Prefs {
                 .putInt(KEY_TEMP_STEP_TENTHS, backup.tempStepTenths >= 10 ? 10 : 5)
                 .putBoolean(KEY_LEVELS_FROM_MAX, backup.levelsFromMax)
                 .putString(KEY_FAN_PRESETS, backup.fanPresets)
+                .putBoolean(KEY_FUEL_CUSTOM_FORMULA, backup.fuelCustomFormula)
+                .putFloat(KEY_FUEL_MULTIPLIER, backup.fuelMultiplier)
+                .putFloat(KEY_FUEL_OFFSET, backup.fuelOffset)
                 .putString(KEY_TEMPLATE, backup.template.toJson());
         if (backup.uiScaleTenths > 0) {
             editor.putInt(KEY_UI_SCALE_TENTHS, backup.uiScaleTenths);

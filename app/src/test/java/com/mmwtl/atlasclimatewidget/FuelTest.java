@@ -26,6 +26,23 @@ public final class FuelTest {
         assertEquals(">50", fuel.freeText());
     }
 
+    @Test public void customFormulaDerivesTheTank() {
+        assertEquals(51, Fuel.capacityLiters(0.466f, 4.4f));
+        Fuel fuel = Fuel.of(20d, 0.5f, 2f);
+        assertEquals(12, fuel.liters);
+        assertEquals(52, fuel.capacityLiters);
+        assertEquals(40, fuel.freeLiters);
+        assertNull(Fuel.of(20d, 101f, 0f));
+        assertNull(Fuel.of(20d, Float.NaN, 0f));
+    }
+
+    @Test public void coefficientsPrintWithoutTrailingZeros() {
+        assertEquals("0.5", Fuel.format(0.5f));
+        assertEquals("4", Fuel.format(4f));
+        assertEquals("0.466", Fuel.format(0.466f));
+        assertEquals("-1.25", Fuel.format(-1.25f));
+    }
+
     @Test public void outOfRangeIsClampedAndMissingIsNull() {
         assertEquals(54, Fuel.of(200d).liters);
         assertEquals("<4", Fuel.of(-3d).litersText());

@@ -25,6 +25,10 @@ final class SettingsBackup {
     String fanPresets = "AUTO";
     /** Settings screen scale; 0 when the backup does not carry one. */
     int uiScaleTenths;
+    /** Fuel formula; the custom coefficients are kept even while the default is in use. */
+    boolean fuelCustomFormula;
+    float fuelMultiplier = Fuel.MULTIPLIER;
+    float fuelOffset = Fuel.OFFSET;
     WidgetConfig template = new WidgetConfig();
     final List<WidgetConfig> widgets = new ArrayList<>();
 
@@ -42,6 +46,11 @@ final class SettingsBackup {
             if (uiScaleTenths > 0) {
                 settings.put("uiScaleTenths", uiScaleTenths);
             }
+            JSONObject fuel = new JSONObject();
+            fuel.put("useCustomFormula", fuelCustomFormula);
+            fuel.put("multiplier", (double) fuelMultiplier);
+            fuel.put("offset", (double) fuelOffset);
+            settings.put("fuel", fuel);
             json.put("settings", settings);
             json.put("template", new JSONObject(template.toJson()));
             JSONArray layouts = new JSONArray();
@@ -77,6 +86,17 @@ final class SettingsBackup {
             backup.levelsFromMax = settings.optBoolean("levelsFromMax", false);
             backup.fanPresets = settings.optString("fanPresets", backup.fanPresets);
             backup.uiScaleTenths = settings.optInt("uiScaleTenths", 0);
+            JSONObject fuel = settings.optJSONObject("fuel");
+            if (fuel != null) {
+                float multiplier = (float) fuel.optDouble("multiplier", Fuel.MULTIPLIER);
+                float offset = (float) fuel.optDouble("offset", Fuel.OFFSET);
+                // A broken formula is dropped whole rather than mixed with the default.
+                if (Fuel.isValid(multiplier, offset)) {
+                    backup.fuelCustomFormula = fuel.optBoolean("useCustomFormula", false);
+                    backup.fuelMultiplier = multiplier;
+                    backup.fuelOffset = offset;
+                }
+            }
         }
         JSONObject template = json.optJSONObject("template");
         if (template != null) {

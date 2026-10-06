@@ -159,7 +159,8 @@ final class WidgetRenderer {
         parts.add(new String[] {context.getString(R.string.header_outside),
                 formatWhole(state.sensor(Hvac.SENSOR_TEMPERATURE_AMBIENT))});
         if (config.headerFuel || config.headerFuelFree) {
-            Fuel fuel = Fuel.of(state.sensor(Hvac.SENSOR_FUEL_PERCENTAGE));
+            Fuel fuel = Fuel.of(state.sensor(Hvac.SENSOR_FUEL_PERCENTAGE),
+                    config.fuelMultiplier, config.fuelOffset);
             if (config.headerFuel) {
                 parts.add(new String[] {context.getString(R.string.header_fuel),
                         liters(fuel == null ? null : fuel.litersText())});

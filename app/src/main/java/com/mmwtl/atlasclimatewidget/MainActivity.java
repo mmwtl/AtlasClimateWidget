@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,6 +19,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
@@ -343,6 +345,7 @@ public final class MainActivity extends ScaledActivity {
     private void buildSystemTab(LinearLayout page) {
         page.addView(buildStatusCard());
         page.addView(buildBehaviourCard());
+        page.addView(buildFuelCard());
         page.addView(buildInterfaceCard());
         page.addView(buildBackupCard());
     }
@@ -405,6 +408,112 @@ public final class MainActivity extends ScaledActivity {
         actions.addView(reset, weighted(0, 0));
         card.addView(actions);
         return card;
+    }
+
+    /** The fuel formula, as in AtlasAppWidget: the default or the user's own coefficients. */
+    private LinearLayout buildFuelCard() {
+        LinearLayout card = Ui.card(this);
+        card.addView(Ui.heading(this, R.string.fuel_title, 20));
+        TextView summary = Ui.text(this, "", 14, Ui.TEXT_SECONDARY);
+        summary.setLineSpacing(0, 1.2f);
+        Ui.topMargin(summary, 8);
+        card.addView(summary);
+        Switch custom = switchRow(R.string.fuel_custom_formula, prefs.fuelCustomFormula());
+        card.addView(custom);
+        Button edit = Ui.button(this, R.string.fuel_change_formula);
+        Ui.topMargin(edit, 10);
+        card.addView(edit);
+        card.addView(hint(R.string.fuel_hint));
+        Runnable refresh = () -> {
+            summary.setText(getString(prefs.fuelCustomFormula()
+                            ? R.string.fuel_formula_custom : R.string.fuel_formula_default,
+                    Fuel.format(prefs.fuelMultiplier()), signed(prefs.fuelOffset()),
+                    Fuel.capacityLiters(prefs.fuelMultiplier(), prefs.fuelOffset())));
+            edit.setVisibility(prefs.fuelCustomFormula() ? View.VISIBLE : View.GONE);
+        };
+        refresh.run();
+        custom.setOnCheckedChangeListener((view, checked) -> {
+            prefs.setFuelCustomFormula(checked);
+            refresh.run();
+            presetsChanged();
+        });
+        edit.setOnClickListener(view -> showFuelFormulaDialog(() -> {
+            refresh.run();
+            presetsChanged();
+        }));
+        return card;
+    }
+
+    private static String signed(float offset) {
+        return (offset < 0f ? "− " : "+ ") + Fuel.format(Math.abs(offset));
+    }
+
+    private void showFuelFormulaDialog(Runnable onSaved) {
+        LinearLayout fields = vertical();
+        fields.setPadding(Ui.dp(this, 24), Ui.dp(this, 8), Ui.dp(this, 24), 0);
+        fields.addView(hint(R.string.fuel_formula_dialog_hint));
+        EditText multiplier = formulaField(fields, R.string.fuel_multiplier,
+                prefs.savedFuelMultiplier());
+        EditText offset = formulaField(fields, R.string.fuel_offset, prefs.savedFuelOffset());
+        AlertDialog dialog = new AlertDialog.Builder(this,
+                android.R.style.Theme_Material_Dialog_Alert)
+                .setTitle(R.string.fuel_formula_dialog_title)
+                .setView(fields)
+                .setNegativeButton(R.string.setup_cancel, null)
+                .setPositiveButton(R.string.setup_done, null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(view -> {
+                    Float parsedMultiplier = formulaValue(multiplier, Fuel.MULTIPLIER_LIMIT,
+                            R.string.fuel_multiplier_range);
+                    Float parsedOffset = formulaValue(offset, Fuel.OFFSET_LIMIT,
+                            R.string.fuel_offset_range);
+                    if (parsedMultiplier == null || parsedOffset == null) {
+                        return;
+                    }
+                    prefs.setFuelFormula(parsedMultiplier, parsedOffset);
+                    dialog.dismiss();
+                    onSaved.run();
+                }));
+        dialog.show();
+        sized(dialog);
+    }
+
+    private EditText formulaField(LinearLayout parent, int labelRes, float value) {
+        TextView label = Ui.text(this, labelRes, 14, Ui.TEXT);
+        Ui.topMargin(label, 12);
+        parent.addView(label);
+        EditText field = new EditText(this);
+        field.setText(Fuel.format(value));
+        field.setSelectAllOnFocus(true);
+        field.setSingleLine(true);
+        field.setTextColor(Ui.TEXT);
+        field.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL
+                | InputType.TYPE_NUMBER_FLAG_SIGNED);
+        parent.addView(field, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        return field;
+    }
+
+    /** Parses a coefficient, accepting a decimal comma; marks the field and returns null if bad. */
+    private Float formulaValue(EditText field, float limit, int rangeRes) {
+        String text = field.getText().toString().trim().replace(',', '.').replace('−', '-');
+        float value;
+        try {
+            value = Float.parseFloat(text);
+        } catch (NumberFormatException error) {
+            field.setError(getString(R.string.fuel_formula_invalid));
+            return null;
+        }
+        if (!Float.isFinite(value)) {
+            field.setError(getString(R.string.fuel_formula_invalid));
+            return null;
+        }
+        if (Math.abs(value) > limit) {
+            field.setError(getString(rangeRes));
+            return null;
+        }
+        return value;
     }
 
     private LinearLayout buildBehaviourCard() {
@@ -936,7 +1045,7 @@ public final class MainActivity extends ScaledActivity {
         return widgetId == TEMPLATE ? prefs.template() : prefs.widget(widgetId);
     }
 
-    /** The preset count follows global settings, so the edited layout picks it up again. */
+    /** The preset count and fuel formula follow global settings; re-resolve the edited layout. */
     private void presetsChanged() {
         prefs.resolved(config);
         ClimateService.start(this, ClimateService.ACTION_REFRESH);

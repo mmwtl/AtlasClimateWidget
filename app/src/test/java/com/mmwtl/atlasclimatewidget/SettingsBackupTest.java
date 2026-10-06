@@ -16,6 +16,9 @@ public final class SettingsBackupTest {
         backup.levelsFromMax = true;
         backup.fanPresets = "FIVE";
         backup.uiScaleTenths = 17;
+        backup.fuelCustomFormula = true;
+        backup.fuelMultiplier = 0.466f;
+        backup.fuelOffset = 4.4f;
         backup.template.columns = 4;
         WidgetConfig first = new WidgetConfig();
         first.style = WidgetConfig.Style.CONSOLE;
@@ -32,6 +35,9 @@ public final class SettingsBackupTest {
             assertTrue(copy.levelsFromMax);
             assertEquals("FIVE", copy.fanPresets);
             assertEquals(17, copy.uiScaleTenths);
+            assertTrue(copy.fuelCustomFormula);
+            assertEquals(0.466f, copy.fuelMultiplier, 1e-6f);
+            assertEquals(4.4f, copy.fuelOffset, 1e-6f);
             assertEquals(4, copy.template.columns);
             assertEquals(2, copy.widgets.size());
             assertEquals(WidgetConfig.Style.CONSOLE, copy.widgets.get(0).style);
@@ -59,6 +65,14 @@ public final class SettingsBackupTest {
         assertFalse(SettingsBackup.parse(json.toString()).levelsFromMax);
     }
 
+    @Test public void dropsABrokenFuelFormula() {
+        SettingsBackup parsed = SettingsBackup.parse(
+                "{\"format\":\"atlas-climate-widget-settings\",\"settings\":{\"fuel\":"
+                        + "{\"useCustomFormula\":true,\"multiplier\":500,\"offset\":1}}}");
+        assertFalse(parsed.fuelCustomFormula);
+        assertEquals(Fuel.OFFSET, parsed.fuelOffset, 0f);
+    }
+
     @Test public void rejectsForeignText() {
         assertNull(SettingsBackup.parse(null));
         assertNull(SettingsBackup.parse("просто текст"));
@@ -76,6 +90,8 @@ public final class SettingsBackupTest {
         assertEquals(CarModel.ATLAS.name(), parsed.carModel);
         assertEquals(5, parsed.tempStepTenths);
         assertEquals(0, parsed.uiScaleTenths);
+        assertFalse(parsed.fuelCustomFormula);
+        assertEquals(Fuel.MULTIPLIER, parsed.fuelMultiplier, 0f);
         assertTrue(parsed.widgets.isEmpty());
         assertEquals(new WidgetConfig().columns, parsed.template.columns);
     }
