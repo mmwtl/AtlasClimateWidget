@@ -1,8 +1,6 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="64" android:viewportHeight="64">
-    <path android:strokeColor="#FFFFFF" android:strokeWidth="3.5" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M 12,47 H 7 V 39 Q 7,36 10,35.5 L 17,34 M 51,34 L 56,35 Q 59,35.6 59,38.5 V 47 H 54 M 24,47 H 40"/>
-    <path android:strokeColor="#FFFFFF" android:strokeWidth="3.5" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M 18,47 m -5,0 a 5,5 0 1 0 10,0 a 5,5 0 1 0 -10,0 M 47,47 m -5,0 a 5,5 0 1 0 10,0 a 5,5 0 1 0 -10,0"/>
-    <path android:strokeColor="#FFFFFF" android:strokeWidth="3.5" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M 17,34 L 24,26 Q 25.5,24.5 28,24.5 H 42 Q 44.5,24.5 46,26 L 51,34"/>
-    <path android:strokeColor="#FFFFFF" android:strokeWidth="2.5" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M 25,29.5 L 28,32.5 L 31,29.5 L 34,32.5 L 37,29.5 L 40,32.5 L 43,29.5"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M 36,10 m -5,0 a 5,5 0 1 0 10,0 a 5,5 0 1 0 -10,0"/>
-    <path android:strokeColor="#FFFFFF" android:strokeWidth="2.5" android:strokeLineCap="round" android:pathData="M 25.5,10 H 27.5 M 44.5,10 H 46.5 M 36,1 V 2.5 M 28.6,2.6 L 29.8,3.8 M 43.4,2.6 L 42.2,3.8 M 28.6,17.4 L 29.8,16.2 M 43.4,17.4 L 42.2,16.2"/>
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="3.5" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M 12,5 C 8,19 7,35 7,51 Q 7,59 14,59 M 52,5 C 56,19 57,35 57,51 Q 57,59 50,59"/>
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.4" android:pathData="M 17,4 Q 32,6 47,4 L 48,9 Q 32,7 16,9 Z"/>
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="3.5" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M 22,13 Q 32,12 42,13 Q 51,13 51,22 V 47 Q 51,55 43,55 H 21 Q 13,55 13,47 V 22 Q 13,13 22,13 Z"/>
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.7" android:pathData="M 21,31 H 43 Q 48,31 48,34 H 16 Q 16,31 21,31 Z M 16,37 H 48 V 42 H 16 Z M 16,45 H 48 V 47 Q 48,52 43,52 H 21 Q 16,52 16,47 Z"/>
 </vector>

@@ -9,4 +9,5 @@ secure.signing.gradle
 *.jks
 *.keystore
 /reference/
+/hvac_default/
 *.apk
