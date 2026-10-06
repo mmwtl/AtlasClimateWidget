@@ -59,6 +59,12 @@ enum ClimateFunction {
             Spec.level(Hvac.SEAT_HEATING, Hvac.ZONE_REAR_RIGHT, Hvac.SEAT_HEAT_LEVELS)
                     .icons(PassengerIcons.HEAT)
                     .oem(R.drawable.ic_oem_rear_seat_right)),
+    SUNROOF(R.string.fn_sunroof, R.string.fn_sunroof_short, Tone.NEUTRAL,
+            Spec.position(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, Hvac.ROOF_POSITIONS)
+                    .icon(R.drawable.ic_fn_sunroof)),
+    SUNSHADE(R.string.fn_sunshade, R.string.fn_sunshade_short, Tone.NEUTRAL,
+            Spec.position(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, Hvac.ROOF_POSITIONS)
+                    .icon(R.drawable.ic_fn_sunshade)),
     BLOW_FACE(R.string.fn_blow_face, R.string.fn_blow_face_short, Tone.NEUTRAL,
             Spec.blow(ClimateCommands.BLOW_FACE).icon(R.drawable.ic_blow_face)
                     .oem(R.drawable.ic_oem_blow_face)),
@@ -93,6 +99,8 @@ enum ClimateFunction {
     enum Kind {
         TOGGLE,
         LEVEL,
+        /** A float percentage stepped through {@link #levels}, such as the sunroof. */
+        POSITION,
         BLOW,
         SELECT,
         ACTION
@@ -161,10 +169,15 @@ enum ClimateFunction {
         return kind != Kind.ACTION;
     }
 
+    boolean isFloat() {
+        return kind == Kind.POSITION;
+    }
+
     /** Number of indicator bars under the glyph. */
     int indicatorCount() {
         switch (kind) {
             case LEVEL:
+            case POSITION:
                 return levels.length - 1;
             case SELECT:
                 return 3;
@@ -248,6 +261,12 @@ enum ClimateFunction {
             spec.propertyId = propertyId;
             spec.area = area;
             spec.levels = levels;
+            return spec;
+        }
+
+        static Spec position(int propertyId, int area, int[] percents) {
+            Spec spec = level(propertyId, area, percents);
+            spec.kind = Kind.POSITION;
             return spec;
         }
 

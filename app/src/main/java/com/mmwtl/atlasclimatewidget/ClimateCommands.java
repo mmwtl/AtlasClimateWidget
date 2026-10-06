@@ -17,6 +17,9 @@ final class ClimateCommands {
     static final int FAN_BLOWER_UP = 269752065;
     static final int FAN_BLOWER_DOWN = 269752066;
 
+    /** Percent a reported roof position may miss a stop by, as the motor stops near it. */
+    static final double POSITION_TOLERANCE = 2d;
+
     private static final int SEAT_HEAT_MAX_ALIAS = 0x1005020F;
     private static final int SEAT_VENT_MAX_ALIAS = 0x1005010F;
     /** Atlas auto-fan presets «Мягко», «Комфорт», «Сильно», as used by GInputBridge. */
@@ -98,6 +101,10 @@ final class ClimateCommands {
                 int index = levelIndex(function, value);
                 return new TileState(true, index > 0, index);
             }
+            case POSITION: {
+                int index = positionIndex(function, raw);
+                return new TileState(true, index > 0, index);
+            }
             case BLOW: {
                 boolean on = (blowBits(value) & function.blowBit) != 0;
                 return new TileState(true, on, on ? 1 : 0, directionsDormant(state));
@@ -128,6 +135,28 @@ final class ClimateCommands {
             return levels.length - 1;
         }
         return 0;
+    }
+
+    /**
+     * Maps a reported percentage to the highest stop it has reached; any opening counts as
+     * the first stop, so a roof moving between stops never shows as closed.
+     */
+    static int positionIndex(ClimateFunction function, double percent) {
+        if (percent <= POSITION_TOLERANCE) {
+            return 0;
+        }
+        int[] levels = function.levels;
+        int index = 1;
+        while (index + 1 < levels.length && levels[index + 1] <= percent + POSITION_TOLERANCE) {
+            index++;
+        }
+        return index;
+    }
+
+    /** Whether the sunroof glass is open, or false while unknown. */
+    static boolean sunroofOpen(ClimateState state) {
+        Double raw = state.property(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF);
+        return raw != null && raw > POSITION_TOLERANCE;
     }
 
     static int blowBits(int mode) {
@@ -333,6 +362,8 @@ final class ClimateCommands {
                         : (index + 1) % count;
                 return single(Command.setInt(id, function.area, function.levels[next]));
             }
+            case POSITION:
+                return roofPress(function, state, id, raw, levelsFromMax);
             case BLOW: {
                 // In AUTO the kept directions are not in use, so a tap picks only this one.
                 int bits = raw == null || directionsDormant(state) ? 0 : blowBits(current);
@@ -349,6 +380,36 @@ final class ClimateCommands {
             default:
                 return Collections.emptyList();
         }
+    }
+
+    /**
+     * Steps the sunroof or sunshade like a heating level. The sunshade cannot close under an
+     * open sunroof: its cycle skips «closed» then, and opening the sunroof opens a closed
+     * sunshade to the same stop first.
+     */
+    private static List<Command> roofPress(ClimateFunction function, ClimateState state,
+            int id, Double raw, boolean levelsFromMax) {
+        int[] levels = function.levels;
+        int lowest = function == ClimateFunction.SUNSHADE && sunroofOpen(state) ? 1 : 0;
+        int index = raw == null ? 0 : positionIndex(function, raw);
+        int next;
+        if (index < lowest) {
+            next = lowest;
+        } else if (levelsFromMax) {
+            next = index == lowest ? levels.length - 1 : index - 1;
+        } else {
+            next = index + 1 < levels.length ? index + 1 : lowest;
+        }
+        List<Command> commands = new ArrayList<>(2);
+        if (function == ClimateFunction.SUNROOF && levels[next] > 0) {
+            Double shade = state.property(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE);
+            if (shade != null && shade <= POSITION_TOLERANCE) {
+                commands.add(Command.setFloat(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE,
+                        levels[next]));
+            }
+        }
+        commands.add(Command.setFloat(id, function.area, levels[next]));
+        return commands;
     }
 
     static List<Command> setTemperature(ClimateState state, int zone, float value) {

@@ -214,6 +214,10 @@
     <string name="fn_rear_left_heat_short">Сзади слева</string>
     <string name="fn_rear_right_heat">Подогрев заднего правого</string>
     <string name="fn_rear_right_heat_short">Сзади справа</string>
+    <string name="fn_sunroof">Люк</string>
+    <string name="fn_sunroof_short">Люк</string>
+    <string name="fn_sunshade">Шторка панорамной крыши</string>
+    <string name="fn_sunshade_short">Шторка</string>
     <string name="fn_blow_face">Обдув в лицо</string>
     <string name="fn_blow_face_short">В лицо</string>
     <string name="fn_blow_legs">Обдув в ноги</string>

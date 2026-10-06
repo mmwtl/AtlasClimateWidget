@@ -35,6 +35,18 @@ public final class WatchListTest {
         assertTrue(watches(watch, Hvac.ZONE_DRIVER));
     }
 
+    @Test public void sunroofTileWatchesSunshadeAsFloat() {
+        WidgetConfig config = new WidgetConfig();
+        config.setFunctionEnabled(ClimateFunction.SUNROOF, true);
+        WatchList watch = WatchList.of(Collections.singletonList(config), CarModel.ATLAS);
+        assertTrue(watch.properties.contains(
+                new WatchList.Key(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, true)));
+        assertTrue(watch.properties.contains(
+                new WatchList.Key(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, true)));
+        assertFalse(watch.properties.contains(
+                new WatchList.Key(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, false)));
+    }
+
     private static boolean watches(WatchList watch, int area) {
         return watch.properties.contains(new WatchList.Key(Hvac.BLOWING_MODE, area, false));
     }

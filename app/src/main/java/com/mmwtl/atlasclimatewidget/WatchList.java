@@ -59,6 +59,7 @@ final class WatchList {
         }
         boolean blow = false;
         boolean presets = false;
+        boolean roof = false;
         if (config.isEnabled(WidgetConfig.Block.FAN)) {
             property(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL, false);
             property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL, false);
@@ -69,14 +70,20 @@ final class WatchList {
         if (config.isEnabled(WidgetConfig.Block.TILES)) {
             for (ClimateFunction function : config.functions) {
                 if (function.hasProperty()) {
-                    property(function.propertyId(model), function.area, false);
+                    property(function.propertyId(model), function.area, function.isFloat());
                 }
+                roof |= function.kind == ClimateFunction.Kind.POSITION;
                 blow |= function.kind == ClimateFunction.Kind.BLOW;
                 presets |= function.propertyId(model) == Hvac.AUTO_FAN_SETTING;
             }
         }
         if (blow) {
             property(Hvac.BLOWING_MODE, Hvac.ZONE_DRIVER, false);
+        }
+        if (roof) {
+            // The sunshade may not close under an open sunroof, so each needs the other.
+            property(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, true);
+            property(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, true);
         }
         if (blow || presets) {
             // Directions apply only in manual mode and presets only in AUTO.

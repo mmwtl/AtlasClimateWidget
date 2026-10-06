@@ -13,6 +13,9 @@ final class Hvac {
     static final int ZONE_ROW_1_ALL = 8;
     static final int ZONE_REAR_LEFT = 16;
     static final int ZONE_REAR_RIGHT = 64;
+    /** {@link #WINDOW_POS} areas for the sunroof glass and its sunshade, after FX11. */
+    static final int ZONE_SUNROOF = 4;
+    static final int ZONE_SUNSHADE = 65544;
 
     static final int POWER = 268501248;
     static final int AUTO = 268501504;
@@ -33,6 +36,9 @@ final class Hvac {
     static final int ECO = 268960000;
     static final int IONIZER = 268961024;
     static final int STEERING_WHEEL_HEAT = 269025536;
+
+    /** Window, sunroof and sunshade position, a float percentage open (0 = closed). */
+    static final int WINDOW_POS = 553845504;
 
     static final int WINDSHIELD_HEAT_ATLAS = 269027328;
     static final int WINDSHIELD_HEAT_PREFACE = 269753088;
@@ -68,6 +74,9 @@ final class Hvac {
     static final int[] SEAT_HEAT_LEVELS = {0, 268763649, 268763650, 268763651};
     static final int[] SEAT_VENT_LEVELS = {0, 268763393, 268763394, 268763395};
     static final int[] STEERING_HEAT_LEVELS = {0, 269025537, 269025538, 269025539};
+
+    /** Sunroof and sunshade stops: closed, 20 %, 50 %, fully open. */
+    static final int[] ROOF_POSITIONS = {0, 20, 50, 100};
 
     static final float DEFAULT_TEMP_MIN = 16f;
     static final float DEFAULT_TEMP_MAX = 28f;
