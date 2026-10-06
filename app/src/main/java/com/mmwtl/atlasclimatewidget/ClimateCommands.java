@@ -19,6 +19,8 @@ final class ClimateCommands {
 
     /** Percent a reported roof position may miss a stop by, as the motor stops near it. */
     static final double POSITION_TOLERANCE = 2d;
+    /** Sunroof stop sent as {@link Hvac#SUNROOF_TILT} rather than a position. */
+    static final int SUNROOF_AIRING = 1;
 
     private static final int SEAT_HEAT_MAX_ALIAS = 0x1005020F;
     private static final int SEAT_VENT_MAX_ALIAS = 0x1005010F;
@@ -87,6 +89,10 @@ final class ClimateCommands {
         if (function.kind == ClimateFunction.Kind.ACTION) {
             return TileState.ACTION;
         }
+        if (function == ClimateFunction.SUNROOF) {
+            Integer index = sunroofIndex(state);
+            return index == null ? TileState.UNKNOWN : new TileState(true, index > 0, index);
+        }
         Double raw = state.property(function.propertyId(model), function.area);
         if (raw == null) {
             return TileState.UNKNOWN;
@@ -153,10 +159,26 @@ final class ClimateCommands {
         return index;
     }
 
-    /** Whether the sunroof glass is open, or false while unknown. */
+    /** Sunroof stop from its position and airing flag, or null while both are unknown. */
+    static Integer sunroofIndex(ClimateState state) {
+        Double position = state.property(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF);
+        boolean airing = sunroofAiring(state);
+        if (position == null && state.property(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF) == null) {
+            return null;
+        }
+        int index = position == null ? 0 : positionIndex(ClimateFunction.SUNROOF, position);
+        return airing ? Math.max(index, SUNROOF_AIRING) : index;
+    }
+
+    private static boolean sunroofAiring(ClimateState state) {
+        Double tilt = state.property(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF);
+        return tilt != null && Math.round(tilt) == 1;
+    }
+
+    /** Whether the sunroof is open or airing, or false while unknown. */
     static boolean sunroofOpen(ClimateState state) {
-        Double raw = state.property(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF);
-        return raw != null && raw > POSITION_TOLERANCE;
+        Integer index = sunroofIndex(state);
+        return index != null && index > 0;
     }
 
     static int blowBits(int mode) {
@@ -391,7 +413,13 @@ final class ClimateCommands {
             int id, Double raw, boolean levelsFromMax) {
         int[] levels = function.levels;
         int lowest = function == ClimateFunction.SUNSHADE && sunroofOpen(state) ? 1 : 0;
-        int index = raw == null ? 0 : positionIndex(function, raw);
+        int index;
+        if (function == ClimateFunction.SUNROOF) {
+            Integer roof = sunroofIndex(state);
+            index = roof == null ? 0 : roof;
+        } else {
+            index = raw == null ? 0 : positionIndex(function, raw);
+        }
         int next;
         if (index < lowest) {
             next = lowest;
@@ -400,7 +428,7 @@ final class ClimateCommands {
         } else {
             next = index + 1 < levels.length ? index + 1 : lowest;
         }
-        List<Command> commands = new ArrayList<>(2);
+        List<Command> commands = new ArrayList<>(3);
         if (function == ClimateFunction.SUNROOF && levels[next] > 0) {
             Double shade = state.property(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE);
             if (shade != null && shade <= POSITION_TOLERANCE) {
@@ -408,8 +436,28 @@ final class ClimateCommands {
                         stopAtLeast(Hvac.SUNSHADE_POSITIONS, levels[next])));
             }
         }
-        commands.add(Command.setFloat(id, function.area, levels[next]));
+        if (function != ClimateFunction.SUNROOF) {
+            commands.add(Command.setFloat(id, function.area, levels[next]));
+        } else if (next == SUNROOF_AIRING) {
+            addTilt(commands, 1);
+        } else if (next > 0) {
+            commands.add(Command.setFloat(id, function.area, levels[next]));
+        } else {
+            // Close what is open: the airing flag, the slid position or both.
+            if (sunroofAiring(state)) {
+                addTilt(commands, 0);
+            }
+            if (raw == null || raw > POSITION_TOLERANCE || !sunroofAiring(state)) {
+                commands.add(Command.setFloat(id, function.area, 0f));
+            }
+        }
         return commands;
+    }
+
+    /** FX11 sets the airing flag both in the sunroof zone and globally. */
+    private static void addTilt(List<Command> commands, int value) {
+        commands.add(Command.setInt(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF, value));
+        commands.add(Command.setInt(Hvac.SUNROOF_TILT, Gib.AREA_GLOBAL, value));
     }
 
     private static int stopAtLeast(int[] stops, int percent) {

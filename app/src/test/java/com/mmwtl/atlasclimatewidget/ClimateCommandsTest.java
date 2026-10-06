@@ -55,8 +55,52 @@ public final class ClimateCommandsTest {
         assertEquals(ClimateCommands.Command.Type.FLOAT, commands.get(0).type);
         assertEquals(Hvac.ZONE_SUNROOF, commands.get(0).area);
         assertEquals(100d, commands.get(0).value, 0d);
-        assertEquals(8d, ClimateCommands.press(ClimateFunction.SUNROOF, state, CarModel.ATLAS,
-                true).get(0).value, 0d);
+        assertTilt(ClimateCommands.press(ClimateFunction.SUNROOF, state, CarModel.ATLAS, true),
+                1);
+    }
+
+    @Test public void sunroofAiringIsSentAsTiltAndClosedByIt() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 0, 0);
+        store.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 100, 0);
+        List<ClimateCommands.Command> commands = ClimateCommands.press(ClimateFunction.SUNROOF,
+                store.snapshot(0), CarModel.ATLAS, false);
+        assertTilt(commands, 1);
+
+        store.putProperty(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF, 1, 0);
+        ClimateState airing = store.snapshot(0);
+        ClimateCommands.TileState tile = ClimateCommands.tileState(ClimateFunction.SUNROOF,
+                airing, CarModel.ATLAS);
+        assertTrue(tile.active);
+        assertEquals(ClimateCommands.SUNROOF_AIRING, tile.level);
+        commands = ClimateCommands.press(ClimateFunction.SUNROOF, airing, CarModel.ATLAS, false);
+        assertEquals(1, commands.size());
+        assertEquals(Hvac.WINDOW_POS, commands.get(0).id);
+        assertEquals(20d, commands.get(0).value, 0d);
+        assertTilt(ClimateCommands.press(ClimateFunction.SUNROOF, airing, CarModel.ATLAS, true),
+                0);
+    }
+
+    @Test public void closingFullyOpenSunroofSetsPositionOnly() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 100, 0);
+        store.putProperty(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF, 0, 0);
+        List<ClimateCommands.Command> commands = ClimateCommands.press(ClimateFunction.SUNROOF,
+                store.snapshot(0), CarModel.ATLAS, false);
+        assertEquals(1, commands.size());
+        assertEquals(Hvac.WINDOW_POS, commands.get(0).id);
+        assertEquals(0d, commands.get(0).value, 0d);
+    }
+
+    private static void assertTilt(List<ClimateCommands.Command> commands, int value) {
+        assertEquals(2, commands.size());
+        for (ClimateCommands.Command command : commands) {
+            assertEquals(Hvac.SUNROOF_TILT, command.id);
+            assertEquals(ClimateCommands.Command.Type.INT, command.type);
+            assertEquals(value, (int) command.value);
+        }
+        assertEquals(Hvac.ZONE_SUNROOF, commands.get(0).area);
+        assertEquals(Gib.AREA_GLOBAL, commands.get(1).area);
     }
 
     @Test public void positionIndexCountsAnyOpeningAndNearStops() {
@@ -95,11 +139,10 @@ public final class ClimateCommandsTest {
         store.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 0, 0);
         List<ClimateCommands.Command> commands = ClimateCommands.press(ClimateFunction.SUNROOF,
                 store.snapshot(0), CarModel.ATLAS, false);
-        assertEquals(2, commands.size());
+        assertEquals(3, commands.size());
         assertEquals(Hvac.ZONE_SUNSHADE, commands.get(0).area);
         assertEquals(20d, commands.get(0).value, 0d);
-        assertEquals(Hvac.ZONE_SUNROOF, commands.get(1).area);
-        assertEquals(8d, commands.get(1).value, 0d);
+        assertTilt(commands.subList(1, 3), 1);
 
         store.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 20, 0);
         commands = ClimateCommands.press(ClimateFunction.SUNROOF, store.snapshot(0),

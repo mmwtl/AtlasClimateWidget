@@ -87,6 +87,7 @@ final class WatchList {
             // The sunshade may not close under an open sunroof, so each needs the other.
             property(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, true);
             property(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, true);
+            property(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF, false);
         }
         if (blow || presets) {
             // Directions apply only in manual mode and presets only in AUTO.

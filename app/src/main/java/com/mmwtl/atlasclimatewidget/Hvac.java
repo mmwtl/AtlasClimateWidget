@@ -39,6 +39,8 @@ final class Hvac {
 
     /** Window, sunroof and sunshade position, a float percentage open (0 = closed). */
     static final int WINDOW_POS = 553845504;
+    /** Sunroof airing (tilt), 1 = on; FX11 sets it in {@link #ZONE_SUNROOF} and globally. */
+    static final int SUNROOF_TILT = 553845760;
 
     static final int WINDSHIELD_HEAT_ATLAS = 269027328;
     static final int WINDSHIELD_HEAT_PREFACE = 269753088;
@@ -77,7 +79,10 @@ final class Hvac {
     static final int[] SEAT_VENT_LEVELS = {0, 268763393, 268763394, 268763395};
     static final int[] STEERING_HEAT_LEVELS = {0, 269025537, 269025538, 269025539};
 
-    /** Sunroof stops: closed, airing (FX11 treats about 8 % as tilt), 20 %, fully open. */
+    /**
+     * Sunroof stops: closed, airing, 20 %, fully open. Airing is sent as {@link #SUNROOF_TILT};
+     * 8 % is the position FX11 expects it to report.
+     */
     static final int[] SUNROOF_POSITIONS = {0, 8, 20, 100};
     /** Sunshade stops: closed, 20 %, 50 %, fully open. */
     static final int[] SUNSHADE_POSITIONS = {0, 20, 50, 100};

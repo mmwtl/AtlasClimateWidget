@@ -57,6 +57,8 @@ public final class WatchListTest {
                 new WatchList.Key(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, true)));
         assertFalse(watch.properties.contains(
                 new WatchList.Key(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, false)));
+        assertTrue(watch.properties.contains(
+                new WatchList.Key(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF, false)));
     }
 
     private static boolean watches(WatchList watch, int area) {
