@@ -77,8 +77,10 @@ final class Hvac {
     static final int[] SEAT_VENT_LEVELS = {0, 268763393, 268763394, 268763395};
     static final int[] STEERING_HEAT_LEVELS = {0, 269025537, 269025538, 269025539};
 
-    /** Sunroof and sunshade stops: closed, 20 %, 50 %, fully open. */
-    static final int[] ROOF_POSITIONS = {0, 20, 50, 100};
+    /** Sunroof stops: closed, airing (FX11 treats about 8 % as tilt), 20 %, fully open. */
+    static final int[] SUNROOF_POSITIONS = {0, 8, 20, 100};
+    /** Sunshade stops: closed, 20 %, 50 %, fully open. */
+    static final int[] SUNSHADE_POSITIONS = {0, 20, 50, 100};
 
     static final float DEFAULT_TEMP_MIN = 16f;
     static final float DEFAULT_TEMP_MAX = 28f;

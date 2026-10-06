@@ -60,10 +60,10 @@ enum ClimateFunction {
                     .icons(PassengerIcons.HEAT)
                     .oem(R.drawable.ic_oem_rear_seat_right)),
     SUNROOF(R.string.fn_sunroof, R.string.fn_sunroof_short, Tone.NEUTRAL,
-            Spec.position(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, Hvac.ROOF_POSITIONS)
+            Spec.position(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, Hvac.SUNROOF_POSITIONS)
                     .icon(R.drawable.ic_fn_sunroof)),
     SUNSHADE(R.string.fn_sunshade, R.string.fn_sunshade_short, Tone.NEUTRAL,
-            Spec.position(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, Hvac.ROOF_POSITIONS)
+            Spec.position(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, Hvac.SUNSHADE_POSITIONS)
                     .icon(R.drawable.ic_fn_sunshade)),
     BLOW_FACE(R.string.fn_blow_face, R.string.fn_blow_face_short, Tone.NEUTRAL,
             Spec.blow(ClimateCommands.BLOW_FACE).icon(R.drawable.ic_blow_face)

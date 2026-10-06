@@ -87,9 +87,10 @@ line, read as in AtlasAppWidget (`Fuel`).
   in AUTO, auto-fan presets outside it, the speed bar in AUTO. They never light up; the choice
   the car keeps is outlined. A tap on a resting speed bar or preset switches AUTO first and
   sends the value after `ClimateCommands.AUTO_SETTLE_MS`, since the switch restores the kept one.
-- The sunroof and its sunshade step like heating levels through `Hvac.ROOF_POSITIONS`
-  (`WINDOW_POS` percentages). The sunshade never closes under an open sunroof: its cycle
-  skips closed then, and opening the sunroof opens a closed sunshade to the same stop first.
+- The sunroof (`Hvac.SUNROOF_POSITIONS`, 8 % airing first) and its sunshade
+  (`Hvac.SUNSHADE_POSITIONS`) step like heating levels through `WINDOW_POS` percentages. The
+  sunshade never closes under an open sunroof: its cycle skips closed then, and opening the
+  sunroof first opens a closed sunshade to its lowest stop at or above the sunroof's.
 - The settings preview uses the same `RemoteViews` as the widget, inert; demo values are labelled.
 - Preserve per-widget layouts across upgrades; `WidgetConfig.fromJson` must tolerate unknown and
   missing fields.

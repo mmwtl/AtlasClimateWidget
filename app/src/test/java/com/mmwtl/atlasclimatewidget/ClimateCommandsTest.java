@@ -54,17 +54,19 @@ public final class ClimateCommandsTest {
         assertEquals(1, commands.size());
         assertEquals(ClimateCommands.Command.Type.FLOAT, commands.get(0).type);
         assertEquals(Hvac.ZONE_SUNROOF, commands.get(0).area);
-        assertEquals(50d, commands.get(0).value, 0d);
-        assertEquals(0d, ClimateCommands.press(ClimateFunction.SUNROOF, state, CarModel.ATLAS,
+        assertEquals(100d, commands.get(0).value, 0d);
+        assertEquals(8d, ClimateCommands.press(ClimateFunction.SUNROOF, state, CarModel.ATLAS,
                 true).get(0).value, 0d);
     }
 
     @Test public void positionIndexCountsAnyOpeningAndNearStops() {
         assertEquals(0, ClimateCommands.positionIndex(ClimateFunction.SUNROOF, 1));
+        assertEquals(1, ClimateCommands.positionIndex(ClimateFunction.SUNROOF, 5));
         assertEquals(1, ClimateCommands.positionIndex(ClimateFunction.SUNROOF, 8));
-        assertEquals(2, ClimateCommands.positionIndex(ClimateFunction.SUNROOF, 49));
+        assertEquals(2, ClimateCommands.positionIndex(ClimateFunction.SUNROOF, 19));
         assertEquals(2, ClimateCommands.positionIndex(ClimateFunction.SUNROOF, 80));
         assertEquals(3, ClimateCommands.positionIndex(ClimateFunction.SUNROOF, 100));
+        assertEquals(2, ClimateCommands.positionIndex(ClimateFunction.SUNSHADE, 49));
     }
 
     @Test public void sunshadeCannotCloseUnderOpenSunroof() {
@@ -97,7 +99,13 @@ public final class ClimateCommandsTest {
         assertEquals(Hvac.ZONE_SUNSHADE, commands.get(0).area);
         assertEquals(20d, commands.get(0).value, 0d);
         assertEquals(Hvac.ZONE_SUNROOF, commands.get(1).area);
-        assertEquals(20d, commands.get(1).value, 0d);
+        assertEquals(8d, commands.get(1).value, 0d);
+
+        store.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 20, 0);
+        commands = ClimateCommands.press(ClimateFunction.SUNROOF, store.snapshot(0),
+                CarModel.ATLAS, false);
+        assertEquals(100d, commands.get(0).value, 0d);
+        assertEquals(100d, commands.get(1).value, 0d);
     }
 
     @Test public void levelIndexAcceptsShortAndAliasValues() {

@@ -384,8 +384,8 @@ final class ClimateCommands {
 
     /**
      * Steps the sunroof or sunshade like a heating level. The sunshade cannot close under an
-     * open sunroof: its cycle skips «closed» then, and opening the sunroof opens a closed
-     * sunshade to the same stop first.
+     * open sunroof: its cycle skips «closed» then, and opening the sunroof first opens a closed
+     * sunshade to its lowest stop that uncovers the opening.
      */
     private static List<Command> roofPress(ClimateFunction function, ClimateState state,
             int id, Double raw, boolean levelsFromMax) {
@@ -405,11 +405,20 @@ final class ClimateCommands {
             Double shade = state.property(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE);
             if (shade != null && shade <= POSITION_TOLERANCE) {
                 commands.add(Command.setFloat(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE,
-                        levels[next]));
+                        stopAtLeast(Hvac.SUNSHADE_POSITIONS, levels[next])));
             }
         }
         commands.add(Command.setFloat(id, function.area, levels[next]));
         return commands;
+    }
+
+    private static int stopAtLeast(int[] stops, int percent) {
+        for (int stop : stops) {
+            if (stop >= percent) {
+                return stop;
+            }
+        }
+        return stops[stops.length - 1];
     }
 
     static List<Command> setTemperature(ClimateState state, int zone, float value) {
