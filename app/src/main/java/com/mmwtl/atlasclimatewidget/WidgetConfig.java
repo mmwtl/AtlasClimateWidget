@@ -151,6 +151,9 @@ final class WidgetConfig {
     boolean temperatureDual;
     boolean temperatureHeader = true;
     HeaderAlign headerAlign = HeaderAlign.CENTER;
+    /** Liters in the tank and the free tank volume, appended to the sensor line. */
+    boolean headerFuel;
+    boolean headerFuelFree;
     /** The set-temperature bar; without it the block may keep only the cabin/outside line. */
     boolean temperatureBar = true;
     boolean temperatureButtons = true;
@@ -390,6 +393,8 @@ final class WidgetConfig {
             json.put("temperatureDual", temperatureDual);
             json.put("temperatureHeader", temperatureHeader);
             json.put("headerAlign", headerAlign.name());
+            json.put("headerFuel", headerFuel);
+            json.put("headerFuelFree", headerFuelFree);
             json.put("temperatureBar", temperatureBar);
             json.put("temperatureButtons", temperatureButtons);
             json.put("fanButtons", fanButtons);
@@ -458,6 +463,8 @@ final class WidgetConfig {
         config.temperatureHeader = json.optBoolean("temperatureHeader", config.temperatureHeader);
         config.headerAlign = enumValue(HeaderAlign.class, json.optString("headerAlign"),
                 config.headerAlign);
+        config.headerFuel = json.optBoolean("headerFuel", config.headerFuel);
+        config.headerFuelFree = json.optBoolean("headerFuelFree", config.headerFuelFree);
         config.temperatureBar = json.optBoolean("temperatureBar", config.temperatureBar);
         config.temperatureButtons = json.optBoolean("temperatureButtons",
                 config.temperatureButtons);

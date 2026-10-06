@@ -10,7 +10,8 @@ AtlasClimateWidget is a real Android `AppWidget` (not an overlay) for portrait G
 units on Android 11. It is a user-built climate widget: a temperature bar, a fan bar and tiles of
 climate functions. Package name: `com.mmwtl.atlasclimatewidget`; do not change it without an
 explicit migration request. All car access goes through the GInputBridge broadcast API
-(`com.salat.gbinder`); do not bind ECarX services directly or add fuel/tank logic.
+(`com.salat.gbinder`); do not bind ECarX services directly. Fuel is shown only in the sensor
+line, read as in AtlasAppWidget (`Fuel`).
 
 ## Architecture
 
@@ -49,7 +50,9 @@ explicit migration request. All car access goes through the GInputBridge broadca
   the root gravity for alignment. Shrinking below the cell never depends on the mode.
 - The temperature block has two parts, the cabin/outside sensor line and the set-temperature
   bar; either can be off, so the block can keep only the sensor line. The line sits left,
-  centred or right (`HeaderAlign`, centred by default).
+  centred or right (`HeaderAlign`, centred by default). Per widget it can append the liters in
+  the tank and the free tank volume from the Fuel Percentage sensor (`Fuel`: value × 0.5 + 4,
+  a 54 l tank; at 0 the values become `<4`/`>50`). A line wider than the widget shrinks its font.
 - Cards: `CardLayout.SEPARATE` gives every block its own card; `SINGLE` puts all rows in one card,
   blocks a card padding apart without dividers. Fill shares extra height per block in both
   modes.

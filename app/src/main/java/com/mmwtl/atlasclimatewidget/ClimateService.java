@@ -248,7 +248,8 @@ public final class ClimateService extends Service {
         }
         long now = SystemClock.elapsedRealtime();
         if (action.equals(Gib.SENSOR_FLOAT_RESULT) || action.equals(Gib.SENSOR_FLOAT_CHANGED)) {
-            if (id != Hvac.SENSOR_TEMPERATURE_INDOOR && id != Hvac.SENSOR_TEMPERATURE_AMBIENT) {
+            if (id != Hvac.SENSOR_TEMPERATURE_INDOOR && id != Hvac.SENSOR_TEMPERATURE_AMBIENT
+                    && id != Hvac.SENSOR_FUEL_PERCENTAGE) {
                 return;
             }
             Float value = Gib.parseFloat(rawValue);

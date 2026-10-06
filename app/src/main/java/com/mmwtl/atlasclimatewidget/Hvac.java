@@ -46,6 +46,8 @@ final class Hvac {
 
     static final int SENSOR_TEMPERATURE_AMBIENT = 1051392;
     static final int SENSOR_TEMPERATURE_INDOOR = 1051648;
+    /** Fuel level 0–100; {@link Fuel} turns it into liters. */
+    static final int SENSOR_FUEL_PERCENTAGE = 4211968;
 
     static final int CIRCULATION_INNER = 268632321;
     static final int CIRCULATION_OUTSIDE = 268632322;

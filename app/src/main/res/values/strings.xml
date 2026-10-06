@@ -89,6 +89,8 @@
     <string name="setup_open_settings">Открыть все настройки</string>
     <string name="temp_dual">Две зоны: водитель и пассажир</string>
     <string name="temp_header">Строка «Салон · Улица»</string>
+    <string name="temp_header_fuel">Топливо в баке, л</string>
+    <string name="temp_header_fuel_free">Свободный объём бака, л</string>
     <string name="temp_part_bar">Полоса температуры</string>
     <string name="temp_buttons">Кнопки − и +</string>
     <string name="temp_hint">Нажатие на полосу задаёт температуру, после нажатия её можно тянуть пальцем — значение видно над полосой. Без полосы блок показывает только строку «Салон · Улица».</string>
@@ -180,6 +182,9 @@
 
     <string name="header_inside">Салон</string>
     <string name="header_outside">Улица</string>
+    <string name="header_fuel">Топливо</string>
+    <string name="header_fuel_free">Свободно</string>
+    <string name="header_liters">%1$s л</string>
     <string name="header_no_bridge">нет связи с GInputBridge</string>
     <string name="zone_driver">Водитель</string>
     <string name="zone_passenger">Пассажир</string>

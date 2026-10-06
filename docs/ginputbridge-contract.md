@@ -7,7 +7,7 @@
 | `SET_INT_PROPERTY` / `SET_FLOAT_PROPERTY` | `id`, `area`, `value` | записать свойство |
 | `GET_INT_PROPERTY` / `GET_FLOAT_PROPERTY` | `id`, `area` | запросить значение |
 | `LISTEN_PROPERTY_CHANGES` | `id`, `area` | подписка на изменения `id_area` |
-| `GET_FLOAT_SENSOR`, `LISTEN_SENSOR_CHANGES` | `id` | датчики температуры |
+| `GET_FLOAT_SENSOR`, `LISTEN_SENSOR_CHANGES` | `id` | датчики температуры, Fuel Percentage `4211968` |
 | `CAR_FUNCTION` | `function` | `ME_HOT`, `ME_COLD`, `CLIMATE_MENU` |
 
 Без `area` мост использует `Integer.MIN_VALUE` (глобальная зона).

@@ -14,6 +14,7 @@ import android.graphics.drawable.Drawable;
 import android.text.TextPaint;
 import android.text.TextUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -143,39 +144,78 @@ final class WidgetRenderer {
 
     // ---- temperature -------------------------------------------------------------------------
 
-    /** Cabin and outside temperature as one aligned line; the bridge status follows them. */
+    /**
+     * Cabin and outside temperature, optionally the fuel in the tank and its free volume, as
+     * one aligned line; the bridge status follows them. A line wider than the widget shrinks.
+     */
     private void drawHeader(Canvas canvas, WidgetGeometry.Strip strip) {
         float height = strip.contentHeight;
         float baseline = height * 0.78f;
         float size = Math.min(14f * dp, height * 0.72f);
         String separator = "•";
-        String inside = formatWhole(state.sensor(Hvac.SENSOR_TEMPERATURE_INDOOR));
-        String outside = formatWhole(state.sensor(Hvac.SENSOR_TEMPERATURE_AMBIENT));
+        List<String[]> parts = new ArrayList<>();
+        parts.add(new String[] {context.getString(R.string.header_inside),
+                formatWhole(state.sensor(Hvac.SENSOR_TEMPERATURE_INDOOR))});
+        parts.add(new String[] {context.getString(R.string.header_outside),
+                formatWhole(state.sensor(Hvac.SENSOR_TEMPERATURE_AMBIENT))});
+        if (config.headerFuel || config.headerFuelFree) {
+            Fuel fuel = Fuel.of(state.sensor(Hvac.SENSOR_FUEL_PERCENTAGE));
+            if (config.headerFuel) {
+                parts.add(new String[] {context.getString(R.string.header_fuel),
+                        liters(fuel == null ? null : fuel.litersText())});
+            }
+            if (config.headerFuelFree) {
+                parts.add(new String[] {context.getString(R.string.header_fuel_free),
+                        liters(fuel == null ? null : fuel.freeText())});
+            }
+        }
         String status = state.isConnected() ? null
                 : context.getString(R.string.header_no_bridge);
-        float width = labelValueWidth(context.getString(R.string.header_inside), inside, size)
-                + separatorWidth(separator, size)
-                + labelValueWidth(context.getString(R.string.header_outside), outside, size);
-        if (status != null) {
-            width += separatorWidth(separator, size) + statusWidth(status, size);
+        float available = plan.width - 2f * plan.padding;
+        float width = headerWidth(parts, separator, status, size);
+        if (width > available && width > 0f) {
+            // Every width scales with the text size, so one step fits the line.
+            size *= available / width;
+            width = headerWidth(parts, separator, status, size);
         }
-        float free = plan.width - 2f * plan.padding - width;
+        float free = available - width;
         float x = plan.padding;
         if (config.headerAlign == WidgetConfig.HeaderAlign.CENTER) {
             x += Math.max(0f, free / 2f);
         } else if (config.headerAlign == WidgetConfig.HeaderAlign.RIGHT) {
             x += Math.max(0f, free);
         }
-        x = drawLabelValue(canvas, context.getString(R.string.header_inside), inside, x,
-                baseline, size);
-        x = drawSeparator(canvas, separator, x, baseline, size);
-        x = drawLabelValue(canvas, context.getString(R.string.header_outside), outside, x,
-                baseline, size);
+        for (int index = 0; index < parts.size(); index++) {
+            if (index > 0) {
+                x = drawSeparator(canvas, separator, x, baseline, size);
+            }
+            x = drawLabelValue(canvas, parts.get(index)[0], parts.get(index)[1], x,
+                    baseline, size);
+        }
         if (status != null) {
             x = drawSeparator(canvas, separator, x, baseline, size);
             statusWidth(status, size);
             canvas.drawText(status, x, baseline, textPaint);
         }
+    }
+
+    private String liters(String value) {
+        return value == null ? "—" : context.getString(R.string.header_liters, value);
+    }
+
+    private float headerWidth(List<String[]> parts, String separator, String status,
+            float size) {
+        float width = 0f;
+        for (int index = 0; index < parts.size(); index++) {
+            if (index > 0) {
+                width += separatorWidth(separator, size);
+            }
+            width += labelValueWidth(parts.get(index)[0], parts.get(index)[1], size);
+        }
+        if (status != null) {
+            width += separatorWidth(separator, size) + statusWidth(status, size);
+        }
+        return width;
     }
 
     private float labelValueWidth(String label, String value, float size) {

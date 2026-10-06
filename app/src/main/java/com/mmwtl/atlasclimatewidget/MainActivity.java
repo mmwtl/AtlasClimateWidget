@@ -723,6 +723,10 @@ public final class MainActivity extends ScaledActivity {
                             config::hasTemperatureParts));
                     if (config.temperatureHeader) {
                         options.addView(headerAligns());
+                        options.addView(configSwitch(R.string.temp_header_fuel,
+                                config.headerFuel, value -> config.headerFuel = value));
+                        options.addView(configSwitch(R.string.temp_header_fuel_free,
+                                config.headerFuelFree, value -> config.headerFuelFree = value));
                     }
                     options.addView(partSwitch(R.string.temp_part_bar, config.temperatureBar,
                             value -> config.temperatureBar = value,

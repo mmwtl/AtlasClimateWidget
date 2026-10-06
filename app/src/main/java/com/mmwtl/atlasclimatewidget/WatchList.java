@@ -56,6 +56,9 @@ final class WatchList {
         if (config.isEnabled(WidgetConfig.Block.TEMPERATURE) && config.temperatureHeader) {
             sensors.add(Hvac.SENSOR_TEMPERATURE_INDOOR);
             sensors.add(Hvac.SENSOR_TEMPERATURE_AMBIENT);
+            if (config.headerFuel || config.headerFuelFree) {
+                sensors.add(Hvac.SENSOR_FUEL_PERCENTAGE);
+            }
         }
         boolean blow = false;
         boolean presets = false;

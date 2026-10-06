@@ -24,6 +24,7 @@ public final class WidgetConfigTest {
         config.verticalAlign = WidgetConfig.VerticalAlign.BOTTOM;
         config.cardLayout = WidgetConfig.CardLayout.SINGLE;
         config.headerAlign = WidgetConfig.HeaderAlign.RIGHT;
+        config.headerFuelFree = true;
         config.style = WidgetConfig.Style.CONSOLE;
         config.iconSet = WidgetConfig.IconSet.OEM;
         WidgetConfig copy = WidgetConfig.fromJson(config.toJson());
@@ -54,6 +55,9 @@ public final class WidgetConfigTest {
         assertEquals(WidgetConfig.CardLayout.SINGLE, copy.cardLayout);
         assertEquals(WidgetConfig.CardLayout.SEPARATE, WidgetConfig.fromJson("{}").cardLayout);
         assertEquals(WidgetConfig.HeaderAlign.RIGHT, copy.headerAlign);
+        assertTrue(copy.headerFuelFree);
+        assertFalse(copy.headerFuel);
+        assertFalse(fresh.headerFuel || fresh.headerFuelFree);
         assertEquals(WidgetConfig.HeaderAlign.CENTER, WidgetConfig.fromJson("{}").headerAlign);
         assertEquals(WidgetConfig.Style.CONSOLE, copy.style);
         assertEquals(WidgetConfig.Style.CLASSIC, WidgetConfig.fromJson("{}").style);
