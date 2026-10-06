@@ -172,7 +172,7 @@
     <string name="temp_step_half">0,5 °C</string>
     <string name="temp_step_whole">1 °C</string>
     <string name="levels_from_max">Уровни с максимального</string>
-    <string name="levels_from_max_hint">Нажатие на подогрев или вентиляцию: выкл → 3 → 2 → 1 → выкл. Иначе выкл → 1 → 2 → 3 → выкл.</string>
+    <string name="levels_from_max_hint">Нажатие на подогрев или вентиляцию: выкл → 3 → 2 → 1 → выкл. Иначе выкл → 1 → 2 → 3 → выкл. Люк и шторка всегда открываются по шагам, начиная с малого.</string>
 
     <string name="interface_title">Интерфейс приложения</string>
     <string name="interface_hint">Меняет размер этого экрана без изменения системного масштаба ГУ.</string>

@@ -385,7 +385,7 @@ final class ClimateCommands {
                 return single(Command.setInt(id, function.area, function.levels[next]));
             }
             case POSITION:
-                return roofPress(function, state, id, raw, levelsFromMax);
+                return roofPress(function, state, id, raw);
             case BLOW: {
                 // In AUTO the kept directions are not in use, so a tap picks only this one.
                 int bits = raw == null || directionsDormant(state) ? 0 : blowBits(current);
@@ -405,12 +405,13 @@ final class ClimateCommands {
     }
 
     /**
-     * Steps the sunroof or sunshade like a heating level. The sunshade cannot close under an
+     * Steps the sunroof or sunshade upwards like a heating level; the «from the maximum» order
+     * never applies, so a first tap only opens a little. The sunshade cannot close under an
      * open sunroof: its cycle skips «closed» then, and opening the sunroof first opens a closed
      * sunshade to its lowest stop that uncovers the opening.
      */
     private static List<Command> roofPress(ClimateFunction function, ClimateState state,
-            int id, Double raw, boolean levelsFromMax) {
+            int id, Double raw) {
         int[] levels = function.levels;
         int lowest = function == ClimateFunction.SUNSHADE && sunroofOpen(state) ? 1 : 0;
         int index;
@@ -423,8 +424,6 @@ final class ClimateCommands {
         int next;
         if (index < lowest) {
             next = lowest;
-        } else if (levelsFromMax) {
-            next = index == lowest ? levels.length - 1 : index - 1;
         } else {
             next = index + 1 < levels.length ? index + 1 : lowest;
         }

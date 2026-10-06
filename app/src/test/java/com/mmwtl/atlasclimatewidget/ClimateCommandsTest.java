@@ -55,8 +55,19 @@ public final class ClimateCommandsTest {
         assertEquals(ClimateCommands.Command.Type.FLOAT, commands.get(0).type);
         assertEquals(Hvac.ZONE_SUNROOF, commands.get(0).area);
         assertEquals(100d, commands.get(0).value, 0d);
-        assertTilt(ClimateCommands.press(ClimateFunction.SUNROOF, state, CarModel.ATLAS, true),
-                1);
+    }
+
+    @Test public void levelsFromMaxDoesNotReverseRoofControls() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 0, 0);
+        store.putProperty(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF, 0, 0);
+        store.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 0, 0);
+        ClimateState state = store.snapshot(0);
+        List<ClimateCommands.Command> roof = ClimateCommands.press(ClimateFunction.SUNROOF,
+                state, CarModel.ATLAS, true);
+        assertTilt(roof.subList(1, 3), 1);
+        assertEquals(20d, ClimateCommands.press(ClimateFunction.SUNSHADE, state, CarModel.ATLAS,
+                true).get(0).value, 0d);
     }
 
     @Test public void sunroofAiringIsSentAsTiltAndClosedByIt() {
@@ -77,8 +88,13 @@ public final class ClimateCommandsTest {
         assertEquals(1, commands.size());
         assertEquals(Hvac.WINDOW_POS, commands.get(0).id);
         assertEquals(20d, commands.get(0).value, 0d);
-        assertTilt(ClimateCommands.press(ClimateFunction.SUNROOF, airing, CarModel.ATLAS, true),
-                0);
+
+        store.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 100, 0);
+        commands = ClimateCommands.press(ClimateFunction.SUNROOF, store.snapshot(0),
+                CarModel.ATLAS, false);
+        assertTilt(commands.subList(0, 2), 0);
+        assertEquals(3, commands.size());
+        assertEquals(0d, commands.get(2).value, 0d);
     }
 
     @Test public void closingFullyOpenSunroofSetsPositionOnly() {
@@ -123,8 +139,8 @@ public final class ClimateCommandsTest {
         ClimateStore lowest = store(0);
         lowest.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 50, 0);
         lowest.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 20, 0);
-        assertEquals(100d, ClimateCommands.press(ClimateFunction.SUNSHADE, lowest.snapshot(0),
-                CarModel.ATLAS, true).get(0).value, 0d);
+        assertEquals(50d, ClimateCommands.press(ClimateFunction.SUNSHADE, lowest.snapshot(0),
+                CarModel.ATLAS, false).get(0).value, 0d);
 
         ClimateStore closed = store(0);
         closed.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 0, 0);

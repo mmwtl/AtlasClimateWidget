@@ -92,6 +92,8 @@ line, read as in AtlasAppWidget (`Fuel`).
   (`Hvac.SUNSHADE_POSITIONS`) step like heating levels through `WINDOW_POS` percentages. The
   sunshade never closes under an open sunroof: its cycle skips closed then, and opening the
   sunroof first opens a closed sunshade to its lowest stop at or above the sunroof's.
+  Both always step upwards; the «levels from the maximum» setting applies only to heating
+  and ventilation.
 - The settings preview uses the same `RemoteViews` as the widget, inert; demo values are labelled.
 - Preserve per-widget layouts across upgrades; `WidgetConfig.fromJson` must tolerate unknown and
   missing fields.
