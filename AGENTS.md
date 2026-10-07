@@ -48,12 +48,13 @@ line, read as in AtlasAppWidget (`Fuel`).
 - Height: `HeightMode.FILL` grows tile rows up to `MAX_TILE_ASPECT`, then card padding, so the
   last card ends at the cell bottom; bars keep their size. `CONTENT` keeps square tiles and uses
   the root gravity for alignment. Shrinking below the cell never depends on the mode.
-- The temperature block has two parts, the cabin/outside sensor line and the set-temperature
-  bar; either can be off, so the block can keep only the sensor line. The line sits left,
-  centred or right (`HeaderAlign`, centred by default). Per widget it can append the liters in
-  the tank and the free tank volume from the Fuel Percentage sensor (`Fuel`: value × 0.5 + 4,
-  a 54 l tank; at 0 the values become `<4`/`>50`); with fuel on, the temperatures can be left
-  out (`headerTemperatures`, ignored without fuel). A line wider than the widget shrinks its font.
+- The sensor line is its own block (`Block.INFO`), the temperature block is only the
+  set-temperature bar. The line sits left, centred or right (`HeaderAlign`, centred by default)
+  and shows any of its parts, at least one: cabin/outside temperature, the liters in the tank
+  and the free tank volume from the Fuel Percentage sensor (`Fuel`: value × 0.5 + 4, a 54 l
+  tank; at 0 the values become `<4`/`>50`). A line wider than the widget shrinks its font.
+  Layouts saved before version 3 kept the line inside the temperature block; they get the line
+  block right before the temperature one, each enabled as its old part was.
   A custom formula (System tab, global, in the backup) replaces the default; the tank is the
   formula's larger end over API 0–100. `Prefs.resolved` puts it into the layout, unsaved.
 - Cards: `CardLayout.SEPARATE` gives every block its own card; `SINGLE` puts all rows in one card,

@@ -36,7 +36,7 @@ public final class MainActivityTest {
                 assertTrue(tab, shown(find(root, tab)));
             }
             assertTrue(shown(find(root, "Высота виджета")));
-            assertTrue(shown(find(root, "Полоса температуры")));
+            assertTrue(shown(find(root, "Строка датчиков")));
             assertFalse(shown(find(root, "Сетка плиток")));
             assertTrue("preview on layout tabs", shown(find(root, "Предпросмотр")));
 

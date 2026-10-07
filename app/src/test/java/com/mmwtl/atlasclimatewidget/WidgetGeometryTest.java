@@ -25,9 +25,9 @@ public final class WidgetGeometryTest {
         assertEquals(6, plan.strips.size());
     }
 
-    @Test public void temperatureBlockWithoutBarKeepsTheSensorLine() {
+    @Test public void sensorLineIsABlockOfItsOwn() {
         WidgetConfig config = new WidgetConfig();
-        config.temperatureBar = false;
+        config.temperatureEnabled = false;
         config.fanEnabled = false;
         config.tilesEnabled = false;
         WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
@@ -64,7 +64,7 @@ public final class WidgetGeometryTest {
 
     @Test public void temperatureCellsMapToSteps() {
         WidgetConfig config = new WidgetConfig();
-        config.temperatureHeader = false;
+        config.infoEnabled = false;
         WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
         WidgetGeometry.Strip temp = plan.strips.get(0);
         assertTrue(temp.buttonCells >= 1);
@@ -89,6 +89,7 @@ public final class WidgetGeometryTest {
     @Test public void fanBlockStacksBarAndControlRow() {
         WidgetConfig config = new WidgetConfig();
         config.temperatureEnabled = false;
+        config.infoEnabled = false;
         config.tilesEnabled = false;
         WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
         assertEquals(2, plan.strips.size());
@@ -191,7 +192,7 @@ public final class WidgetGeometryTest {
             }
         }
         assertEquals(plan.strips.get(0).cardHeight, card, 0.01f);
-        assertEquals("fan and tiles start their own sections", 2, sections);
+        assertEquals("temperature, fan and tiles start their own sections", 3, sections);
         assertEquals(WidgetConfig.Block.TILES, plan.strips.get(5).block);
     }
 
@@ -217,7 +218,7 @@ public final class WidgetGeometryTest {
 
     @Test public void scaleEnlargesBarsButKeepsTileColumns() {
         WidgetConfig config = new WidgetConfig();
-        config.temperatureHeader = false;
+        config.infoEnabled = false;
         config.scalePercent = 100;
         WidgetGeometry.Plan normal = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
         config.scalePercent = 150;
@@ -231,7 +232,7 @@ public final class WidgetGeometryTest {
 
     @Test public void consoleSplitsTemperatureAndFanButtons() {
         WidgetConfig config = new WidgetConfig();
-        config.temperatureHeader = false;
+        config.infoEnabled = false;
         config.style = WidgetConfig.Style.CONSOLE;
         config.scalePercent = 100;
         WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
@@ -261,7 +262,7 @@ public final class WidgetGeometryTest {
 
     @Test public void consoleDualZoneStacksValueAndBarPerZone() {
         WidgetConfig config = new WidgetConfig();
-        config.temperatureHeader = false;
+        config.infoEnabled = false;
         config.temperatureDual = true;
         config.style = WidgetConfig.Style.CONSOLE;
         WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);

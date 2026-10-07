@@ -355,15 +355,11 @@ final class WidgetGeometry {
             WidgetConfig config, float width, float density, float scale, float padding,
             float gap, float tileExtra) {
         switch (block) {
+            case INFO:
+                rows.add(new Row(block, RowKind.HEADER, 0, HEADER_HEIGHT_DP * density * scale));
+                gaps.add(HEADER_GAP_DP * density * scale);
+                break;
             case TEMPERATURE: {
-                if (config.temperatureHeader) {
-                    rows.add(new Row(block, RowKind.HEADER, 0,
-                            HEADER_HEIGHT_DP * density * scale));
-                    gaps.add(HEADER_GAP_DP * density * scale);
-                }
-                if (!config.temperatureBar) {
-                    break;
-                }
                 int zones = config.temperatureDual ? 2 : 1;
                 if (config.style == WidgetConfig.Style.CONSOLE) {
                     for (int zone = 0; zone < zones; zone++) {

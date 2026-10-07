@@ -70,9 +70,11 @@
     <string name="card_layout_single">Одна карточка</string>
     <string name="card_layout_separate_hint">Температура, обдув и плитки — на своих карточках с интервалом между ними.</string>
     <string name="card_layout_single_hint">Все блоки на одной общей карточке, между ними — увеличенный отступ.</string>
+    <string name="block_info">Строка датчиков</string>
     <string name="block_temperature">Температура</string>
     <string name="block_fan">Скорость обдува</string>
     <string name="block_tiles">Плитки функций</string>
+    <string name="block_info_short">Датчики</string>
     <string name="block_temperature_short">Температура</string>
     <string name="block_fan_short">Обдув</string>
     <string name="block_tiles_short">Плитки</string>
@@ -88,13 +90,12 @@
     <string name="setup_add_and_open">Добавить и открыть все настройки</string>
     <string name="setup_open_settings">Открыть все настройки</string>
     <string name="temp_dual">Две зоны: водитель и пассажир</string>
-    <string name="temp_header">Строка «Салон · Улица»</string>
-    <string name="temp_header_fuel">Топливо в баке, л</string>
-    <string name="temp_header_fuel_free">Свободный объём бака, л</string>
-    <string name="temp_header_temperatures">Температура салона и улицы</string>
-    <string name="temp_part_bar">Полоса температуры</string>
+    <string name="info_temperatures">Температура в салоне и на улице</string>
+    <string name="info_fuel">Топливо в баке, л</string>
+    <string name="info_fuel_free">Свободный объём бака, л</string>
+    <string name="info_hint">Одна строка с показаниями датчиков. Если она не помещается по ширине, шрифт уменьшается. Формула топлива — во вкладке «Система».</string>
     <string name="temp_buttons">Кнопки − и +</string>
-    <string name="temp_hint">Нажатие на полосу задаёт температуру, после нажатия её можно тянуть пальцем — значение видно над полосой. Без полосы блок показывает только строку «Салон · Улица».</string>
+    <string name="temp_hint">Нажатие на полосу задаёт температуру, после нажатия её можно тянуть пальцем — значение видно над полосой.</string>
     <string name="fan_buttons">Кнопки − и +</string>
     <string name="fan_part_bar">Полоса скорости 1–9</string>
     <string name="fan_part_directions">Направление обдува: стекло, лицо, ноги</string>
@@ -155,7 +156,7 @@
     <string name="fuel_formula_custom">Своя формула: литры = значение API × %1$s %2$s. Объём бака — %3$d л.</string>
     <string name="fuel_custom_formula">Использовать свою формулу</string>
     <string name="fuel_change_formula">Изменить формулу</string>
-    <string name="fuel_hint">Формула переводит датчик Fuel Percentage (0–100) в литры для строки «Салон · Улица». Объём бака — значение формулы при API 100, свободный объём — разница с ним.</string>
+    <string name="fuel_hint">Формула переводит датчик Fuel Percentage (0–100) в литры для строки датчиков. Объём бака — значение формулы при API 100, свободный объём — разница с ним.</string>
     <string name="fuel_formula_dialog_title">Формула уровня топлива</string>
     <string name="fuel_formula_dialog_hint">Литры = значение API × X + Y. Объём бака вычисляется по формуле на диапазоне API 0–100. Допустимы дробные и отрицательные коэффициенты.</string>
     <string name="fuel_multiplier">Множитель X</string>

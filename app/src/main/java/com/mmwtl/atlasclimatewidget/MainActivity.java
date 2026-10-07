@@ -826,32 +826,22 @@ public final class MainActivity extends ScaledActivity {
             blocksHost.addView(row);
             LinearLayout options = settingsGroup();
             switch (block) {
+                case INFO:
+                    options.addView(headerAligns());
+                    options.addView(partSwitch(R.string.info_temperatures,
+                            config.headerTemperatures, value -> config.headerTemperatures = value,
+                            config::hasInfoParts));
+                    options.addView(partSwitch(R.string.info_fuel, config.headerFuel,
+                            value -> config.headerFuel = value, config::hasInfoParts));
+                    options.addView(partSwitch(R.string.info_fuel_free, config.headerFuelFree,
+                            value -> config.headerFuelFree = value, config::hasInfoParts));
+                    options.addView(hint(R.string.info_hint));
+                    break;
                 case TEMPERATURE:
-                    options.addView(partSwitch(R.string.temp_header, config.temperatureHeader,
-                            value -> config.temperatureHeader = value,
-                            config::hasTemperatureParts));
-                    if (config.temperatureHeader) {
-                        options.addView(headerAligns());
-                        options.addView(rebuildingSwitch(R.string.temp_header_fuel,
-                                config.headerFuel, value -> config.headerFuel = value));
-                        options.addView(rebuildingSwitch(R.string.temp_header_fuel_free,
-                                config.headerFuelFree, value -> config.headerFuelFree = value));
-                        if (config.headerShowsFuel()) {
-                            options.addView(configSwitch(R.string.temp_header_temperatures,
-                                    config.headerTemperatures,
-                                    value -> config.headerTemperatures = value));
-                        }
-                    }
-                    options.addView(partSwitch(R.string.temp_part_bar, config.temperatureBar,
-                            value -> config.temperatureBar = value,
-                            config::hasTemperatureParts));
-                    if (config.temperatureBar) {
-                        options.addView(configSwitch(R.string.temp_dual, config.temperatureDual,
-                                value -> config.temperatureDual = value));
-                        options.addView(configSwitch(R.string.temp_buttons,
-                                config.temperatureButtons,
-                                value -> config.temperatureButtons = value));
-                    }
+                    options.addView(configSwitch(R.string.temp_dual, config.temperatureDual,
+                            value -> config.temperatureDual = value));
+                    options.addView(configSwitch(R.string.temp_buttons, config.temperatureButtons,
+                            value -> config.temperatureButtons = value));
                     options.addView(hint(R.string.temp_hint));
                     break;
                 case FAN:
@@ -1262,17 +1252,6 @@ public final class MainActivity extends ScaledActivity {
                 button.setChecked(true);
                 return;
             }
-            changed();
-            button.post(this::rebuildBlocks);
-        });
-        return view;
-    }
-
-    /** A switch that shows or hides other options, so the block list is rebuilt. */
-    private Switch rebuildingSwitch(int text, boolean checked, BoolListener listener) {
-        Switch view = switchRow(text, checked);
-        view.setOnCheckedChangeListener((button, value) -> {
-            listener.onValue(value);
             changed();
             button.post(this::rebuildBlocks);
         });

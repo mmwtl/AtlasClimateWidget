@@ -11,6 +11,7 @@ import java.util.List;
 /** User-built layout of one widget instance. */
 final class WidgetConfig {
     enum Block {
+        INFO(R.string.block_info, R.string.block_info_short),
         TEMPERATURE(R.string.block_temperature, R.string.block_temperature_short),
         FAN(R.string.block_fan, R.string.block_fan_short),
         TILES(R.string.block_tiles, R.string.block_tiles_short);
@@ -110,8 +111,11 @@ final class WidgetConfig {
         }
     }
 
-    /** 2: console tiles follow the user's order instead of fixed groups. */
-    static final int VERSION = 2;
+    /**
+     * 2: console tiles follow the user's order instead of fixed groups. 3: the sensor line is
+     * its own block instead of a part of the temperature block.
+     */
+    static final int VERSION = 3;
     static final int COLUMNS_MIN = 2;
     static final int COLUMNS_MAX = 8;
     static final int CARD_RADIUS_MAX_DP = 40;
@@ -144,20 +148,17 @@ final class WidgetConfig {
 
     /** All blocks in display order. */
     final List<Block> blockOrder = new ArrayList<>(Arrays.asList(Block.values()));
+    boolean infoEnabled = true;
     boolean temperatureEnabled = true;
     boolean fanEnabled = true;
     boolean tilesEnabled = true;
 
     boolean temperatureDual;
-    boolean temperatureHeader = true;
+    /** Sensor line parts: cabin and outside temperature, liters in the tank, free volume. */
     HeaderAlign headerAlign = HeaderAlign.CENTER;
-    /** Liters in the tank and the free tank volume, appended to the sensor line. */
+    boolean headerTemperatures = true;
     boolean headerFuel;
     boolean headerFuelFree;
-    /** Cabin and outside temperature; can be dropped only while the line shows fuel. */
-    boolean headerTemperatures = true;
-    /** The set-temperature bar; without it the block may keep only the cabin/outside line. */
-    boolean temperatureBar = true;
     boolean temperatureButtons = true;
     boolean fanButtons = true;
     /** Fan block parts, as in FX11: speed bar, blowing directions and auto-fan presets. */
@@ -176,11 +177,6 @@ final class WidgetConfig {
 
     boolean headerShowsFuel() {
         return headerFuel || headerFuelFree;
-    }
-
-    /** Without fuel the line keeps the temperatures, whatever the switch says. */
-    boolean headerShowsTemperatures() {
-        return headerTemperatures || !headerShowsFuel();
     }
 
     /** Enabled tiles in display order. */
@@ -202,8 +198,10 @@ final class WidgetConfig {
 
     boolean isEnabled(Block block) {
         switch (block) {
+            case INFO:
+                return infoEnabled && hasInfoParts();
             case TEMPERATURE:
-                return temperatureEnabled && hasTemperatureParts();
+                return temperatureEnabled;
             case FAN:
                 return fanEnabled && hasFanParts();
             default:
@@ -211,8 +209,8 @@ final class WidgetConfig {
         }
     }
 
-    boolean hasTemperatureParts() {
-        return temperatureBar || temperatureHeader;
+    boolean hasInfoParts() {
+        return headerTemperatures || headerShowsFuel();
     }
 
     boolean hasFanParts() {
@@ -320,6 +318,9 @@ final class WidgetConfig {
 
     void setEnabled(Block block, boolean enabled) {
         switch (block) {
+            case INFO:
+                infoEnabled = enabled;
+                break;
             case TEMPERATURE:
                 temperatureEnabled = enabled;
                 break;
@@ -401,16 +402,15 @@ final class WidgetConfig {
                 order.put(block.name());
             }
             json.put("blockOrder", order);
+            json.put("infoEnabled", infoEnabled);
             json.put("temperatureEnabled", temperatureEnabled);
             json.put("fanEnabled", fanEnabled);
             json.put("tilesEnabled", tilesEnabled);
             json.put("temperatureDual", temperatureDual);
-            json.put("temperatureHeader", temperatureHeader);
             json.put("headerAlign", headerAlign.name());
+            json.put("headerTemperatures", headerTemperatures);
             json.put("headerFuel", headerFuel);
             json.put("headerFuelFree", headerFuelFree);
-            json.put("headerTemperatures", headerTemperatures);
-            json.put("temperatureBar", temperatureBar);
             json.put("temperatureButtons", temperatureButtons);
             json.put("fanButtons", fanButtons);
             json.put("fanBar", fanBar);
@@ -463,6 +463,11 @@ final class WidgetConfig {
                     parsed.add(block);
                 }
             }
+            int temperature = parsed.indexOf(Block.TEMPERATURE);
+            if (!parsed.contains(Block.INFO) && temperature >= 0) {
+                // The sensor line used to head the temperature block.
+                parsed.add(temperature, Block.INFO);
+            }
             for (Block block : Block.values()) {
                 if (!parsed.contains(block)) {
                     parsed.add(block);
@@ -475,14 +480,22 @@ final class WidgetConfig {
         config.fanEnabled = json.optBoolean("fanEnabled", config.fanEnabled);
         config.tilesEnabled = json.optBoolean("tilesEnabled", config.tilesEnabled);
         config.temperatureDual = json.optBoolean("temperatureDual", config.temperatureDual);
-        config.temperatureHeader = json.optBoolean("temperatureHeader", config.temperatureHeader);
         config.headerAlign = enumValue(HeaderAlign.class, json.optString("headerAlign"),
                 config.headerAlign);
-        config.headerFuel = json.optBoolean("headerFuel", config.headerFuel);
-        config.headerFuelFree = json.optBoolean("headerFuelFree", config.headerFuelFree);
         config.headerTemperatures = json.optBoolean("headerTemperatures",
                 config.headerTemperatures);
-        config.temperatureBar = json.optBoolean("temperatureBar", config.temperatureBar);
+        config.headerFuel = json.optBoolean("headerFuel", config.headerFuel);
+        config.headerFuelFree = json.optBoolean("headerFuelFree", config.headerFuelFree);
+        if (json.optInt("version", 1) < 3) {
+            // The temperature block held the sensor line and the bar; each is a block now.
+            config.infoEnabled = config.temperatureEnabled
+                    && json.optBoolean("temperatureHeader", true);
+            config.temperatureEnabled = config.temperatureEnabled
+                    && json.optBoolean("temperatureBar", true);
+            config.headerTemperatures |= !config.headerShowsFuel();
+        } else {
+            config.infoEnabled = json.optBoolean("infoEnabled", config.infoEnabled);
+        }
         config.temperatureButtons = json.optBoolean("temperatureButtons",
                 config.temperatureButtons);
         config.fanButtons = json.optBoolean("fanButtons", config.fanButtons);

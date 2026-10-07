@@ -9,7 +9,7 @@ import org.junit.Test;
 public final class WidgetConfigTest {
     @Test public void roundTripsAllFields() {
         WidgetConfig config = new WidgetConfig();
-        config.moveBlock(WidgetConfig.Block.TILES, -2);
+        config.moveBlock(WidgetConfig.Block.TILES, -3);
         config.fanEnabled = false;
         config.temperatureDual = true;
         config.setFunctionEnabled(ClimateFunction.ME_HOT, true);
@@ -59,7 +59,7 @@ public final class WidgetConfigTest {
         assertTrue(copy.headerFuelFree);
         assertFalse(copy.headerFuel);
         assertFalse(fresh.headerFuel || fresh.headerFuelFree);
-        assertFalse(copy.headerShowsTemperatures());
+        assertFalse(copy.headerTemperatures);
         assertTrue(fresh.headerTemperatures);
         assertEquals(WidgetConfig.HeaderAlign.CENTER, WidgetConfig.fromJson("{}").headerAlign);
         assertEquals(WidgetConfig.Style.CONSOLE, copy.style);
@@ -135,20 +135,37 @@ public final class WidgetConfigTest {
                 "{\"functions\":[\"PASSENGER_HEAT\",\"AC\"]}").functions.get(0));
     }
 
-    @Test public void temperatureBlockCanKeepOnlyTheSensorLine() {
+    @Test public void sensorLineLeavesTheTemperatureBlock() {
+        WidgetConfig fresh = WidgetConfig.fromJson("{}");
+        assertEquals(WidgetConfig.Block.INFO, fresh.blockOrder.get(0));
+        assertTrue(fresh.isEnabled(WidgetConfig.Block.INFO));
+        WidgetConfig lineOnly = WidgetConfig.fromJson("{\"version\":2,"
+                + "\"blockOrder\":[\"TILES\",\"TEMPERATURE\",\"FAN\"],"
+                + "\"temperatureBar\":false,\"headerTemperatures\":false}");
+        assertEquals(WidgetConfig.Block.INFO, lineOnly.blockOrder.get(1));
+        assertEquals(WidgetConfig.Block.TEMPERATURE, lineOnly.blockOrder.get(2));
+        assertTrue(lineOnly.isEnabled(WidgetConfig.Block.INFO));
+        assertFalse(lineOnly.isEnabled(WidgetConfig.Block.TEMPERATURE));
+        assertTrue("without fuel the old line kept the temperatures",
+                lineOnly.headerTemperatures);
+        WidgetConfig barOnly = WidgetConfig.fromJson(
+                "{\"version\":2,\"temperatureHeader\":false}");
+        assertFalse(barOnly.isEnabled(WidgetConfig.Block.INFO));
+        assertTrue(barOnly.isEnabled(WidgetConfig.Block.TEMPERATURE));
+        WidgetConfig hidden = WidgetConfig.fromJson(
+                "{\"version\":2,\"temperatureEnabled\":false}");
+        assertFalse(hidden.isEnabled(WidgetConfig.Block.INFO));
         WidgetConfig config = new WidgetConfig();
-        config.temperatureBar = false;
-        assertTrue(config.isEnabled(WidgetConfig.Block.TEMPERATURE));
-        assertFalse(WidgetConfig.fromJson(config.toJson()).temperatureBar);
-        assertTrue(WidgetConfig.fromJson("{}").temperatureBar);
-        config.temperatureHeader = false;
-        assertFalse(config.isEnabled(WidgetConfig.Block.TEMPERATURE));
+        config.headerTemperatures = false;
+        assertFalse("the line needs a part", config.isEnabled(WidgetConfig.Block.INFO));
+        config.headerFuelFree = true;
+        assertTrue(WidgetConfig.fromJson(config.toJson()).isEnabled(WidgetConfig.Block.INFO));
     }
 
     @Test public void toleratesUnknownAndInvalidValues() {
         WidgetConfig config = WidgetConfig.fromJson("{\"blockOrder\":[\"FAN\",\"NOPE\"],"
                 + "\"functions\":[\"AC\",\"GONE\",\"AC\"],\"columns\":99,\"palette\":\"X\"}");
-        assertEquals(3, config.blockOrder.size());
+        assertEquals(4, config.blockOrder.size());
         assertEquals(WidgetConfig.Block.FAN, config.blockOrder.get(0));
         assertEquals(1, config.functions.size());
         assertEquals(WidgetConfig.COLUMNS_MAX, config.columns);
