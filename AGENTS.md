@@ -50,7 +50,7 @@ line, read as in AtlasAppWidget (`Fuel`).
   the root gravity for alignment. Shrinking below the cell never depends on the mode.
 - The sensor line is its own block (`Block.INFO`), the temperature block is only the
   set-temperature bar. The line sits left, centred or right (`HeaderAlign`, centred by default)
-  and shows any of its parts, at least one: cabin/outside temperature, the liters in the tank
+  and shows any of its parts, at least one: cabin temperature, outside temperature, the liters in the tank
   and the free tank volume from the Fuel Percentage sensor (`Fuel`: value × 0.5 + 4, a 54 l
   tank; at 0 the values become `<4`/`>50`). A line wider than the widget shrinks its font.
   Layouts saved before version 3 kept the line inside the temperature block; they get the line

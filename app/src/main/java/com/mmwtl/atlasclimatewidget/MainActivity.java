@@ -828,9 +828,10 @@ public final class MainActivity extends ScaledActivity {
             switch (block) {
                 case INFO:
                     options.addView(headerAligns());
-                    options.addView(partSwitch(R.string.info_temperatures,
-                            config.headerTemperatures, value -> config.headerTemperatures = value,
-                            config::hasInfoParts));
+                    options.addView(partSwitch(R.string.info_cabin, config.headerCabin,
+                            value -> config.headerCabin = value, config::hasInfoParts));
+                    options.addView(partSwitch(R.string.info_outside, config.headerOutside,
+                            value -> config.headerOutside = value, config::hasInfoParts));
                     options.addView(partSwitch(R.string.info_fuel, config.headerFuel,
                             value -> config.headerFuel = value, config::hasInfoParts));
                     options.addView(partSwitch(R.string.info_fuel_free, config.headerFuelFree,

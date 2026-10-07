@@ -42,11 +42,11 @@ public final class WatchListTest {
 
     @Test public void sensorLineWatchesOnlyItsParts() {
         WidgetConfig config = new WidgetConfig();
-        config.headerTemperatures = false;
+        config.headerCabin = false;
         config.headerFuel = true;
         WatchList watch = WatchList.of(Collections.singletonList(config), CarModel.ATLAS);
         assertFalse(watch.sensors.contains(Hvac.SENSOR_TEMPERATURE_INDOOR));
-        assertFalse(watch.sensors.contains(Hvac.SENSOR_TEMPERATURE_AMBIENT));
+        assertTrue(watch.sensors.contains(Hvac.SENSOR_TEMPERATURE_AMBIENT));
         assertTrue(watch.sensors.contains(Hvac.SENSOR_FUEL_PERCENTAGE));
         assertTrue(watch.properties.contains(new WatchList.Key(Hvac.TEMP, Hvac.ZONE_DRIVER, true)));
     }

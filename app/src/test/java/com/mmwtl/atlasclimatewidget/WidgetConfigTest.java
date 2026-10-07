@@ -25,7 +25,7 @@ public final class WidgetConfigTest {
         config.cardLayout = WidgetConfig.CardLayout.SINGLE;
         config.headerAlign = WidgetConfig.HeaderAlign.RIGHT;
         config.headerFuelFree = true;
-        config.headerTemperatures = false;
+        config.headerCabin = false;
         config.style = WidgetConfig.Style.CONSOLE;
         config.iconSet = WidgetConfig.IconSet.OEM;
         WidgetConfig copy = WidgetConfig.fromJson(config.toJson());
@@ -59,8 +59,9 @@ public final class WidgetConfigTest {
         assertTrue(copy.headerFuelFree);
         assertFalse(copy.headerFuel);
         assertFalse(fresh.headerFuel || fresh.headerFuelFree);
-        assertFalse(copy.headerTemperatures);
-        assertTrue(fresh.headerTemperatures);
+        assertFalse(copy.headerCabin);
+        assertTrue(copy.headerOutside);
+        assertTrue(fresh.headerCabin && fresh.headerOutside);
         assertEquals(WidgetConfig.HeaderAlign.CENTER, WidgetConfig.fromJson("{}").headerAlign);
         assertEquals(WidgetConfig.Style.CONSOLE, copy.style);
         assertEquals(WidgetConfig.Style.CLASSIC, WidgetConfig.fromJson("{}").style);
@@ -147,7 +148,10 @@ public final class WidgetConfigTest {
         assertTrue(lineOnly.isEnabled(WidgetConfig.Block.INFO));
         assertFalse(lineOnly.isEnabled(WidgetConfig.Block.TEMPERATURE));
         assertTrue("without fuel the old line kept the temperatures",
-                lineOnly.headerTemperatures);
+                lineOnly.headerCabin && lineOnly.headerOutside);
+        WidgetConfig fuelOnly = WidgetConfig.fromJson("{\"version\":3,\"headerFuel\":true,"
+                + "\"headerTemperatures\":false}");
+        assertFalse(fuelOnly.headerCabin || fuelOnly.headerOutside);
         WidgetConfig barOnly = WidgetConfig.fromJson(
                 "{\"version\":2,\"temperatureHeader\":false}");
         assertFalse(barOnly.isEnabled(WidgetConfig.Block.INFO));
@@ -156,7 +160,8 @@ public final class WidgetConfigTest {
                 "{\"version\":2,\"temperatureEnabled\":false}");
         assertFalse(hidden.isEnabled(WidgetConfig.Block.INFO));
         WidgetConfig config = new WidgetConfig();
-        config.headerTemperatures = false;
+        config.headerCabin = false;
+        config.headerOutside = false;
         assertFalse("the line needs a part", config.isEnabled(WidgetConfig.Block.INFO));
         config.headerFuelFree = true;
         assertTrue(WidgetConfig.fromJson(config.toJson()).isEnabled(WidgetConfig.Block.INFO));

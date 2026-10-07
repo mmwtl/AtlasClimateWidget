@@ -90,7 +90,8 @@
     <string name="setup_add_and_open">Добавить и открыть все настройки</string>
     <string name="setup_open_settings">Открыть все настройки</string>
     <string name="temp_dual">Две зоны: водитель и пассажир</string>
-    <string name="info_temperatures">Температура в салоне и на улице</string>
+    <string name="info_cabin">Температура в салоне</string>
+    <string name="info_outside">Температура на улице</string>
     <string name="info_fuel">Топливо в баке, л</string>
     <string name="info_fuel_free">Свободный объём бака, л</string>
     <string name="info_hint">Одна строка с показаниями датчиков. Если она не помещается по ширине, шрифт уменьшается. Формула топлива — во вкладке «Система».</string>

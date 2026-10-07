@@ -154,9 +154,11 @@ final class WidgetRenderer {
         float size = Math.min(14f * dp, height * 0.72f);
         String separator = "•";
         List<String[]> parts = new ArrayList<>();
-        if (config.headerTemperatures) {
+        if (config.headerCabin) {
             parts.add(new String[] {context.getString(R.string.header_inside),
                     formatWhole(state.sensor(Hvac.SENSOR_TEMPERATURE_INDOOR))});
+        }
+        if (config.headerOutside) {
             parts.add(new String[] {context.getString(R.string.header_outside),
                     formatWhole(state.sensor(Hvac.SENSOR_TEMPERATURE_AMBIENT))});
         }

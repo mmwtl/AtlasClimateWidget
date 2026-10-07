@@ -156,7 +156,8 @@ final class WidgetConfig {
     boolean temperatureDual;
     /** Sensor line parts: cabin and outside temperature, liters in the tank, free volume. */
     HeaderAlign headerAlign = HeaderAlign.CENTER;
-    boolean headerTemperatures = true;
+    boolean headerCabin = true;
+    boolean headerOutside = true;
     boolean headerFuel;
     boolean headerFuelFree;
     boolean temperatureButtons = true;
@@ -210,7 +211,7 @@ final class WidgetConfig {
     }
 
     boolean hasInfoParts() {
-        return headerTemperatures || headerShowsFuel();
+        return headerCabin || headerOutside || headerShowsFuel();
     }
 
     boolean hasFanParts() {
@@ -408,7 +409,8 @@ final class WidgetConfig {
             json.put("tilesEnabled", tilesEnabled);
             json.put("temperatureDual", temperatureDual);
             json.put("headerAlign", headerAlign.name());
-            json.put("headerTemperatures", headerTemperatures);
+            json.put("headerCabin", headerCabin);
+            json.put("headerOutside", headerOutside);
             json.put("headerFuel", headerFuel);
             json.put("headerFuelFree", headerFuelFree);
             json.put("temperatureButtons", temperatureButtons);
@@ -482,8 +484,10 @@ final class WidgetConfig {
         config.temperatureDual = json.optBoolean("temperatureDual", config.temperatureDual);
         config.headerAlign = enumValue(HeaderAlign.class, json.optString("headerAlign"),
                 config.headerAlign);
-        config.headerTemperatures = json.optBoolean("headerTemperatures",
-                config.headerTemperatures);
+        // Both temperatures used to share one switch.
+        boolean temperatures = json.optBoolean("headerTemperatures", true);
+        config.headerCabin = json.optBoolean("headerCabin", temperatures);
+        config.headerOutside = json.optBoolean("headerOutside", temperatures);
         config.headerFuel = json.optBoolean("headerFuel", config.headerFuel);
         config.headerFuelFree = json.optBoolean("headerFuelFree", config.headerFuelFree);
         if (json.optInt("version", 1) < 3) {
@@ -492,7 +496,9 @@ final class WidgetConfig {
                     && json.optBoolean("temperatureHeader", true);
             config.temperatureEnabled = config.temperatureEnabled
                     && json.optBoolean("temperatureBar", true);
-            config.headerTemperatures |= !config.headerShowsFuel();
+            boolean onlyTemperatures = !config.headerShowsFuel();
+            config.headerCabin |= onlyTemperatures;
+            config.headerOutside |= onlyTemperatures;
         } else {
             config.infoEnabled = json.optBoolean("infoEnabled", config.infoEnabled);
         }
