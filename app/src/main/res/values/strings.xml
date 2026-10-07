@@ -91,6 +91,7 @@
     <string name="temp_header">Строка «Салон · Улица»</string>
     <string name="temp_header_fuel">Топливо в баке, л</string>
     <string name="temp_header_fuel_free">Свободный объём бака, л</string>
+    <string name="temp_header_temperatures">Температура салона и улицы</string>
     <string name="temp_part_bar">Полоса температуры</string>
     <string name="temp_buttons">Кнопки − и +</string>
     <string name="temp_hint">Нажатие на полосу задаёт температуру, после нажатия её можно тянуть пальцем — значение видно над полосой. Без полосы блок показывает только строку «Салон · Улица».</string>

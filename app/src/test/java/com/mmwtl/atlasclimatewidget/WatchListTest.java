@@ -40,6 +40,18 @@ public final class WatchListTest {
         assertFalse(watch.sensors.contains(Hvac.SENSOR_FUEL_PERCENTAGE));
     }
 
+    @Test public void temperaturesAreDroppedOnlyWithFuel() {
+        WidgetConfig config = new WidgetConfig();
+        config.headerTemperatures = false;
+        WatchList watch = WatchList.of(Collections.singletonList(config), CarModel.ATLAS);
+        assertTrue(watch.sensors.contains(Hvac.SENSOR_TEMPERATURE_INDOOR));
+        config.headerFuel = true;
+        watch = WatchList.of(Collections.singletonList(config), CarModel.ATLAS);
+        assertFalse(watch.sensors.contains(Hvac.SENSOR_TEMPERATURE_INDOOR));
+        assertFalse(watch.sensors.contains(Hvac.SENSOR_TEMPERATURE_AMBIENT));
+        assertTrue(watch.sensors.contains(Hvac.SENSOR_FUEL_PERCENTAGE));
+    }
+
     @Test public void fanBlockDirectionsAreWatchedWithoutTiles() {
         WidgetConfig config = new WidgetConfig();
         config.tilesEnabled = false;

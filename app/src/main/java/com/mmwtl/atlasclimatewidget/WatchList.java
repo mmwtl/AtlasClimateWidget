@@ -54,9 +54,11 @@ final class WatchList {
             property(Hvac.TEMP_MAX, Hvac.ZONE_DRIVER, true);
         }
         if (config.isEnabled(WidgetConfig.Block.TEMPERATURE) && config.temperatureHeader) {
-            sensors.add(Hvac.SENSOR_TEMPERATURE_INDOOR);
-            sensors.add(Hvac.SENSOR_TEMPERATURE_AMBIENT);
-            if (config.headerFuel || config.headerFuelFree) {
+            if (config.headerShowsTemperatures()) {
+                sensors.add(Hvac.SENSOR_TEMPERATURE_INDOOR);
+                sensors.add(Hvac.SENSOR_TEMPERATURE_AMBIENT);
+            }
+            if (config.headerShowsFuel()) {
                 sensors.add(Hvac.SENSOR_FUEL_PERCENTAGE);
             }
         }

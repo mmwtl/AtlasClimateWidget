@@ -832,10 +832,15 @@ public final class MainActivity extends ScaledActivity {
                             config::hasTemperatureParts));
                     if (config.temperatureHeader) {
                         options.addView(headerAligns());
-                        options.addView(configSwitch(R.string.temp_header_fuel,
+                        options.addView(rebuildingSwitch(R.string.temp_header_fuel,
                                 config.headerFuel, value -> config.headerFuel = value));
-                        options.addView(configSwitch(R.string.temp_header_fuel_free,
+                        options.addView(rebuildingSwitch(R.string.temp_header_fuel_free,
                                 config.headerFuelFree, value -> config.headerFuelFree = value));
+                        if (config.headerShowsFuel()) {
+                            options.addView(configSwitch(R.string.temp_header_temperatures,
+                                    config.headerTemperatures,
+                                    value -> config.headerTemperatures = value));
+                        }
                     }
                     options.addView(partSwitch(R.string.temp_part_bar, config.temperatureBar,
                             value -> config.temperatureBar = value,
@@ -1257,6 +1262,17 @@ public final class MainActivity extends ScaledActivity {
                 button.setChecked(true);
                 return;
             }
+            changed();
+            button.post(this::rebuildBlocks);
+        });
+        return view;
+    }
+
+    /** A switch that shows or hides other options, so the block list is rebuilt. */
+    private Switch rebuildingSwitch(int text, boolean checked, BoolListener listener) {
+        Switch view = switchRow(text, checked);
+        view.setOnCheckedChangeListener((button, value) -> {
+            listener.onValue(value);
             changed();
             button.post(this::rebuildBlocks);
         });

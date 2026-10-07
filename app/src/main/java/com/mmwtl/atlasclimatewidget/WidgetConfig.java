@@ -154,6 +154,8 @@ final class WidgetConfig {
     /** Liters in the tank and the free tank volume, appended to the sensor line. */
     boolean headerFuel;
     boolean headerFuelFree;
+    /** Cabin and outside temperature; can be dropped only while the line shows fuel. */
+    boolean headerTemperatures = true;
     /** The set-temperature bar; without it the block may keep only the cabin/outside line. */
     boolean temperatureBar = true;
     boolean temperatureButtons = true;
@@ -171,6 +173,15 @@ final class WidgetConfig {
     VerticalAlign verticalAlign = VerticalAlign.TOP;
     CardLayout cardLayout = CardLayout.SEPARATE;
     Style style = Style.CLASSIC;
+
+    boolean headerShowsFuel() {
+        return headerFuel || headerFuelFree;
+    }
+
+    /** Without fuel the line keeps the temperatures, whatever the switch says. */
+    boolean headerShowsTemperatures() {
+        return headerTemperatures || !headerShowsFuel();
+    }
 
     /** Enabled tiles in display order. */
     final List<ClimateFunction> functions = new ArrayList<>(DEFAULT_FUNCTIONS);
@@ -398,6 +409,7 @@ final class WidgetConfig {
             json.put("headerAlign", headerAlign.name());
             json.put("headerFuel", headerFuel);
             json.put("headerFuelFree", headerFuelFree);
+            json.put("headerTemperatures", headerTemperatures);
             json.put("temperatureBar", temperatureBar);
             json.put("temperatureButtons", temperatureButtons);
             json.put("fanButtons", fanButtons);
@@ -468,6 +480,8 @@ final class WidgetConfig {
                 config.headerAlign);
         config.headerFuel = json.optBoolean("headerFuel", config.headerFuel);
         config.headerFuelFree = json.optBoolean("headerFuelFree", config.headerFuelFree);
+        config.headerTemperatures = json.optBoolean("headerTemperatures",
+                config.headerTemperatures);
         config.temperatureBar = json.optBoolean("temperatureBar", config.temperatureBar);
         config.temperatureButtons = json.optBoolean("temperatureButtons",
                 config.temperatureButtons);

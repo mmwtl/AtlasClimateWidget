@@ -146,7 +146,7 @@ final class WidgetRenderer {
 
     /**
      * Cabin and outside temperature, optionally the fuel in the tank and its free volume, as
-     * one aligned line; the bridge status follows them. A line wider than the widget shrinks.
+     * one aligned line (with fuel the temperatures may be left out); the bridge status follows them. A line wider than the widget shrinks.
      */
     private void drawHeader(Canvas canvas, WidgetGeometry.Strip strip) {
         float height = strip.contentHeight;
@@ -154,11 +154,13 @@ final class WidgetRenderer {
         float size = Math.min(14f * dp, height * 0.72f);
         String separator = "•";
         List<String[]> parts = new ArrayList<>();
-        parts.add(new String[] {context.getString(R.string.header_inside),
-                formatWhole(state.sensor(Hvac.SENSOR_TEMPERATURE_INDOOR))});
-        parts.add(new String[] {context.getString(R.string.header_outside),
-                formatWhole(state.sensor(Hvac.SENSOR_TEMPERATURE_AMBIENT))});
-        if (config.headerFuel || config.headerFuelFree) {
+        if (config.headerShowsTemperatures()) {
+            parts.add(new String[] {context.getString(R.string.header_inside),
+                    formatWhole(state.sensor(Hvac.SENSOR_TEMPERATURE_INDOOR))});
+            parts.add(new String[] {context.getString(R.string.header_outside),
+                    formatWhole(state.sensor(Hvac.SENSOR_TEMPERATURE_AMBIENT))});
+        }
+        if (config.headerShowsFuel()) {
             Fuel fuel = Fuel.of(state.sensor(Hvac.SENSOR_FUEL_PERCENTAGE),
                     config.fuelMultiplier, config.fuelOffset);
             if (config.headerFuel) {
