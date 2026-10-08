@@ -21,8 +21,8 @@ public final class WidgetGeometryTest {
                 assertEquals(strip.cardHeight, card, 0.01f);
             }
         }
-        // header, temperature, fan bar and two tile rows
-        assertEquals(5, plan.strips.size());
+        // header, temperature, fan directions, fan speeds and two tile rows
+        assertEquals(6, plan.strips.size());
     }
 
     @Test public void sensorLineIsABlockOfItsOwn() {
@@ -121,42 +121,54 @@ public final class WidgetGeometryTest {
         config.infoEnabled = false;
         config.tilesEnabled = false;
         WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
-        assertEquals("one bar, no button rows", 1, plan.strips.size());
-        WidgetGeometry.Strip bar = plan.strips.get(0);
-        assertEquals(WidgetGeometry.RowKind.FAN, bar.row.kind);
-        assertTrue(bar.autoCells > 0);
-        assertTrue("AUTO is wider than a direction", bar.autoCells > bar.directionCells);
-        assertEquals(bar.autoCells + 3 * bar.directionCells, bar.stepStart);
-        assertEquals(bar.stepStart + 9 * bar.stepSpan, bar.zoneCount);
+        assertEquals("directions above speeds", 2, plan.strips.size());
+        WidgetGeometry.Strip top = plan.strips.get(0);
+        WidgetGeometry.Strip speeds = plan.strips.get(1);
+        assertEquals(WidgetGeometry.RowKind.FAN_TOP, top.row.kind);
+        assertEquals(WidgetGeometry.RowKind.FAN, speeds.row.kind);
+        assertEquals("both rows share one grid", top.zoneCount, speeds.zoneCount);
+        assertEquals(top.autoCells, speeds.autoCells);
+        assertTrue(speeds.autoCells > speeds.buttonCells);
+        assertEquals(speeds.autoCells + speeds.buttonCells, speeds.stepStart);
+        assertEquals(speeds.stepStart + 9 * speeds.stepSpan + speeds.buttonCells,
+                speeds.zoneCount);
 
-        // Manual: AUTO, the directions, then the speeds.
-        assertEquals("fn/AUTO", WidgetViews.control(config, bar, 0, false));
-        assertEquals("fn/BLOW_WINDOW", WidgetViews.control(config, bar, bar.autoCells, false));
-        assertEquals("fn/BLOW_LEGS", WidgetViews.control(config, bar, bar.stepStart - 1, false));
-        assertEquals("fan/1", WidgetViews.control(config, bar, bar.stepStart, false));
-        assertEquals("fan/9", WidgetViews.control(config, bar, bar.zoneCount - 1, false));
-        // AUTO keeps its cells; the presets share the rest.
-        assertEquals("fn/AUTO", WidgetViews.control(config, bar, bar.autoCells - 1, true));
-        assertEquals("fanpreset/0", WidgetViews.control(config, bar, bar.autoCells, true));
-        assertEquals("fanpreset/2", WidgetViews.control(config, bar, bar.zoneCount - 1, true));
+        // Manual: AUTO on both rows, directions above, −, speeds and + below.
+        assertEquals("fn/AUTO", WidgetViews.control(config, top, 0, false));
+        assertEquals("fn/AUTO", WidgetViews.control(config, speeds, speeds.autoCells - 1, false));
+        assertEquals("fn/BLOW_WINDOW", WidgetViews.control(config, top, top.autoCells, false));
+        assertEquals("fn/BLOW_LEGS", WidgetViews.control(config, top, top.zoneCount - 1, false));
+        assertEquals("fanstep/-1", WidgetViews.control(config, speeds, speeds.autoCells, false));
+        assertEquals("fan/1", WidgetViews.control(config, speeds, speeds.stepStart, false));
+        assertEquals("fanstep/1", WidgetViews.control(config, speeds, speeds.zoneCount - 1,
+                false));
+        // AUTO: the presets take both rows after AUTO.
+        assertEquals("fn/AUTO", WidgetViews.control(config, speeds, 0, true));
+        for (WidgetGeometry.Strip strip : plan.strips) {
+            assertEquals("fanpreset/0", WidgetViews.control(config, strip, strip.autoCells, true));
+            assertEquals("fanpreset/2",
+                    WidgetViews.control(config, strip, strip.zoneCount - 1, true));
+        }
 
         for (int presets : new int[]{3, 5}) {
             for (boolean auto : new boolean[]{true, false}) {
-                for (boolean directions : new boolean[]{true, false}) {
+                for (boolean buttons : new boolean[]{true, false}) {
                     config.fanPresetCount = presets;
                     config.fanAuto = auto;
-                    config.fanDirections = directions;
-                    WidgetGeometry.Strip strip =
-                            WidgetGeometry.plan(config, 640f, 0f, 1f, 25).strips.get(0);
-                    assertEquals("presets split the bar evenly", 0,
-                            (strip.zoneCount - strip.autoCells) % presets);
-                    int cells = strip.presetCells(presets);
+                    config.fanButtons = buttons;
+                    plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
+                    WidgetGeometry.Strip strip = plan.strips.get(1);
+                    int rest = strip.zoneCount - strip.autoCells;
+                    assertTrue("parts split evenly or finely", rest % presets == 0
+                            || rest >= WidgetGeometry.FAN_BAR_MIN_CELLS);
                     for (int preset = 0; preset < presets; preset++) {
-                        int first = strip.autoCells + preset * cells;
+                        int first = strip.partStart(preset, presets);
+                        int last = strip.partStart(preset + 1, presets) - 1;
+                        assertTrue(last - first + 1 >= rest / presets);
                         assertEquals("fanpreset/" + preset,
                                 WidgetViews.control(config, strip, first, true));
                         assertEquals("fanpreset/" + preset,
-                                WidgetViews.control(config, strip, first + cells - 1, true));
+                                WidgetViews.control(config, strip, last, true));
                     }
                     for (int level = 1; level <= 9; level++) {
                         int first = strip.stepStart + (level - 1) * strip.stepSpan;
@@ -170,8 +182,9 @@ public final class WidgetGeometryTest {
         }
         config.fanAuto = false;
         config.fanDirections = false;
-        assertTrue("the bar alone is still a fan block",
-                config.isEnabled(WidgetConfig.Block.FAN));
+        plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
+        assertEquals("without directions only the speed row is left", 1, plan.strips.size());
+        assertTrue(config.isEnabled(WidgetConfig.Block.FAN));
     }
 
     @Test public void onlyBarCellsOpenTheScrubber() {
@@ -227,8 +240,8 @@ public final class WidgetGeometryTest {
         assertEquals(natural + 200f, filled.totalHeight(), 0.5f);
         for (WidgetGeometry.Strip strip : filled.strips) {
             if (strip.row.kind == WidgetGeometry.RowKind.FAN) {
-                assertEquals(WidgetGeometry.FAN_BAR_ROW_DP * filled.density,
-                        strip.contentHeight, 0.01f);
+                assertEquals(WidgetGeometry.FAN_ROW_DP * filled.density, strip.contentHeight,
+                        0.01f);
             }
         }
     }
@@ -237,7 +250,7 @@ public final class WidgetGeometryTest {
         WidgetConfig config = new WidgetConfig();
         config.cardLayout = WidgetConfig.CardLayout.SINGLE;
         WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
-        assertEquals(5, plan.strips.size());
+        assertEquals(6, plan.strips.size());
         float card = 0f;
         int sections = 0;
         for (int index = 0; index < plan.strips.size(); index++) {
@@ -254,7 +267,7 @@ public final class WidgetGeometryTest {
         }
         assertEquals(plan.strips.get(0).cardHeight, card, 0.01f);
         assertEquals("temperature, fan and tiles start their own sections", 3, sections);
-        assertEquals(WidgetConfig.Block.TILES, plan.strips.get(4).block);
+        assertEquals(WidgetConfig.Block.TILES, plan.strips.get(5).block);
     }
 
     @Test public void singleCardFillsToTheCellBottom() {

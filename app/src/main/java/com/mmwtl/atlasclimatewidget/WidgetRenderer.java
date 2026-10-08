@@ -106,6 +106,9 @@ final class WidgetRenderer {
             case TEMPERATURE:
                 drawTemperature(canvas, strip);
                 break;
+            case FAN_TOP:
+                drawFanBar(canvas, strip);
+                break;
             case FAN:
                 if (config.fanLayout == WidgetConfig.FanLayout.BAR) {
                     drawFanBar(canvas, strip);
@@ -461,20 +464,26 @@ final class WidgetRenderer {
 
     // ---- fan ---------------------------------------------------------------------------------
 
+    /**
+     * Speed bar with the −/+ fan buttons. In the bar fan layout it starts after the AUTO column,
+     * half a gap away from it, and each speed may span several cells.
+     */
     private void drawFan(Canvas canvas, WidgetGeometry.Strip strip) {
         float height = strip.contentHeight;
         float inner = plan.width - 2f * plan.padding;
         float cell = inner / strip.zoneCount;
         float centerY = height / 2f;
+        float lead = strip.autoCells > 0 ? barGap() / 2f : 0f;
+        float barLeft = plan.padding + cell * strip.autoCells + lead;
         if (strip.buttonCells > 0 && config.style == WidgetConfig.Style.CONSOLE) {
             float diameter = consoleButton();
-            drawFanButton(canvas, plan.padding + diameter / 2f, centerY, diameter / 0.8f, 0.5f);
+            drawFanButton(canvas, barLeft + diameter / 2f, centerY, diameter / 0.8f, 0.5f);
             drawFanButton(canvas, plan.width - plan.padding - diameter / 2f, centerY,
                     diameter / 0.8f, 0.72f);
         } else if (strip.buttonCells > 0) {
-            float buttonWidth = cell * strip.buttonCells;
+            float buttonWidth = cell * strip.buttonCells - lead;
             float size = Math.min(buttonWidth, height);
-            drawFanButton(canvas, plan.padding + buttonWidth / 2f, centerY, size, 0.5f);
+            drawFanButton(canvas, barLeft + buttonWidth / 2f, centerY, size, 0.5f);
             drawFanButton(canvas, plan.width - plan.padding - buttonWidth / 2f, centerY, size,
                     0.72f);
         }
@@ -482,10 +491,12 @@ final class WidgetRenderer {
         int lit = config.palette.tile(ClimateFunction.Tone.NEUTRAL);
         float segmentHeight = Math.max(4f * dp, height * 0.26f);
         float segmentGap = Math.max(2f, 3f * dp);
-        float start = plan.padding + cell * strip.buttonCells;
+        float start = plan.padding + cell * strip.stepStart;
+        float step = cell * strip.stepSpan;
         for (int level = 1; level <= Hvac.FAN_SPEED_LEVEL_COUNT; level++) {
-            float left = start + (level - 1) * cell + segmentGap / 2f;
-            float right = start + level * cell - segmentGap / 2f;
+            float left = start + (level - 1) * step
+                    + (level == 1 && strip.buttonCells == 0 ? lead : segmentGap / 2f);
+            float right = start + level * step - segmentGap / 2f;
             boolean on = fan.known && !fan.auto && level <= fan.level;
             int color = on ? lit : Ui.SURFACE_RAISED;
             if (fan.auto) {
@@ -502,7 +513,7 @@ final class WidgetRenderer {
             String text = "AUTO";
             float badgeHeight = textPaint.getTextSize() * 1.7f;
             float badgeWidth = textPaint.measureText(text) + badgeHeight;
-            float cx = start + cell * Hvac.FAN_SPEED_LEVEL_COUNT / 2f;
+            float cx = start + step * Hvac.FAN_SPEED_LEVEL_COUNT / 2f;
             paint.setColor(lit);
             rect.set(cx - badgeWidth / 2f, centerY - badgeHeight / 2f, cx + badgeWidth / 2f,
                     centerY + badgeHeight / 2f);
@@ -512,7 +523,7 @@ final class WidgetRenderer {
         }
     }
 
-    /** A button of the fan bar: an icon, or its label when it has none. */
+    /** A button of the fan bar: an icon with its name when there is room, or the name. */
     private static final class BarButton {
         final int icon;
         final String label;
@@ -528,23 +539,33 @@ final class WidgetRenderer {
     }
 
     /**
-     * Bar fan layout: the AUTO button keeps its place; after it come the blowing directions and
-     * the speeds in manual mode, or the auto-fan presets in AUTO. Controls the car ignores in
-     * the current mode are not shown at all.
+     * One row of the bar fan layout. The AUTO column keeps its place in both modes. In manual
+     * mode the top row holds the directions and the speed row the speed bar; in AUTO the presets
+     * take both rows. AUTO and the presets are drawn the full height of the block, each row
+     * drawing its slice, so controls the car ignores in the current mode are never shown.
      */
     private void drawFanBar(Canvas canvas, WidgetGeometry.Strip strip) {
-        float height = strip.contentHeight;
         float cell = (plan.width - 2f * plan.padding) / strip.zoneCount;
-        float right = plan.width - plan.padding;
+        // The block's rows in this strip's coordinates.
+        float top = 0f;
+        float bottom = strip.contentHeight;
+        float origin = plan.stripTop(strip) + strip.contentTop;
+        for (WidgetGeometry.Strip other : plan.strips) {
+            if (other.block == strip.block) {
+                float offset = plan.stripTop(other) + other.contentTop - origin;
+                top = Math.min(top, offset);
+                bottom = Math.max(bottom, offset + other.contentHeight);
+            }
+        }
+        float textHeight = WidgetGeometry.FAN_ROW_DP * dp * plan.verticalScale;
         ClimateCommands.FanState fan = ClimateCommands.fanState(state);
-        float x = plan.padding;
         if (strip.autoCells > 0) {
             List<BarButton> auto = new ArrayList<>();
             auto.add(new BarButton(ClimateFunction.AUTO.icon(config.iconSet, 0),
-                    ClimateFunction.AUTO.glyph,
-                    fan.auto, ClimateCommands.autoMode(state) != null));
-            x += strip.autoCells * cell;
-            drawBarButtons(canvas, plan.padding, x, height, auto, true);
+                    ClimateFunction.AUTO.glyph, fan.auto,
+                    ClimateCommands.autoMode(state) != null));
+            drawBarButtons(canvas, new float[]{plan.padding,
+                    plan.padding + strip.autoCells * cell}, top, bottom, auto, true, textHeight);
         }
         if (fan.auto) {
             int active = ClimateCommands.fanPreset(state, config.fanPresetCount);
@@ -557,119 +578,138 @@ final class WidgetRenderer {
                         context.getString(labels[Math.min(index, labels.length - 1)]),
                         index == active, known));
             }
-            drawBarButtons(canvas, x, right, height, presets, false);
+            drawBarButtons(canvas, partEdges(strip, count, cell), top, bottom, presets, false,
+                    textHeight);
             return;
         }
-        if (strip.directionCells > 0) {
-            List<BarButton> directions = new ArrayList<>();
-            for (ClimateFunction direction : WidgetConfig.FAN_DIRECTIONS) {
-                ClimateCommands.TileState tileState = ClimateCommands.tileState(direction,
-                        state, model);
-                directions.add(new BarButton(direction.icon(config.iconSet, 0),
-                        context.getString(direction.shortRes), tileState.active,
-                        tileState.known));
-            }
-            float end = plan.padding + strip.stepStart * cell;
-            drawBarButtons(canvas, x, end, height, directions, false);
-            x = end;
+        if (strip.row.kind == WidgetGeometry.RowKind.FAN) {
+            drawFan(canvas, strip);
+            return;
         }
-        int lit = config.palette.tile(ClimateFunction.Tone.NEUTRAL);
-        float segmentHeight = Math.max(4f * dp, height * 0.26f);
-        float segmentGap = Math.max(2f, 3f * dp);
-        // Half a button gap more after the buttons, as between the buttons themselves.
-        float lead = strip.stepStart > 0 ? Math.max(4f, 8f * dp) / 2f : 0f;
-        float step = cell * strip.stepSpan;
-        float centerY = height / 2f;
-        paint.setShader(null);
-        for (int level = 1; level <= Hvac.FAN_SPEED_LEVEL_COUNT; level++) {
-            float left = x + (level - 1) * step + (level == 1 ? lead : segmentGap / 2f);
-            float end = x + level * step
-                    - (level == Hvac.FAN_SPEED_LEVEL_COUNT ? 0f : segmentGap / 2f);
-            paint.setColor(fan.known && level <= fan.level ? lit : Ui.SURFACE_RAISED);
-            rect.set(left, centerY - segmentHeight / 2f, end, centerY + segmentHeight / 2f);
-            canvas.drawRoundRect(rect, segmentHeight / 2f, segmentHeight / 2f, paint);
+        List<BarButton> directions = new ArrayList<>();
+        for (ClimateFunction direction : WidgetConfig.FAN_DIRECTIONS) {
+            ClimateCommands.TileState tileState = ClimateCommands.tileState(direction, state,
+                    model);
+            directions.add(new BarButton(direction.icon(config.iconSet, 0),
+                    context.getString(direction.shortRes), tileState.active, tileState.known));
         }
+        drawBarButtons(canvas, partEdges(strip, directions.size(), cell), 0f,
+                strip.contentHeight, directions, false, strip.contentHeight);
+    }
+
+    private float[] partEdges(WidgetGeometry.Strip strip, int parts, float cell) {
+        float[] edges = new float[parts + 1];
+        for (int part = 0; part <= parts; part++) {
+            edges[part] = plan.padding + strip.partStart(part, parts) * cell;
+        }
+        return edges;
+    }
+
+    private float barGap() {
+        return Math.max(4f, 8f * dp);
     }
 
     /**
-     * Equal buttons between {@code left} and {@code right}: separate pills in the classic style,
-     * one segmented pill in the console. Inner edges keep half a gap to the neighbouring part.
+     * Buttons between the {@code edges}: separate pills in the classic style, one segmented
+     * pill in the console. Inner edges keep half a gap to the neighbouring part.
      *
      * @param glyph whether the labels are bold tile glyphs such as AUTO rather than names
+     * @param textHeight row height the labels are sized for
      */
-    private void drawBarButtons(Canvas canvas, float left, float right, float height,
-            List<BarButton> buttons, boolean glyph) {
+    private void drawBarButtons(Canvas canvas, float[] edges, float top, float bottom,
+            List<BarButton> buttons, boolean glyph, float textHeight) {
         boolean console = config.style == WidgetConfig.Style.CONSOLE;
-        float half = Math.max(4f, 8f * dp) / 2f;
+        float half = barGap() / 2f;
+        float left = edges[0];
+        float right = edges[edges.length - 1];
         float groupLeft = left + (left > plan.padding + 0.5f ? half : 0f);
         float groupRight = right - (right < plan.width - plan.padding - 0.5f ? half : 0f);
-        float cell = (right - left) / buttons.size();
+        float height = bottom - top;
+        float cy = (top + bottom) / 2f;
         float inset = console ? Math.max(2f, 3f * dp) : 0f;
-        float radius = Math.min(height / 2f, Math.min(console ? height : Math.min(cell, height),
-                height) * config.tileRadiusPercent / 100f * 1.4f);
+        float narrowest = Float.MAX_VALUE;
+        for (int index = 0; index < buttons.size(); index++) {
+            narrowest = Math.min(narrowest, edges[index + 1] - edges[index]);
+        }
+        float shape = Math.min(textHeight, console ? height : Math.min(narrowest, height));
+        float radius = Math.min(height / 2f, shape * config.tileRadiusPercent / 100f * 1.4f);
         float innerRadius = Math.max(0f, radius - inset);
         paint.setShader(null);
         paint.setStyle(Paint.Style.FILL);
         if (console) {
             paint.setColor(Ui.SURFACE_RAISED);
-            rect.set(groupLeft, 0f, groupRight, height);
+            rect.set(groupLeft, top, groupRight, bottom);
             canvas.drawRoundRect(rect, radius, radius, paint);
         }
-        // Labels share one size, fitted to the widest of them.
-        textPaint.setTypeface(glyph ? Typeface.DEFAULT_BOLD : MEDIUM);
-        textPaint.setTextSize(glyph ? height * 0.3f
-                : Math.min(14f * dp * plan.verticalScale, height * 0.36f));
-        float widest = 0f;
-        for (BarButton button : buttons) {
-            if (button.icon == 0) {
-                widest = Math.max(widest, textPaint.measureText(button.label));
-            }
-        }
         // Edge buttons lose half a gap to the neighbouring part, inner pills half a gap a side.
-        float room = cell - (console ? 2f * inset + half : 2f * half)
-                - height * (glyph ? 0.1f : 0.2f);
-        if (widest > room && room > 0f) {
-            textPaint.setTextSize(textPaint.getTextSize() * room / widest);
+        float room = narrowest - (console ? 2f * inset + half : 2f * half)
+                - textHeight * 0.1f;
+        // A glyph icon such as the stock AUTO is a word, so it takes the button's width.
+        float icon = glyph ? Math.min(textHeight, narrowest * 0.85f)
+                : Math.min(textHeight * (console ? 0.62f : 0.72f), narrowest * 0.8f);
+        float iconGap = textHeight * 0.12f;
+        // Labels share one size, fitted to the widest of them; icons get names on all buttons
+        // or on none.
+        textPaint.setTypeface(glyph ? Typeface.DEFAULT_BOLD : MEDIUM);
+        textPaint.setTextSize(glyph ? textHeight * 0.36f
+                : Math.min(16f * dp * plan.verticalScale, textHeight * 0.4f));
+        float widest = 0f;
+        boolean icons = false;
+        for (BarButton button : buttons) {
+            widest = Math.max(widest, textPaint.measureText(button.label));
+            icons |= button.icon != 0;
+        }
+        float textRoom = icons ? room - icon - iconGap : room;
+        boolean named = !icons || glyph;
+        if (icons && !glyph && textRoom > 0f) {
+            float size = textPaint.getTextSize() * Math.min(1f, textRoom / widest);
+            named = size >= 10f * dp * plan.verticalScale;
+        }
+        if (named && widest > textRoom && textRoom > 0f) {
+            textPaint.setTextSize(textPaint.getTextSize() * textRoom / widest);
         }
         boolean previousOn = false;
         for (int index = 0; index < buttons.size(); index++) {
             BarButton button = buttons.get(index);
-            float start = index == 0 ? groupLeft : left + index * cell + (console ? 0f : half);
+            float start = index == 0 ? groupLeft : edges[index] + (console ? 0f : half);
             float end = index == buttons.size() - 1 ? groupRight
-                    : left + (index + 1) * cell - (console ? 0f : half);
-            int background = Ui.SURFACE_RAISED;
+                    : edges[index + 1] - (console ? 0f : half);
             int content = Ui.TEXT;
             if (button.on) {
-                background = config.filledActive
+                paint.setColor(config.filledActive
                         ? config.palette.tile(ClimateFunction.Tone.NEUTRAL)
-                        : config.palette.softTile(ClimateFunction.Tone.NEUTRAL);
+                        : config.palette.softTile(ClimateFunction.Tone.NEUTRAL));
                 content = config.filledActive ? Color.WHITE
                         : config.palette.softContent(ClimateFunction.Tone.NEUTRAL);
+            } else {
+                paint.setColor(Ui.SURFACE_RAISED);
             }
             if (button.on || !console) {
-                paint.setColor(background);
-                rect.set(start + inset, inset, end - inset, height - inset);
-                canvas.drawRoundRect(rect, console ? innerRadius : radius,
-                        console ? innerRadius : radius, paint);
+                rect.set(start + inset, top + inset, end - inset, bottom - inset);
+                float r = console ? innerRadius : radius;
+                canvas.drawRoundRect(rect, r, r, paint);
             } else if (index > 0 && !previousOn) {
                 paint.setColor(withAlpha(Ui.TEXT, 22));
                 float thickness = Math.max(1f, dp);
-                canvas.drawRect(start - thickness / 2f, height * 0.28f, start + thickness / 2f,
-                        height * 0.72f, paint);
+                canvas.drawRect(start - thickness / 2f, top + height * 0.28f,
+                        start + thickness / 2f, bottom - height * 0.28f, paint);
             }
             previousOn = button.on;
             if (!button.known) {
                 content = withAlpha(content, Math.round(255 * UNKNOWN_ALPHA));
             }
             float cx = (start + end) / 2f;
-            float cy = height / 2f;
-            if (button.icon != 0) {
-                drawIcon(canvas, button.icon, cx, cy,
-                        Math.min(end - start, height) * (console ? 0.62f : 0.72f), content);
-                continue;
-            }
             textPaint.setColor(content);
-            drawCenteredLine(canvas, button.label, cx, cy);
+            if (button.icon == 0) {
+                drawCenteredLine(canvas, button.label, cx, cy);
+            } else if (!named || glyph) {
+                drawIcon(canvas, button.icon, cx, cy, icon, content);
+            } else {
+                float width = textPaint.measureText(button.label);
+                float x = cx - (icon + iconGap + width) / 2f;
+                drawIcon(canvas, button.icon, x + icon / 2f, cy, icon, content);
+                drawCenteredLine(canvas, button.label, x + icon + iconGap + width / 2f, cy);
+            }
         }
     }
 

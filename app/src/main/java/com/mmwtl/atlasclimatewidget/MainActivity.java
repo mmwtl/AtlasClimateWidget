@@ -852,6 +852,8 @@ public final class MainActivity extends ScaledActivity {
                                 value -> config.fanAuto = value));
                         options.addView(configSwitch(R.string.fan_part_directions,
                                 config.fanDirections, value -> config.fanDirections = value));
+                        options.addView(configSwitch(R.string.fan_buttons, config.fanButtons,
+                                value -> config.fanButtons = value));
                         options.addView(hint(R.string.fan_bar_hint));
                         break;
                     }

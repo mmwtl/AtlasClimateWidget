@@ -20,8 +20,13 @@ final class WidgetGeometry {
     static final float TEMP_ROW_GAP_DP = 8f;
     static final float FAN_ROW_DP = 42f;
     static final float FAN_CONTROLS_ROW_DP = 56f;
-    /** The bar fan layout: AUTO and direction buttons beside the speeds or presets. */
-    static final float FAN_BAR_ROW_DP = 48f;
+    /** Width of the bar fan layout's AUTO column relative to the speed row's height. */
+    static final float FAN_AUTO_WIDTH = 1.4f;
+    /**
+     * Cells the bar fan layout's parts (directions, presets) share at least, so splitting them
+     * on whole cells leaves no visible difference between their widths.
+     */
+    static final int FAN_BAR_MIN_CELLS = 40;
     /** Console temperature: a row with −, the large value and +, then a thin full-width bar. */
     static final float CONSOLE_VALUE_ROW_DP = 40f;
     static final float CONSOLE_ZONE_LABEL_DP = 14f;
@@ -48,6 +53,8 @@ final class WidgetGeometry {
         TEMP_VALUE,
         TEMPERATURE,
         FAN,
+        /** Bar fan layout: the directions above the speeds, or the top half of the presets. */
+        FAN_TOP,
         FAN_CONTROLS,
         TILES
     }
@@ -95,17 +102,15 @@ final class WidgetGeometry {
         final int stepStart;
         final int stepSpan;
         /**
-         * Bar fan layout: cells of the AUTO button and of each direction button. In AUTO the
-         * presets share the cells after the AUTO button equally.
+         * Bar fan layout: cells of the AUTO column at the start of both rows. The directions or
+         * presets split the cells after it, see {@link #partStart}.
          */
         final int autoCells;
-        final int directionCells;
 
         Strip(WidgetConfig.Block block, Row row, int stripIndexInCard, boolean firstInCard,
                 boolean lastInCard, float cardOffset, float cardHeight, float height,
                 float trailingGap, float contentTop, float contentHeight, float zonePadding,
-                int zoneCount, int buttonCells, int stepStart, int stepSpan, int autoCells,
-                int directionCells) {
+                int zoneCount, int buttonCells, int stepStart, int stepSpan, int autoCells) {
             this.block = block;
             this.row = row;
             this.stripIndexInCard = stripIndexInCard;
@@ -123,12 +128,20 @@ final class WidgetGeometry {
             this.stepStart = stepStart;
             this.stepSpan = stepSpan;
             this.autoCells = autoCells;
-            this.directionCells = directionCells;
         }
 
-        /** Cells of each auto-fan preset of the bar fan layout. */
-        int presetCells(int presets) {
-            return (zoneCount - autoCells) / presets;
+        /** First cell of part {@code part} of {@code parts} sharing the cells after AUTO. */
+        int partStart(int part, int parts) {
+            return autoCells + part * (zoneCount - autoCells) / parts;
+        }
+
+        /** Part of {@code parts} under the cell, see {@link #partStart}. */
+        int partAt(int cell, int parts) {
+            int part = 0;
+            while (part < parts - 1 && cell >= partStart(part + 1, parts)) {
+                part++;
+            }
+            return part;
         }
 
         float totalHeight() {
@@ -402,7 +415,12 @@ final class WidgetGeometry {
             }
             case FAN:
                 if (config.fanLayout == WidgetConfig.FanLayout.BAR) {
-                    rows.add(new Row(block, RowKind.FAN, 0, FAN_BAR_ROW_DP * density * scale));
+                    if (config.fanDirections) {
+                        rows.add(new Row(block, RowKind.FAN_TOP, 0,
+                                fanControlsRowDp(config) * density * scale));
+                        gaps.add(TEMP_ROW_GAP_DP * density * scale);
+                    }
+                    rows.add(new Row(block, RowKind.FAN, 0, FAN_ROW_DP * density * scale));
                     gaps.add(TEMP_ROW_GAP_DP * density * scale);
                     break;
                 }
@@ -442,6 +460,13 @@ final class WidgetGeometry {
                 cardHeight += gaps.get(index);
             }
         }
+        // Both rows of the bar fan layout share one grid, sized by the speed row.
+        int[] barCells = null;
+        for (Row row : rows) {
+            if (row.kind == RowKind.FAN && config.fanLayout == WidgetConfig.FanLayout.BAR) {
+                barCells = fanBarCells(config, width - 2f * padding, row.height);
+            }
+        }
         float rowTop = verticalPadding;
         float stripTop = 0f;
         for (int index = 0; index < rows.size(); index++) {
@@ -453,9 +478,9 @@ final class WidgetGeometry {
             float height = stripBottom - stripTop;
             int zoneCount = 0;
             int buttonCells = 0;
+            int stepStart = 0;
             int stepSpan = 1;
             int autoCells = 0;
-            int directionCells = 0;
             float zonePadding = padding;
             boolean console = config.style == WidgetConfig.Style.CONSOLE;
             switch (row.kind) {
@@ -478,14 +503,16 @@ final class WidgetGeometry {
                             row.height * TEMP_ROW_DP / temperatureRowDp(config))
                             : 0;
                     zoneCount = temperatureSteps + 2 * buttonCells;
+                    stepStart = buttonCells;
                     break;
+                case FAN_TOP:
                 case FAN:
-                    if (config.fanLayout == WidgetConfig.FanLayout.BAR) {
-                        int[] cells = fanBarCells(config, width - 2f * padding, row.height);
-                        autoCells = cells[0];
-                        directionCells = cells[1];
-                        stepSpan = cells[2];
-                        zoneCount = cells[3];
+                    if (barCells != null) {
+                        autoCells = barCells[0];
+                        buttonCells = barCells[1];
+                        stepSpan = barCells[2];
+                        zoneCount = barCells[3];
+                        stepStart = autoCells + buttonCells;
                         break;
                     }
                     buttonCells = config.fanButtons
@@ -493,6 +520,7 @@ final class WidgetGeometry {
                             row.height)
                             : 0;
                     zoneCount = Hvac.FAN_SPEED_LEVEL_COUNT + 2 * buttonCells;
+                    stepStart = buttonCells;
                     break;
                 case FAN_CONTROLS:
                     zoneCount = config.fanControlCells(row.index);
@@ -505,13 +533,9 @@ final class WidgetGeometry {
                 default:
                     break;
             }
-            int stepStart = row.kind == RowKind.FAN
-                    && config.fanLayout == WidgetConfig.FanLayout.BAR
-                    ? autoCells + fanDirectionCount(config) * directionCells : buttonCells;
             strips.add(new Strip(row.block, row, index, index == 0, last, stripTop, cardHeight,
                     height, last ? trailingGap : 0f, rowTop - stripTop, row.height,
-                    zonePadding, zoneCount, buttonCells, stepStart, stepSpan, autoCells,
-                    directionCells));
+                    zonePadding, zoneCount, buttonCells, stepStart, stepSpan, autoCells));
             if (!last) {
                 rowTop += row.height + gaps.get(index);
             }
@@ -532,42 +556,48 @@ final class WidgetGeometry {
                 ? CONSOLE_SEGMENT_ROW_DP : FAN_CONTROLS_ROW_DP;
     }
 
-    static int fanDirectionCount(WidgetConfig config) {
-        return config.fanDirections ? WidgetConfig.FAN_DIRECTIONS.length : 0;
-    }
-
     /**
-     * Cells of the bar fan layout: the AUTO button, each direction button, each speed and the
-     * whole bar. Direction buttons stay roughly square and AUTO half as wide again for its
-     * word; every cell count is multiplied up when needed so that in AUTO the presets split the
-     * cells after the AUTO button equally.
+     * Cells of the bar fan layout: the AUTO column, each −/+ button, each speed and the whole
+     * row. AUTO is {@link #FAN_AUTO_WIDTH} speed rows wide and the buttons stay roughly square.
+     * The grid is multiplied up until the directions and presets split it evenly or into at
+     * least {@link #FAN_BAR_MIN_CELLS} cells.
      */
     static int[] fanBarCells(WidgetConfig config, float innerWidth, float rowHeight) {
-        int autoButtons = config.fanAuto ? 1 : 0;
-        int directions = fanDirectionCount(config);
-        int buttons = autoButtons + directions;
-        int button = buttons == 0 ? 0
-                : buttonCells(innerWidth, Hvac.FAN_SPEED_LEVEL_COUNT, rowHeight, buttons);
+        int auto = config.fanAuto ? 1 : 0;
+        int button = config.fanButtons ? 1 : 0;
+        for (int iteration = 0; iteration < 4; iteration++) {
+            float cell = innerWidth / (auto + 2 * button + Hvac.FAN_SPEED_LEVEL_COUNT);
+            if (config.fanAuto) {
+                auto = Math.max(1, Math.round(rowHeight * FAN_AUTO_WIDTH / cell));
+            }
+            if (config.fanButtons) {
+                button = Math.max(1, Math.round(rowHeight / cell));
+            }
+        }
+        int rest = 2 * button + Hvac.FAN_SPEED_LEVEL_COUNT;
         int presets = ClimateCommands.fanPresets(config.fanPresetCount).length;
-        int auto = autoButtons * Math.max(button + 1, Math.round(button * 1.5f));
-        int rest = directions * button + Hvac.FAN_SPEED_LEVEL_COUNT;
-        int span = presets / gcd(rest, presets);
+        int parts = config.fanDirections ? lcm(presets, WidgetConfig.FAN_DIRECTIONS.length)
+                : presets;
+        int span = rest % parts == 0 ? 1 : (FAN_BAR_MIN_CELLS + rest - 1) / rest;
         return new int[]{auto * span, button * span, span, (auto + rest) * span};
     }
 
-    private static int gcd(int a, int b) {
-        return b == 0 ? a : gcd(b, a % b);
+    private static int lcm(int a, int b) {
+        int x = a;
+        int y = b;
+        while (y != 0) {
+            int t = x % y;
+            x = y;
+            y = t;
+        }
+        return a / x * b;
     }
 
     /** Chooses how many equal cells a −/+ button spans so that it stays roughly square. */
     static int buttonCells(float innerWidth, int steps, float rowHeight) {
-        return buttonCells(innerWidth, steps, rowHeight, 2);
-    }
-
-    static int buttonCells(float innerWidth, int steps, float rowHeight, int buttons) {
         int cells = 1;
         for (int iteration = 0; iteration < 4; iteration++) {
-            float cell = innerWidth / (steps + buttons * cells);
+            float cell = innerWidth / (steps + 2 * cells);
             int next = Math.max(1, Math.round(rowHeight / cell));
             if (next == cells) {
                 break;

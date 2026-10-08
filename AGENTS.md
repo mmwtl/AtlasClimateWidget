@@ -57,14 +57,15 @@ line, read as in AtlasAppWidget (`Fuel`).
   block right before the temperature one, each enabled as its old part was.
   A custom formula (System tab, global, in the backup) replaces the default; the tank is the
   formula's larger end over API 0–100. `Prefs.resolved` puts it into the layout, unsaved.
-- Fan block: `FanLayout.BAR` (new widgets) is one row whose content follows the mode. The
-  optional AUTO button keeps its cells at the start in both modes; after it come the direction
-  buttons and the speeds 1–9 in manual mode, or the auto-fan presets in AUTO. Controls the car
-  ignores in the current mode are not drawn. The cell grid is the same in both modes:
-  `WidgetGeometry.fanBarCells` multiplies it up so the presets split the cells after AUTO
-  equally, so a speed may span several cells and the scrubber gets the tapped cell in its URI.
-  `FanLayout.ROWS` is the FX11-style stack (speed bar, directions, presets); layouts saved
-  before the bar existed keep it.
+- Fan block: `FanLayout.BAR` (new widgets) follows the climate mode and keeps its height. An
+  optional AUTO column (`FAN_AUTO_WIDTH`) stands at the start of both rows in both modes. In
+  manual mode a `FAN_TOP` row holds the direction buttons above the speed row (−, 1–9, +); in
+  AUTO the presets replace both, drawn the full height of the block like AUTO, each strip
+  drawing its slice. Controls the car ignores in the current mode are not drawn. Both rows
+  share one cell grid (`WidgetGeometry.fanBarCells`), multiplied up so directions and presets
+  split it evenly or finely (`Strip.partStart`); a speed may span several cells, so the
+  scrubber gets the tapped cell in its URI. `FanLayout.ROWS` is the FX11-style stack (speed
+  bar, directions, presets); layouts saved before the bar existed keep it.
 - Cards: `CardLayout.SEPARATE` gives every block its own card; `SINGLE` puts all rows in one card,
   blocks a card padding apart without dividers. Fill shares extra height per block in both
   modes.
