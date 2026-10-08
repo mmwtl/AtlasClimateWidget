@@ -23,8 +23,9 @@ final class WidgetGeometry {
     /** Width of the bar fan layout's AUTO column relative to the speed row's height. */
     static final float FAN_AUTO_WIDTH = 1.4f;
     /**
-     * Cells the bar fan layout's directions share at least when they cannot split the row
-     * evenly, so whole cells leave no visible difference between their widths.
+     * Cells the bar fan layout's top row (directions, or preset names in AUTO) shares at least
+     * when they cannot split it evenly, so whole cells leave no visible difference between their
+     * widths.
      */
     static final int FAN_BAR_MIN_CELLS = 40;
     /** Console temperature: a row with −, the large value and +, then a thin full-width bar. */
@@ -102,9 +103,9 @@ final class WidgetGeometry {
         final int stepStart;
         final int stepSpan;
         /**
-         * Bar fan layout: cells of the AUTO column at the start of both rows. The directions
-         * split the cells after it, see {@link #partStart}; in AUTO the preset levels split the
-         * speeds' cells evenly, see {@link #levelStart}.
+         * Bar fan layout: cells of the AUTO column at the start of both rows. The directions or
+         * preset names split the cells after it, see {@link #partStart}; in AUTO the preset
+         * levels split the speeds' cells evenly, see {@link #levelStart}.
          */
         final int autoCells;
 
@@ -566,7 +567,8 @@ final class WidgetGeometry {
      * Cells of the bar fan layout: the AUTO column, each −/+ button, each speed and the whole
      * row. AUTO is {@link #FAN_AUTO_WIDTH} speed rows wide and the buttons stay roughly square.
      * The grid is multiplied up so the preset levels split the speeds' cells evenly, and the
-     * directions the row after AUTO evenly or into at least {@link #FAN_BAR_MIN_CELLS} cells.
+     * directions and preset names the row after AUTO evenly or into at least
+     * {@link #FAN_BAR_MIN_CELLS} cells.
      */
     static int[] fanBarCells(WidgetConfig config, float innerWidth, float rowHeight) {
         int auto = config.fanAuto ? 1 : 0;
@@ -585,7 +587,8 @@ final class WidgetGeometry {
         int unit = presets / gcd(Hvac.FAN_SPEED_LEVEL_COUNT, presets);
         int span = unit;
         boolean uneven = config.fanDirections
-                && rest * span % WidgetConfig.FAN_DIRECTIONS.length != 0;
+                && (rest * span % WidgetConfig.FAN_DIRECTIONS.length != 0
+                || rest * span % presets != 0);
         while (uneven && rest * span < FAN_BAR_MIN_CELLS) {
             span += unit;
         }

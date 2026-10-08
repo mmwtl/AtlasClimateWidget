@@ -551,7 +551,7 @@ final class WidgetRenderer {
      * One row of the bar fan layout. The AUTO column keeps its place in both modes and is drawn
      * the full height of the block, each row drawing its slice. In manual mode the top row holds
      * the directions above the speed bar; in AUTO the bar shows the preset levels and the top
-     * row their names right above them, so directions the car ignores are not shown.
+     * row their names across its width, so directions the car ignores are not shown.
      */
     private void drawFanBar(Canvas canvas, WidgetGeometry.Strip strip) {
         float cell = (plan.width - 2f * plan.padding) / strip.zoneCount;
@@ -581,23 +581,18 @@ final class WidgetRenderer {
             return;
         }
         if (fan.auto) {
-            // The preset names, each right above its level of the bar below.
             int active = ClimateCommands.fanPreset(state, config.fanPresetCount);
             boolean known = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL) != null;
             int[] labels = presetLabels();
             int count = ClimateCommands.fanPresets(config.fanPresetCount).length;
             List<BarButton> presets = new ArrayList<>();
-            float[] edges = new float[count + 1];
-            for (int index = 0; index <= count; index++) {
-                edges[index] = plan.padding + strip.levelStart(index, count) * cell;
-                if (index < count) {
-                    presets.add(new BarButton(0,
-                            context.getString(labels[Math.min(index, labels.length - 1)]),
-                            index == active, known));
-                }
+            for (int index = 0; index < count; index++) {
+                presets.add(new BarButton(0,
+                        context.getString(labels[Math.min(index, labels.length - 1)]),
+                        index == active, known));
             }
-            drawBarButtons(canvas, edges, 0f, strip.contentHeight, presets, false,
-                    strip.contentHeight);
+            drawBarButtons(canvas, partEdges(strip, count, cell), 0f, strip.contentHeight,
+                    presets, false, strip.contentHeight);
             return;
         }
         List<BarButton> directions = new ArrayList<>();

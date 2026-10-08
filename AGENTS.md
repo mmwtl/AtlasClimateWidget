@@ -61,10 +61,10 @@ line, read as in AtlasAppWidget (`Fuel`).
   optional AUTO column (`FAN_AUTO_WIDTH`) spans both rows at the start in both modes, each
   strip drawing its slice. The speed row is −, the levels and +: speeds 1–9 in manual mode, the
   auto-fan presets in AUTO (as many segments as presets, lit up to the active one). Above it a
-  `FAN_TOP` row holds the direction buttons in manual mode and the preset names in AUTO, each
-  right above its level; the cells above − and + rest then. Both rows share one cell grid
-  (`WidgetGeometry.fanBarCells`), multiplied up so the levels split the speeds' cells evenly
-  (`Strip.levelStart`) and the directions the row evenly or finely (`Strip.partStart`); a level
+  `FAN_TOP` row holds the direction buttons in manual mode and the preset names in AUTO, both
+  across the row's full width. Both rows share one cell grid (`WidgetGeometry.fanBarCells`),
+  multiplied up so the levels split the speeds' cells evenly (`Strip.levelStart`) and the
+  directions and names the row evenly or finely (`Strip.partStart`); a level
   may span several cells, so the scrubber gets the tapped cell in its URI. `FanLayout.ROWS` is
   the FX11-style stack (speed bar, directions, presets); layouts saved before the bar keep it.
 - Cards: `CardLayout.SEPARATE` gives every block its own card; `SINGLE` puts all rows in one card,

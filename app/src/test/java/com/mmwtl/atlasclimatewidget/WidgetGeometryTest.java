@@ -147,13 +147,12 @@ public final class WidgetGeometryTest {
         assertEquals("fanstep/-1", WidgetViews.control(config, speeds, speeds.autoCells, true));
         assertEquals("fanstep/1", WidgetViews.control(config, speeds, speeds.zoneCount - 1,
                 true));
-        assertNull("nothing above −", WidgetViews.control(config, top, top.autoCells, true));
-        assertNull("nothing above +", WidgetViews.control(config, top, top.zoneCount - 1, true));
-        for (WidgetGeometry.Strip strip : plan.strips) {
-            assertEquals("fanpreset/0", WidgetViews.control(config, strip, strip.stepStart, true));
-            assertEquals("fanpreset/2", WidgetViews.control(config, strip,
-                    strip.levelStart(3, 3) - 1, true));
-        }
+        assertEquals("fanpreset/0", WidgetViews.control(config, speeds, speeds.stepStart, true));
+        assertEquals("fanpreset/2", WidgetViews.control(config, speeds,
+                speeds.levelStart(3, 3) - 1, true));
+        assertEquals("names span the row", "fanpreset/0",
+                WidgetViews.control(config, top, top.autoCells, true));
+        assertEquals("fanpreset/2", WidgetViews.control(config, top, top.zoneCount - 1, true));
 
         for (int presets : new int[]{3, 5}) {
             for (boolean auto : new boolean[]{true, false}) {
@@ -164,19 +163,25 @@ public final class WidgetGeometryTest {
                     plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
                     WidgetGeometry.Strip strip = plan.strips.get(1);
                     int rest = strip.zoneCount - strip.autoCells;
-                    assertTrue("directions split evenly or finely", rest % 3 == 0
+                    assertTrue("the top row splits evenly or finely",
+                            rest % 3 == 0 && rest % presets == 0
                             || rest >= WidgetGeometry.FAN_BAR_MIN_CELLS);
                     assertEquals("levels split the speeds evenly", 0,
                             9 * strip.stepSpan % presets);
-                    for (WidgetGeometry.Strip row : plan.strips) {
-                        for (int preset = 0; preset < presets; preset++) {
-                            int first = row.levelStart(preset, presets);
-                            int last = row.levelStart(preset + 1, presets) - 1;
-                            assertEquals("fanpreset/" + preset,
-                                    WidgetViews.control(config, row, first, true));
-                            assertEquals("fanpreset/" + preset,
-                                    WidgetViews.control(config, row, last, true));
-                        }
+                    WidgetGeometry.Strip names = plan.strips.get(0);
+                    for (int preset = 0; preset < presets; preset++) {
+                        int first = strip.levelStart(preset, presets);
+                        int last = strip.levelStart(preset + 1, presets) - 1;
+                        assertEquals("fanpreset/" + preset,
+                                WidgetViews.control(config, strip, first, true));
+                        assertEquals("fanpreset/" + preset,
+                                WidgetViews.control(config, strip, last, true));
+                        first = names.partStart(preset, presets);
+                        last = names.partStart(preset + 1, presets) - 1;
+                        assertEquals("fanpreset/" + preset,
+                                WidgetViews.control(config, names, first, true));
+                        assertEquals("fanpreset/" + preset,
+                                WidgetViews.control(config, names, last, true));
                     }
                     for (int level = 1; level <= 9; level++) {
                         int first = strip.stepStart + (level - 1) * strip.stepSpan;
