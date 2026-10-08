@@ -492,14 +492,23 @@ final class WidgetRenderer {
         float segmentHeight = Math.max(4f * dp, height * 0.26f);
         float segmentGap = Math.max(2f, 3f * dp);
         float start = plan.padding + cell * strip.stepStart;
-        float step = cell * strip.stepSpan;
-        for (int level = 1; level <= Hvac.FAN_SPEED_LEVEL_COUNT; level++) {
+        // In AUTO the bar fan layout shows the preset levels in the speeds' place.
+        boolean presets = fan.auto && config.fanLayout == WidgetConfig.FanLayout.BAR;
+        int levels = presets ? ClimateCommands.fanPresets(config.fanPresetCount).length
+                : Hvac.FAN_SPEED_LEVEL_COUNT;
+        int litLevels = presets ? ClimateCommands.fanPreset(state, config.fanPresetCount) + 1
+                : fan.level;
+        boolean known = presets
+                ? state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL) != null
+                : fan.known && !fan.auto;
+        float step = cell * strip.stepSpan * Hvac.FAN_SPEED_LEVEL_COUNT / levels;
+        for (int level = 1; level <= levels; level++) {
             float left = start + (level - 1) * step
                     + (level == 1 && strip.buttonCells == 0 ? lead : segmentGap / 2f);
             float right = start + level * step - segmentGap / 2f;
-            boolean on = fan.known && !fan.auto && level <= fan.level;
+            boolean on = known && level <= litLevels;
             int color = on ? lit : Ui.SURFACE_RAISED;
-            if (fan.auto) {
+            if (fan.auto && !presets) {
                 color = withAlpha(lit, 90);
             }
             paint.setShader(null);
@@ -507,13 +516,13 @@ final class WidgetRenderer {
             rect.set(left, centerY - segmentHeight / 2f, right, centerY + segmentHeight / 2f);
             canvas.drawRoundRect(rect, segmentHeight / 2f, segmentHeight / 2f, paint);
         }
-        if (fan.auto) {
+        if (fan.auto && !presets) {
             textPaint.setTypeface(Typeface.DEFAULT_BOLD);
             textPaint.setTextSize(Math.min(13f * dp, height * 0.36f));
             String text = "AUTO";
             float badgeHeight = textPaint.getTextSize() * 1.7f;
             float badgeWidth = textPaint.measureText(text) + badgeHeight;
-            float cx = start + step * Hvac.FAN_SPEED_LEVEL_COUNT / 2f;
+            float cx = start + step * levels / 2f;
             paint.setColor(lit);
             rect.set(cx - badgeWidth / 2f, centerY - badgeHeight / 2f, cx + badgeWidth / 2f,
                     centerY + badgeHeight / 2f);
@@ -539,10 +548,10 @@ final class WidgetRenderer {
     }
 
     /**
-     * One row of the bar fan layout. The AUTO column keeps its place in both modes. In manual
-     * mode the top row holds the directions and the speed row the speed bar; in AUTO the presets
-     * take both rows. AUTO and the presets are drawn the full height of the block, each row
-     * drawing its slice, so controls the car ignores in the current mode are never shown.
+     * One row of the bar fan layout. The AUTO column keeps its place in both modes and is drawn
+     * the full height of the block, each row drawing its slice. In manual mode the top row holds
+     * the directions above the speed bar; in AUTO the bar shows the preset levels and the top
+     * row their names right above them, so directions the car ignores are not shown.
      */
     private void drawFanBar(Canvas canvas, WidgetGeometry.Strip strip) {
         float cell = (plan.width - 2f * plan.padding) / strip.zoneCount;
@@ -567,23 +576,28 @@ final class WidgetRenderer {
             drawBarButtons(canvas, new float[]{plan.padding,
                     plan.padding + strip.autoCells * cell}, top, bottom, auto, true, textHeight);
         }
+        if (strip.row.kind == WidgetGeometry.RowKind.FAN) {
+            drawFan(canvas, strip);
+            return;
+        }
         if (fan.auto) {
+            // The preset names, each right above its level of the bar below.
             int active = ClimateCommands.fanPreset(state, config.fanPresetCount);
             boolean known = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL) != null;
             int[] labels = presetLabels();
             int count = ClimateCommands.fanPresets(config.fanPresetCount).length;
             List<BarButton> presets = new ArrayList<>();
-            for (int index = 0; index < count; index++) {
-                presets.add(new BarButton(0,
-                        context.getString(labels[Math.min(index, labels.length - 1)]),
-                        index == active, known));
+            float[] edges = new float[count + 1];
+            for (int index = 0; index <= count; index++) {
+                edges[index] = plan.padding + strip.levelStart(index, count) * cell;
+                if (index < count) {
+                    presets.add(new BarButton(0,
+                            context.getString(labels[Math.min(index, labels.length - 1)]),
+                            index == active, known));
+                }
             }
-            drawBarButtons(canvas, partEdges(strip, count, cell), top, bottom, presets, false,
-                    textHeight);
-            return;
-        }
-        if (strip.row.kind == WidgetGeometry.RowKind.FAN) {
-            drawFan(canvas, strip);
+            drawBarButtons(canvas, edges, 0f, strip.contentHeight, presets, false,
+                    strip.contentHeight);
             return;
         }
         List<BarButton> directions = new ArrayList<>();

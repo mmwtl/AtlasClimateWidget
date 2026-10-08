@@ -191,25 +191,32 @@ final class WidgetViews {
         }
     }
 
-    /** Both rows of the bar fan layout: AUTO, then directions or speeds, or the presets. */
+    /**
+     * Both rows of the bar fan layout: AUTO, the directions above, and below −, the speeds and
+     * +. In AUTO the preset levels take the speeds' place and their names the directions' place,
+     * right above the levels; the cells above − and + rest then.
+     */
     private static String fanBarControl(WidgetConfig config, WidgetGeometry.Strip strip,
             int cell, boolean auto) {
         if (cell < strip.autoCells) {
             return "fn/" + ClimateFunction.AUTO.name();
         }
-        if (auto) {
-            int presets = ClimateCommands.fanPresets(config.fanPresetCount).length;
-            return "fanpreset/" + strip.partAt(cell, presets);
-        }
-        if (strip.row.kind == WidgetGeometry.RowKind.FAN_TOP) {
+        if (strip.row.kind == WidgetGeometry.RowKind.FAN_TOP && !auto) {
             int directions = WidgetConfig.FAN_DIRECTIONS.length;
             return "fn/" + WidgetConfig.FAN_DIRECTIONS[strip.partAt(cell, directions)].name();
         }
+        boolean top = strip.row.kind == WidgetGeometry.RowKind.FAN_TOP;
         if (cell < strip.stepStart) {
-            return "fanstep/-1";
+            return top ? null : "fanstep/-1";
         }
-        int step = (cell - strip.stepStart) / strip.stepSpan;
-        return step < Hvac.FAN_SPEED_LEVEL_COUNT ? "fan/" + (step + 1) : "fanstep/1";
+        int levels = auto ? ClimateCommands.fanPresets(config.fanPresetCount).length
+                : Hvac.FAN_SPEED_LEVEL_COUNT;
+        int level = (cell - strip.stepStart) * levels
+                / (Hvac.FAN_SPEED_LEVEL_COUNT * strip.stepSpan);
+        if (level >= levels) {
+            return top ? null : "fanstep/1";
+        }
+        return auto ? "fanpreset/" + level : "fan/" + (level + 1);
     }
 
     static String stripKey(WidgetGeometry.Strip strip) {

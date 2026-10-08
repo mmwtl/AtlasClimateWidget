@@ -23,8 +23,8 @@ final class WidgetGeometry {
     /** Width of the bar fan layout's AUTO column relative to the speed row's height. */
     static final float FAN_AUTO_WIDTH = 1.4f;
     /**
-     * Cells the bar fan layout's parts (directions, presets) share at least, so splitting them
-     * on whole cells leaves no visible difference between their widths.
+     * Cells the bar fan layout's directions share at least when they cannot split the row
+     * evenly, so whole cells leave no visible difference between their widths.
      */
     static final int FAN_BAR_MIN_CELLS = 40;
     /** Console temperature: a row with −, the large value and +, then a thin full-width bar. */
@@ -102,8 +102,9 @@ final class WidgetGeometry {
         final int stepStart;
         final int stepSpan;
         /**
-         * Bar fan layout: cells of the AUTO column at the start of both rows. The directions or
-         * presets split the cells after it, see {@link #partStart}.
+         * Bar fan layout: cells of the AUTO column at the start of both rows. The directions
+         * split the cells after it, see {@link #partStart}; in AUTO the preset levels split the
+         * speeds' cells evenly, see {@link #levelStart}.
          */
         final int autoCells;
 
@@ -133,6 +134,11 @@ final class WidgetGeometry {
         /** First cell of part {@code part} of {@code parts} sharing the cells after AUTO. */
         int partStart(int part, int parts) {
             return autoCells + part * (zoneCount - autoCells) / parts;
+        }
+
+        /** First cell of level {@code level} (0-based) of a bar of {@code levels} levels. */
+        int levelStart(int level, int levels) {
+            return stepStart + level * Hvac.FAN_SPEED_LEVEL_COUNT * stepSpan / levels;
         }
 
         /** Part of {@code parts} under the cell, see {@link #partStart}. */
@@ -559,8 +565,8 @@ final class WidgetGeometry {
     /**
      * Cells of the bar fan layout: the AUTO column, each −/+ button, each speed and the whole
      * row. AUTO is {@link #FAN_AUTO_WIDTH} speed rows wide and the buttons stay roughly square.
-     * The grid is multiplied up until the directions and presets split it evenly or into at
-     * least {@link #FAN_BAR_MIN_CELLS} cells.
+     * The grid is multiplied up so the preset levels split the speeds' cells evenly, and the
+     * directions the row after AUTO evenly or into at least {@link #FAN_BAR_MIN_CELLS} cells.
      */
     static int[] fanBarCells(WidgetConfig config, float innerWidth, float rowHeight) {
         int auto = config.fanAuto ? 1 : 0;
@@ -576,21 +582,18 @@ final class WidgetGeometry {
         }
         int rest = 2 * button + Hvac.FAN_SPEED_LEVEL_COUNT;
         int presets = ClimateCommands.fanPresets(config.fanPresetCount).length;
-        int parts = config.fanDirections ? lcm(presets, WidgetConfig.FAN_DIRECTIONS.length)
-                : presets;
-        int span = rest % parts == 0 ? 1 : (FAN_BAR_MIN_CELLS + rest - 1) / rest;
+        int unit = presets / gcd(Hvac.FAN_SPEED_LEVEL_COUNT, presets);
+        int span = unit;
+        boolean uneven = config.fanDirections
+                && rest * span % WidgetConfig.FAN_DIRECTIONS.length != 0;
+        while (uneven && rest * span < FAN_BAR_MIN_CELLS) {
+            span += unit;
+        }
         return new int[]{auto * span, button * span, span, (auto + rest) * span};
     }
 
-    private static int lcm(int a, int b) {
-        int x = a;
-        int y = b;
-        while (y != 0) {
-            int t = x % y;
-            x = y;
-            y = t;
-        }
-        return a / x * b;
+    private static int gcd(int a, int b) {
+        return b == 0 ? a : gcd(b, a % b);
     }
 
     /** Chooses how many equal cells a −/+ button spans so that it stays roughly square. */

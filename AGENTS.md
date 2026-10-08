@@ -58,14 +58,15 @@ line, read as in AtlasAppWidget (`Fuel`).
   A custom formula (System tab, global, in the backup) replaces the default; the tank is the
   formula's larger end over API 0–100. `Prefs.resolved` puts it into the layout, unsaved.
 - Fan block: `FanLayout.BAR` (new widgets) follows the climate mode and keeps its height. An
-  optional AUTO column (`FAN_AUTO_WIDTH`) stands at the start of both rows in both modes. In
-  manual mode a `FAN_TOP` row holds the direction buttons above the speed row (−, 1–9, +); in
-  AUTO the presets replace both, drawn the full height of the block like AUTO, each strip
-  drawing its slice. Controls the car ignores in the current mode are not drawn. Both rows
-  share one cell grid (`WidgetGeometry.fanBarCells`), multiplied up so directions and presets
-  split it evenly or finely (`Strip.partStart`); a speed may span several cells, so the
-  scrubber gets the tapped cell in its URI. `FanLayout.ROWS` is the FX11-style stack (speed
-  bar, directions, presets); layouts saved before the bar existed keep it.
+  optional AUTO column (`FAN_AUTO_WIDTH`) spans both rows at the start in both modes, each
+  strip drawing its slice. The speed row is −, the levels and +: speeds 1–9 in manual mode, the
+  auto-fan presets in AUTO (as many segments as presets, lit up to the active one). Above it a
+  `FAN_TOP` row holds the direction buttons in manual mode and the preset names in AUTO, each
+  right above its level; the cells above − and + rest then. Both rows share one cell grid
+  (`WidgetGeometry.fanBarCells`), multiplied up so the levels split the speeds' cells evenly
+  (`Strip.levelStart`) and the directions the row evenly or finely (`Strip.partStart`); a level
+  may span several cells, so the scrubber gets the tapped cell in its URI. `FanLayout.ROWS` is
+  the FX11-style stack (speed bar, directions, presets); layouts saved before the bar keep it.
 - Cards: `CardLayout.SEPARATE` gives every block its own card; `SINGLE` puts all rows in one card,
   blocks a card padding apart without dividers. Fill shares extra height per block in both
   modes.
