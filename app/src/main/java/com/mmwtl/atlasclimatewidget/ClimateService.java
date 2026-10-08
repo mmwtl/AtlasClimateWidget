@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Keeps the GInputBridge subscription alive while widgets exist, executes widget controls and
@@ -247,15 +248,19 @@ public final class ClimateService extends Service {
                     + " area=" + Gib.extra(intent, Gib.EXTRA_AREA) + " value=" + rawValue);
         }
         long now = SystemClock.elapsedRealtime();
+        boolean changed;
         if (action.equals(Gib.SENSOR_FLOAT_RESULT) || action.equals(Gib.SENSOR_FLOAT_CHANGED)) {
             if (id != Hvac.SENSOR_TEMPERATURE_INDOOR && id != Hvac.SENSOR_TEMPERATURE_AMBIENT
                     && id != Hvac.SENSOR_FUEL_PERCENTAGE) {
                 return;
             }
             Float value = Gib.parseFloat(rawValue);
-            if (value != null) {
-                STORE.putSensor(id, value, now);
+            if (value == null) {
+                return;
             }
+            Double before = shownSensor(id, STORE.snapshot(now).sensor(id));
+            STORE.putSensor(id, value, now);
+            changed = !Objects.equals(before, shownSensor(id, STORE.snapshot(now).sensor(id)));
         } else {
             Integer area = Gib.parseInt(Gib.extra(intent, Gib.EXTRA_AREA));
             Float value = Gib.parseFloat(rawValue);
@@ -267,13 +272,27 @@ public final class ClimateService extends Service {
             // Integer ids exceed float precision, so parse them as integers.
             double parsed = floatAction ? value : integerValue(rawValue, value);
             int zone = area == null ? Gib.AREA_GLOBAL : area;
+            Double before = STORE.snapshot(now).property(id, zone);
             STORE.putProperty(id, zone, parsed, now);
+            changed = !Objects.equals(before, STORE.snapshot(now).property(id, zone));
             Sent sent = lastSets.get(ClimateStore.propertyKey(id, zone));
             if (sent != null && sent.command.value == parsed) {
                 sent.confirmed = true;
             }
         }
-        scheduleRender();
+        // The bridge repeats unchanged values and the cabin sensor reports tenths several times
+        // a second; drawing every strip for each of them costs a steady few percent of CPU.
+        if (changed || !lastConnected) {
+            scheduleRender();
+        }
+    }
+
+    /** The sensor value as the widget shows it: temperatures in whole degrees. */
+    private static Double shownSensor(int id, Double value) {
+        if (value == null || id == Hvac.SENSOR_FUEL_PERCENTAGE) {
+            return value;
+        }
+        return (double) Math.round(value);
     }
 
     private static double integerValue(String raw, float fallback) {
