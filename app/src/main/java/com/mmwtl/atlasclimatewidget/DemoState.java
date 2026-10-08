@@ -13,7 +13,7 @@ final class DemoState implements ClimateState {
         put(Hvac.TEMP, Hvac.ZONE_DRIVER, 21.5);
         put(Hvac.TEMP, Hvac.ZONE_PASSENGER, 23);
         put(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL, Hvac.FAN_SPEED_LEVEL_1 + 2);
-        put(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL, 0);
+        put(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL, Hvac.AUTO_FAN_NORMAL);
         put(Hvac.SEAT_HEATING, Hvac.ZONE_DRIVER, Hvac.SEAT_HEAT_LEVELS[2]);
         put(Hvac.SEAT_HEATING, Hvac.ZONE_PASSENGER, 0);
         put(Hvac.SEAT_HEATING, Hvac.ZONE_REAR_LEFT, 0);

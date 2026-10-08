@@ -79,6 +79,7 @@ final class WidgetViews {
         }
         WidgetRenderer renderer = new WidgetRenderer(context, config, state, model, plan)
                 .withDraggedBar(scrubbedStrip);
+        boolean auto = ClimateCommands.fanState(state).auto;
         for (WidgetGeometry.Strip strip : plan.strips) {
             RemoteViews views = new RemoteViews(packageName, R.layout.widget_strip);
             Bitmap bitmap = renderer.render(strip, true,
@@ -90,14 +91,14 @@ final class WidgetViews {
             int padding = Math.round((strip.zonePadding + plan.offsetX()) / scale);
             views.setViewPadding(R.id.strip_zones, padding, 0, padding, 0);
             for (int cell = 0; cell < strip.zoneCount; cell++) {
-                String control = interactive ? control(config, strip, cell) : null;
+                String control = interactive ? control(config, strip, cell, auto) : null;
                 RemoteViews zone = new RemoteViews(packageName,
                         control == null ? R.layout.widget_zone_blank : R.layout.widget_zone);
                 if (control != null) {
                     zone.setOnClickPendingIntent(R.id.zone,
                             widgetId != AppWidgetManager.INVALID_APPWIDGET_ID
                                     && isScrubbable(control)
-                                    ? scrubIntent(context, widgetId, control)
+                                    ? scrubIntent(context, widgetId, cell, control)
                                     : controlIntent(context, control));
                 }
                 views.addView(R.id.strip_zones, zone);
@@ -122,8 +123,17 @@ final class WidgetViews {
         }
     }
 
-    /** Control encoded in the touch cell's URI, or {@code null} for an inert cell. */
     static String control(WidgetConfig config, WidgetGeometry.Strip strip, int cell) {
+        return control(config, strip, cell, false);
+    }
+
+    /**
+     * Control encoded in the touch cell's URI, or {@code null} for an inert cell.
+     *
+     * @param auto whether climate AUTO is on; the bar fan layout shows presets then
+     */
+    static String control(WidgetConfig config, WidgetGeometry.Strip strip, int cell,
+            boolean auto) {
         int buttons = strip.buttonCells;
         switch (strip.row.kind) {
             case TEMP_VALUE: {
@@ -147,6 +157,9 @@ final class WidgetViews {
                 return "temp/" + zone + "/" + (cell - buttons);
             }
             case FAN:
+                if (config.fanLayout == WidgetConfig.FanLayout.BAR) {
+                    return fanBarControl(config, strip, cell, auto);
+                }
                 if (cell < buttons) {
                     return "fanstep/-1";
                 }
@@ -176,6 +189,22 @@ final class WidgetViews {
         }
     }
 
+    private static String fanBarControl(WidgetConfig config, WidgetGeometry.Strip strip,
+            int cell, boolean auto) {
+        if (cell < strip.autoCells) {
+            return "fn/" + ClimateFunction.AUTO.name();
+        }
+        if (auto) {
+            int presets = ClimateCommands.fanPresets(config.fanPresetCount).length;
+            return "fanpreset/" + (cell - strip.autoCells) / strip.presetCells(presets);
+        }
+        if (cell < strip.stepStart) {
+            int direction = (cell - strip.autoCells) / strip.directionCells;
+            return "fn/" + WidgetConfig.FAN_DIRECTIONS[direction].name();
+        }
+        return "fan/" + ((cell - strip.stepStart) / strip.stepSpan + 1);
+    }
+
     static String stripKey(WidgetGeometry.Strip strip) {
         return strip.row.kind + ":" + strip.row.index;
     }
@@ -188,12 +217,14 @@ final class WidgetViews {
     /**
      * Opens the drag scrubber over the bar. The host adds the tapped cell's screen bounds as a
      * fill-in, which an immutable PendingIntent would drop; the explicit component, data and
-     * extras cannot be replaced by the host.
+     * extras cannot be replaced by the host. The tapped cell places the window, since a step
+     * may span several cells.
      */
-    static PendingIntent scrubIntent(Context context, int widgetId, String control) {
+    static PendingIntent scrubIntent(Context context, int widgetId, int cell, String control) {
         Intent intent = new Intent(context, ScrubActivity.class)
                 .setAction(Intent.ACTION_VIEW)
-                .setData(Uri.parse(CONTROL_SCHEME + "://scrub/" + widgetId + "/" + control))
+                .setData(Uri.parse(CONTROL_SCHEME + "://scrub/" + widgetId + "/" + cell + "/"
+                        + control))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
         return PendingIntent.getActivity(context, widgetId, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);

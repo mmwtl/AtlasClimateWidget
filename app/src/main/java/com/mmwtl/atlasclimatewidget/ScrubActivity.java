@@ -42,6 +42,8 @@ public final class ScrubActivity extends Activity {
     private final Runnable idleFinish = this::close;
 
     private int widgetId = AppWidgetManager.INVALID_APPWIDGET_ID;
+    /** Touch cell the host reported the bounds of. */
+    private int tappedCell;
     private boolean temperature;
     private int zone;
     private int value;
@@ -67,11 +69,11 @@ public final class ScrubActivity extends Activity {
         super.onCreate(savedInstanceState);
         Uri data = getIntent().getData();
         List<String> parts = data == null ? null : data.getPathSegments();
-        if (parts == null || parts.size() < 3 || !parse(parts)) {
+        if (parts == null || parts.size() < 4 || !parse(parts)) {
             finish();
             return;
         }
-        String control = String.join("/", parts.subList(1, parts.size()));
+        String control = String.join("/", parts.subList(2, parts.size()));
         startForegroundService(new Intent(this, ClimateService.class)
                 .setAction(ClimateService.ACTION_CONTROL)
                 .setData(Uri.parse(WidgetViews.CONTROL_SCHEME + "://control/" + control)));
@@ -84,14 +86,15 @@ public final class ScrubActivity extends Activity {
     private boolean parse(List<String> parts) {
         try {
             widgetId = Integer.parseInt(parts.get(0));
-            if ("temp".equals(parts.get(1)) && parts.size() >= 4) {
+            tappedCell = Integer.parseInt(parts.get(1));
+            if ("temp".equals(parts.get(2)) && parts.size() >= 5) {
                 temperature = true;
-                zone = Integer.parseInt(parts.get(2));
-                value = Integer.parseInt(parts.get(3));
+                zone = Integer.parseInt(parts.get(3));
+                value = Integer.parseInt(parts.get(4));
                 return true;
             }
-            if ("fan".equals(parts.get(1))) {
-                value = Integer.parseInt(parts.get(2)) - 1;
+            if ("fan".equals(parts.get(2))) {
+                value = Integer.parseInt(parts.get(3)) - 1;
                 return true;
             }
         } catch (NumberFormatException error) {
@@ -120,10 +123,9 @@ public final class ScrubActivity extends Activity {
         }
         // The tapped cell anchors the whole bar: its width gives the host's scale.
         cell = (plan.width - 2f * strip.zonePadding) / strip.zoneCount;
-        int cellIndex = strip.buttonCells + value;
         scale = source.width() / cell;
         int left = Math.round(source.left
-                - (plan.offsetX() + strip.zonePadding + cellIndex * cell) * scale);
+                - (plan.offsetX() + strip.zonePadding + tappedCell * cell) * scale);
         int width = Math.round(plan.fullWidth * scale);
 
         view = new ScrubView(this);
@@ -268,10 +270,9 @@ public final class ScrubActivity extends Activity {
     /** Value under the finger: a temperature step or a zero-based fan level. */
     private int valueAt(float x) {
         float local = x / scale - plan.offsetX() - strip.zonePadding;
-        int index = (int) Math.floor(local / cell);
-        int first = strip.buttonCells;
-        int last = strip.zoneCount - strip.buttonCells - 1;
-        return Math.max(first, Math.min(last, index)) - first;
+        int step = (int) Math.floor((local / cell - strip.stepStart) / strip.stepSpan);
+        int steps = temperature ? plan.temperatureSteps : Hvac.FAN_SPEED_LEVEL_COUNT;
+        return Math.max(0, Math.min(steps - 1, step));
     }
 
     private void commit() {
@@ -419,7 +420,7 @@ public final class ScrubActivity extends Activity {
                     paint.measureText(label) + pillHeight * 0.9f);
             int height = Math.round(pillHeight + pointerSize);
             float knob = windowLeft + (plan.offsetX() + strip.zonePadding
-                    + (strip.buttonCells + value + 0.5f) * cell) * scale;
+                    + (strip.stepStart + (value + 0.5f) * strip.stepSpan) * cell) * scale;
             int screen = getResources().getDisplayMetrics().widthPixels;
             int left = Math.round(Math.max(0f, Math.min(screen - width, knob - width / 2f)));
             int top = Math.round(windowTop - gap - height);

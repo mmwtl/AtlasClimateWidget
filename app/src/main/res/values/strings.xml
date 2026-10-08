@@ -98,6 +98,11 @@
     <string name="temp_buttons">Кнопки − и +</string>
     <string name="temp_hint">Нажатие на полосу задаёт температуру, после нажатия её можно тянуть пальцем — значение видно над полосой.</string>
     <string name="fan_buttons">Кнопки − и +</string>
+    <string name="fan_layout_bar">Одна полоса</string>
+    <string name="fan_layout_rows">Рядами</string>
+    <string name="fan_auto_button">Кнопка AUTO в начале полосы</string>
+    <string name="fan_bar_hint">Полоса меняется по режиму. В ручном — кнопки направления (они сочетаются, например лицо + ноги) и скорость 1–9; после нажатия скорость можно тянуть пальцем. В AUTO на их месте пресеты авто-обдува. Кнопка AUTO всегда на своём месте и переключает режим. Количество пресетов — во вкладке «Система».</string>
+    <string name="setup_fan_auto">AUTO</string>
     <string name="fan_part_bar">Полоса скорости 1–9</string>
     <string name="fan_part_directions">Направление обдува: стекло, лицо, ноги</string>
     <string name="fan_part_presets">Пресеты авто-обдува</string>

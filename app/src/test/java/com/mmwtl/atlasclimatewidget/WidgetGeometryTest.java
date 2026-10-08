@@ -21,8 +21,8 @@ public final class WidgetGeometryTest {
                 assertEquals(strip.cardHeight, card, 0.01f);
             }
         }
-        // header, temperature, fan bar, fan buttons and two tile rows
-        assertEquals(6, plan.strips.size());
+        // header, temperature, fan bar and two tile rows
+        assertEquals(5, plan.strips.size());
     }
 
     @Test public void sensorLineIsABlockOfItsOwn() {
@@ -88,6 +88,7 @@ public final class WidgetGeometryTest {
 
     @Test public void fanBlockStacksBarAndControlRow() {
         WidgetConfig config = new WidgetConfig();
+        config.fanLayout = WidgetConfig.FanLayout.ROWS;
         config.temperatureEnabled = false;
         config.infoEnabled = false;
         config.tilesEnabled = false;
@@ -112,6 +113,65 @@ public final class WidgetGeometryTest {
         config.fanBar = false;
         config.fanPresets = false;
         assertTrue(!config.isEnabled(WidgetConfig.Block.FAN));
+    }
+
+    @Test public void fanBarShowsSpeedsOrPresetsByMode() {
+        WidgetConfig config = new WidgetConfig();
+        config.temperatureEnabled = false;
+        config.infoEnabled = false;
+        config.tilesEnabled = false;
+        WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
+        assertEquals("one bar, no button rows", 1, plan.strips.size());
+        WidgetGeometry.Strip bar = plan.strips.get(0);
+        assertEquals(WidgetGeometry.RowKind.FAN, bar.row.kind);
+        assertTrue(bar.autoCells > 0);
+        assertTrue("AUTO is wider than a direction", bar.autoCells > bar.directionCells);
+        assertEquals(bar.autoCells + 3 * bar.directionCells, bar.stepStart);
+        assertEquals(bar.stepStart + 9 * bar.stepSpan, bar.zoneCount);
+
+        // Manual: AUTO, the directions, then the speeds.
+        assertEquals("fn/AUTO", WidgetViews.control(config, bar, 0, false));
+        assertEquals("fn/BLOW_WINDOW", WidgetViews.control(config, bar, bar.autoCells, false));
+        assertEquals("fn/BLOW_LEGS", WidgetViews.control(config, bar, bar.stepStart - 1, false));
+        assertEquals("fan/1", WidgetViews.control(config, bar, bar.stepStart, false));
+        assertEquals("fan/9", WidgetViews.control(config, bar, bar.zoneCount - 1, false));
+        // AUTO keeps its cells; the presets share the rest.
+        assertEquals("fn/AUTO", WidgetViews.control(config, bar, bar.autoCells - 1, true));
+        assertEquals("fanpreset/0", WidgetViews.control(config, bar, bar.autoCells, true));
+        assertEquals("fanpreset/2", WidgetViews.control(config, bar, bar.zoneCount - 1, true));
+
+        for (int presets : new int[]{3, 5}) {
+            for (boolean auto : new boolean[]{true, false}) {
+                for (boolean directions : new boolean[]{true, false}) {
+                    config.fanPresetCount = presets;
+                    config.fanAuto = auto;
+                    config.fanDirections = directions;
+                    WidgetGeometry.Strip strip =
+                            WidgetGeometry.plan(config, 640f, 0f, 1f, 25).strips.get(0);
+                    assertEquals("presets split the bar evenly", 0,
+                            (strip.zoneCount - strip.autoCells) % presets);
+                    int cells = strip.presetCells(presets);
+                    for (int preset = 0; preset < presets; preset++) {
+                        int first = strip.autoCells + preset * cells;
+                        assertEquals("fanpreset/" + preset,
+                                WidgetViews.control(config, strip, first, true));
+                        assertEquals("fanpreset/" + preset,
+                                WidgetViews.control(config, strip, first + cells - 1, true));
+                    }
+                    for (int level = 1; level <= 9; level++) {
+                        int first = strip.stepStart + (level - 1) * strip.stepSpan;
+                        assertEquals("fan/" + level,
+                                WidgetViews.control(config, strip, first, false));
+                        assertEquals("fan/" + level, WidgetViews.control(config, strip,
+                                first + strip.stepSpan - 1, false));
+                    }
+                }
+            }
+        }
+        config.fanAuto = false;
+        config.fanDirections = false;
+        assertTrue("the bar alone is still a fan block",
+                config.isEnabled(WidgetConfig.Block.FAN));
     }
 
     @Test public void onlyBarCellsOpenTheScrubber() {
@@ -167,7 +227,8 @@ public final class WidgetGeometryTest {
         assertEquals(natural + 200f, filled.totalHeight(), 0.5f);
         for (WidgetGeometry.Strip strip : filled.strips) {
             if (strip.row.kind == WidgetGeometry.RowKind.FAN) {
-                assertEquals(WidgetGeometry.FAN_ROW_DP * filled.density, strip.contentHeight, 0.01f);
+                assertEquals(WidgetGeometry.FAN_BAR_ROW_DP * filled.density,
+                        strip.contentHeight, 0.01f);
             }
         }
     }
@@ -176,7 +237,7 @@ public final class WidgetGeometryTest {
         WidgetConfig config = new WidgetConfig();
         config.cardLayout = WidgetConfig.CardLayout.SINGLE;
         WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
-        assertEquals(6, plan.strips.size());
+        assertEquals(5, plan.strips.size());
         float card = 0f;
         int sections = 0;
         for (int index = 0; index < plan.strips.size(); index++) {
@@ -193,7 +254,7 @@ public final class WidgetGeometryTest {
         }
         assertEquals(plan.strips.get(0).cardHeight, card, 0.01f);
         assertEquals("temperature, fan and tiles start their own sections", 3, sections);
-        assertEquals(WidgetConfig.Block.TILES, plan.strips.get(5).block);
+        assertEquals(WidgetConfig.Block.TILES, plan.strips.get(4).block);
     }
 
     @Test public void singleCardFillsToTheCellBottom() {
@@ -234,6 +295,7 @@ public final class WidgetGeometryTest {
         WidgetConfig config = new WidgetConfig();
         config.infoEnabled = false;
         config.style = WidgetConfig.Style.CONSOLE;
+        config.fanLayout = WidgetConfig.FanLayout.ROWS;
         config.scalePercent = 100;
         WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
         WidgetGeometry.Strip value = plan.strips.get(0);
@@ -279,6 +341,7 @@ public final class WidgetGeometryTest {
         WidgetConfig config = new WidgetConfig();
         config.style = WidgetConfig.Style.CONSOLE;
         config.cardLayout = WidgetConfig.CardLayout.SINGLE;
+        config.fanLayout = WidgetConfig.FanLayout.ROWS;
         config.columns = 4;
         WidgetGeometry.Plan natural = WidgetGeometry.plan(config, 740f, 0f, 1f, 25);
         float tile = tileHeight(natural);

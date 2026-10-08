@@ -99,6 +99,21 @@ final class WidgetConfig {
         }
     }
 
+    /**
+     * Fan block layout: one bar that shows speeds in manual mode and auto-fan presets in AUTO,
+     * or FX11-style rows with the speed bar, directions and presets all shown at once.
+     */
+    enum FanLayout {
+        BAR(R.string.fan_layout_bar),
+        ROWS(R.string.fan_layout_rows);
+
+        final int titleRes;
+
+        FanLayout(int titleRes) {
+            this.titleRes = titleRes;
+        }
+    }
+
     /** Drawn icons: the Atlas set, or the stock Geely HVAC icons traced from the head unit. */
     enum IconSet {
         ATLAS(R.string.icons_atlas),
@@ -166,6 +181,10 @@ final class WidgetConfig {
     boolean fanBar = true;
     boolean fanDirections = true;
     boolean fanPresets = true;
+    /** Layouts saved before the bar existed keep their rows, see {@link #fromJson}. */
+    FanLayout fanLayout = FanLayout.BAR;
+    /** The bar layout's AUTO button, fixed at the bar's start in both modes. */
+    boolean fanAuto = true;
     HeightMode heightMode = HeightMode.FILL;
     /** Resolved from the global car setting by {@link Prefs}; not part of the saved layout. */
     int fanPresetCount = 3;
@@ -215,7 +234,7 @@ final class WidgetConfig {
     }
 
     boolean hasFanParts() {
-        return fanBar || fanDirections || fanPresets;
+        return fanLayout == FanLayout.BAR || fanBar || fanDirections || fanPresets;
     }
 
     /** Direction buttons of the fan block, in FX11's order. */
@@ -235,6 +254,9 @@ final class WidgetConfig {
     /** Row indexes of the fan button rows, see {@link #FAN_ROW_DIRECTIONS}. */
     List<Integer> fanControlRows() {
         List<Integer> rows = new ArrayList<>();
+        if (fanLayout == FanLayout.BAR) {
+            return rows;
+        }
         if (style != Style.CONSOLE) {
             if (fanControlCount() > 0) {
                 rows.add(0);
@@ -418,6 +440,8 @@ final class WidgetConfig {
             json.put("fanBar", fanBar);
             json.put("fanDirections", fanDirections);
             json.put("fanPresets", fanPresets);
+            json.put("fanLayout", fanLayout.name());
+            json.put("fanAuto", fanAuto);
             json.put("heightMode", heightMode.name());
             json.put("verticalAlign", verticalAlign.name());
             json.put("cardLayout", cardLayout.name());
@@ -516,6 +540,10 @@ final class WidgetConfig {
             config.fanPresets = presets;
             config.fanDirections = false;
         }
+        // Layouts saved before the bar layout keep their rows.
+        config.fanLayout = enumValue(FanLayout.class, json.optString("fanLayout"),
+                FanLayout.ROWS);
+        config.fanAuto = json.optBoolean("fanAuto", config.fanAuto);
         config.heightMode = enumValue(HeightMode.class, json.optString("heightMode"),
                 config.heightMode);
         config.verticalAlign = enumValue(VerticalAlign.class, json.optString("verticalAlign"),

@@ -28,6 +28,8 @@ public final class WidgetConfigTest {
         config.headerCabin = false;
         config.style = WidgetConfig.Style.CONSOLE;
         config.iconSet = WidgetConfig.IconSet.OEM;
+        config.fanLayout = WidgetConfig.FanLayout.ROWS;
+        config.fanAuto = false;
         WidgetConfig copy = WidgetConfig.fromJson(config.toJson());
         assertEquals(WidgetConfig.Block.TILES, copy.blockOrder.get(0));
         assertFalse(copy.fanEnabled);
@@ -42,6 +44,13 @@ public final class WidgetConfigTest {
         assertFalse(copy.fanBar);
         assertFalse(copy.fanDirections);
         assertTrue(copy.fanPresets);
+        assertEquals(WidgetConfig.FanLayout.ROWS, copy.fanLayout);
+        assertFalse(copy.fanAuto);
+        assertEquals("new widgets get the bar", WidgetConfig.FanLayout.BAR,
+                WidgetConfig.fromJson(null).fanLayout);
+        assertEquals("saved layouts keep their rows", WidgetConfig.FanLayout.ROWS,
+                WidgetConfig.fromJson("{}").fanLayout);
+        assertTrue(WidgetConfig.fromJson("{}").fanAuto);
         WidgetConfig fresh = WidgetConfig.fromJson("{}");
         assertTrue(fresh.fanBar && fresh.fanDirections && fresh.fanPresets);
         WidgetConfig legacyPresets = WidgetConfig.fromJson("{\"fanStyle\":\"PRESETS\"}");

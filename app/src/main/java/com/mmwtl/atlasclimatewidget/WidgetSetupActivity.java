@@ -184,6 +184,50 @@ public final class WidgetSetupActivity extends ScaledActivity {
         card.addView(heights, fullWrap(8));
 
         addTitle(card, R.string.setup_fan_parts);
+        LinearLayout fanLayouts = segmentRow();
+        for (WidgetConfig.FanLayout layout : WidgetConfig.FanLayout.values()) {
+            TextView segment = Ui.segment(this, layout.titleRes);
+            segment.setOnClickListener(view -> {
+                config.fanLayout = layout;
+                if (!config.hasFanParts()) {
+                    config.fanBar = true;
+                }
+                refresh();
+            });
+            refreshers.add(() -> {
+                Ui.setSegmentSelected(this, segment, config.fanLayout == layout);
+                segment.setEnabled(config.fanEnabled);
+                segment.setAlpha(config.fanEnabled ? 1f : 0.45f);
+            });
+            Ui.addSegment(fanLayouts, segment);
+        }
+        card.addView(fanLayouts, fullWrap(8));
+
+        LinearLayout bar = segmentRow();
+        int[] barLabels = {R.string.setup_fan_auto, R.string.setup_fan_directions};
+        for (int part = 0; part < barLabels.length; part++) {
+            boolean auto = part == 0;
+            TextView segment = Ui.segment(this, barLabels[part]);
+            segment.setOnClickListener(view -> {
+                if (auto) {
+                    config.fanAuto = !config.fanAuto;
+                } else {
+                    config.fanDirections = !config.fanDirections;
+                }
+                refresh();
+            });
+            refreshers.add(() -> {
+                Ui.setSegmentSelected(this, segment,
+                        auto ? config.fanAuto : config.fanDirections);
+                segment.setEnabled(config.fanEnabled);
+                segment.setAlpha(config.fanEnabled ? 1f : 0.45f);
+            });
+            Ui.addSegment(bar, segment);
+        }
+        refreshers.add(() -> bar.setVisibility(
+                config.fanLayout == WidgetConfig.FanLayout.BAR ? View.VISIBLE : View.GONE));
+        card.addView(bar, fullWrap(8));
+
         LinearLayout fan = segmentRow();
         int[] partLabels = {R.string.setup_fan_bar, R.string.setup_fan_directions,
                 R.string.setup_fan_presets};
@@ -209,6 +253,8 @@ public final class WidgetSetupActivity extends ScaledActivity {
             });
             Ui.addSegment(fan, segment);
         }
+        refreshers.add(() -> fan.setVisibility(
+                config.fanLayout == WidgetConfig.FanLayout.ROWS ? View.VISIBLE : View.GONE));
         card.addView(fan, fullWrap(8));
 
         Button confirm = Ui.button(this, reconfigure ? R.string.setup_done : R.string.setup_add);

@@ -846,6 +846,15 @@ public final class MainActivity extends ScaledActivity {
                     options.addView(hint(R.string.temp_hint));
                     break;
                 case FAN:
+                    options.addView(fanLayouts());
+                    if (config.fanLayout == WidgetConfig.FanLayout.BAR) {
+                        options.addView(configSwitch(R.string.fan_auto_button, config.fanAuto,
+                                value -> config.fanAuto = value));
+                        options.addView(configSwitch(R.string.fan_part_directions,
+                                config.fanDirections, value -> config.fanDirections = value));
+                        options.addView(hint(R.string.fan_bar_hint));
+                        break;
+                    }
                     options.addView(partSwitch(R.string.fan_part_bar, config.fanBar,
                             value -> config.fanBar = value, config::hasFanParts));
                     if (config.fanBar) {
@@ -869,6 +878,31 @@ public final class MainActivity extends ScaledActivity {
             options.setAlpha(enabled ? 1f : 0.45f);
             blocksHost.addView(options);
         }
+    }
+
+    private LinearLayout fanLayouts() {
+        LinearLayout layouts = new LinearLayout(this);
+        layouts.setOrientation(LinearLayout.HORIZONTAL);
+        Ui.topMargin(layouts, 6);
+        for (WidgetConfig.FanLayout layout : WidgetConfig.FanLayout.values()) {
+            TextView segment = Ui.segment(this, layout.titleRes);
+            Ui.setSegmentSelected(this, segment, config.fanLayout == layout);
+            if (config.fanLayout != layout) {
+                // The row sits on a nested surface, where the usual segment colour disappears.
+                segment.setBackground(Ui.rounded(Ui.SURFACE, Ui.dp(this, 8)));
+            }
+            segment.setOnClickListener(view -> {
+                config.fanLayout = layout;
+                if (!config.hasFanParts()) {
+                    // Rows need a part; the bar's speeds are the closest one.
+                    config.fanBar = true;
+                }
+                changed();
+                rebuildBlocks();
+            });
+            Ui.addSegment(layouts, segment);
+        }
+        return layouts;
     }
 
     private LinearLayout headerAligns() {
