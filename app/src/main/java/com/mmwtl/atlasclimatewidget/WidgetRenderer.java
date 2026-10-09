@@ -139,7 +139,7 @@ final class WidgetRenderer {
         paint.setShader(null);
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(withAlpha(config.cardColor, alpha));
-        float radius = config.cardRadiusDp * dp;
+        float radius = plan.cardRadius;
         rect.set(0f, -strip.cardOffset, plan.width, strip.cardHeight - strip.cardOffset);
         canvas.save();
         // Inside a card the fill runs to the bitmap edge so snapped strips never leave a seam.

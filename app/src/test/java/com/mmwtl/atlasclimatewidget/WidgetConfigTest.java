@@ -218,4 +218,29 @@ public final class WidgetConfigTest {
         assertEquals(WidgetConfig.SCALE_MAX_PERCENT,
                 WidgetConfig.fromJson("{\"scalePercent\":999}").scalePercent);
     }
+
+    @Test public void newCardsUseTheOneOsRadius() {
+        assertEquals(24, new WidgetConfig().cardRadiusDp);
+        assertEquals(24, WidgetConfig.fromJson(null).cardRadiusDp);
+        WidgetConfig config = new WidgetConfig();
+        config.cardRadiusDp = 31;
+        config.scalePercent = 200;
+        assertEquals("current layouts keep screen dp", 31,
+                WidgetConfig.fromJson(config.toJson()).cardRadiusDp);
+    }
+
+    @Test public void legacyCardRadiusKeepsItsVisibleSize() {
+        assertEquals("18 at 160 %", 29, WidgetConfig.fromJson(
+                "{\"version\":3,\"cardRadiusDp\":18,\"scalePercent\":160}").cardRadiusDp);
+        assertEquals("the old default at 130 %", 23,
+                WidgetConfig.fromJson("{\"version\":3,\"scalePercent\":130}").cardRadiusDp);
+        assertEquals("no scale meant 100 %", 12,
+                WidgetConfig.fromJson("{\"cardRadiusDp\":12}").cardRadiusDp);
+        assertEquals("no fields at all", 18, WidgetConfig.fromJson("{\"columns\":4}").cardRadiusDp);
+        assertEquals("square corners stay square", 0, WidgetConfig.fromJson(
+                "{\"version\":3,\"cardRadiusDp\":0,\"scalePercent\":250}").cardRadiusDp);
+        assertEquals("the slider range still holds", WidgetConfig.CARD_RADIUS_MAX_DP,
+                WidgetConfig.fromJson("{\"version\":3,\"cardRadiusDp\":18,"
+                        + "\"scalePercent\":250}").cardRadiusDp);
+    }
 }

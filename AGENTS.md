@@ -70,6 +70,11 @@ line, read as in AtlasAppWidget (`Fuel`).
 - Cards: `CardLayout.SEPARATE` gives every block its own card; `SINGLE` puts all rows in one card,
   blocks a card padding apart without dividers. Fill shares extra height per block in both
   modes.
+- Card radius (`cardRadiusDp`, 0–40, default 24 like the stock OneOS cards) is screen dp, the
+  same contract as the other Atlas widgets: `WidgetGeometry.plan` sets `Plan.cardRadius` from
+  the display density, outside `scalePercent`, the vertical squeeze and the card size. Layouts
+  saved before version 4 multiplied it by the scale and are converted once
+  (`round(radius × scale / 100)`, an absent radius being the old 18), clamped to 40.
 - Style: `Style.CLASSIC` keeps the user's tile order and the knob-labelled temperature bar.
   `CONSOLE` gives each zone a `TEMP_VALUE` row (−, the value centred, +; the middle is inert)
   above a thin all-steps bar and draws fan directions and auto-fan presets as segmented pills

@@ -128,12 +128,17 @@ final class WidgetConfig {
 
     /**
      * 2: console tiles follow the user's order instead of fixed groups. 3: the sensor line is
-     * its own block instead of a part of the temperature block.
+     * its own block instead of a part of the temperature block. 4: the card radius is in
+     * screen dp instead of being multiplied by the widget scale.
      */
-    static final int VERSION = 3;
+    static final int VERSION = 4;
     static final int COLUMNS_MIN = 2;
     static final int COLUMNS_MAX = 8;
     static final int CARD_RADIUS_MAX_DP = 40;
+    /** Radius of the stock OneOS cards, shared by all Atlas widgets. */
+    static final int CARD_RADIUS_DEFAULT_DP = 24;
+    /** Default before version 4, scaled by the widget scale. */
+    static final int CARD_RADIUS_LEGACY_DP = 18;
     static final int TILE_RADIUS_MAX_PERCENT = 50;
     static final int GAP_MIN_DP = 4;
     static final int GAP_MAX_DP = 24;
@@ -209,7 +214,8 @@ final class WidgetConfig {
     IconSet iconSet = IconSet.ATLAS;
     int cardColor = Ui.SURFACE;
     int cardOpacityPercent = 100;
-    int cardRadiusDp = 18;
+    /** Screen dp, independent of {@link #scalePercent} and of the card size. */
+    int cardRadiusDp = CARD_RADIUS_DEFAULT_DP;
     int cardPaddingDp = 14;
     int tileRadiusPercent = 22;
     int gapDp = 10;
@@ -573,8 +579,6 @@ final class WidgetConfig {
         config.cardColor = json.optInt("cardColor", config.cardColor) | 0xFF000000;
         config.cardOpacityPercent = clamp(json.optInt("cardOpacityPercent",
                 config.cardOpacityPercent), 0, 100);
-        config.cardRadiusDp = clamp(json.optInt("cardRadiusDp", config.cardRadiusDp),
-                0, CARD_RADIUS_MAX_DP);
         config.cardPaddingDp = clamp(json.optInt("cardPaddingDp", config.cardPaddingDp),
                 PADDING_MIN_DP, PADDING_MAX_DP);
         config.tileRadiusPercent = clamp(json.optInt("tileRadiusPercent",
@@ -582,6 +586,14 @@ final class WidgetConfig {
         config.gapDp = clamp(json.optInt("gapDp", config.gapDp), GAP_MIN_DP, GAP_MAX_DP);
         config.scalePercent = clamp(json.optInt("scalePercent", SCALE_LEGACY_PERCENT),
                 SCALE_MIN_PERCENT, SCALE_MAX_PERCENT);
+        if (json.optInt("version", 1) < 4) {
+            // The radius used to grow with the widget scale; keep the corners users saw.
+            config.cardRadiusDp = Math.round(json.optInt("cardRadiusDp", CARD_RADIUS_LEGACY_DP)
+                    * config.scalePercent / 100f);
+        } else {
+            config.cardRadiusDp = json.optInt("cardRadiusDp", config.cardRadiusDp);
+        }
+        config.cardRadiusDp = clamp(config.cardRadiusDp, 0, CARD_RADIUS_MAX_DP);
         return config;
     }
 

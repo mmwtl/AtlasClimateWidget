@@ -213,6 +213,8 @@ final class WidgetGeometry {
         float naturalHeight;
         /** Height reported by the launcher, or 0. */
         float availableHeight;
+        /** Card corner radius in pixels, outside the widget scale and the vertical squeeze. */
+        float cardRadius;
 
         Plan measured(float natural, float available) {
             naturalHeight = natural;
@@ -240,7 +242,15 @@ final class WidgetGeometry {
      */
     static Plan plan(WidgetConfig config, float widthPx, float heightPx, float density,
             int temperatureSteps) {
-        density *= config.scalePercent / 100f;
+        Plan plan = fit(config, widthPx, heightPx, density * config.scalePercent / 100f,
+                temperatureSteps);
+        // Card corners match the other Atlas widgets: screen dp, whatever the scale or fitting.
+        plan.cardRadius = config.cardRadiusDp * density;
+        return plan;
+    }
+
+    private static Plan fit(WidgetConfig config, float widthPx, float heightPx, float density,
+            int temperatureSteps) {
         float natural = layoutHeight(config, widthPx, density, 1f, temperatureSteps);
         if (heightPx <= 0f) {
             return build(config, widthPx, widthPx, density, 1f, temperatureSteps, 0f, 0f)

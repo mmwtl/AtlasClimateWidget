@@ -419,4 +419,18 @@ public final class WidgetGeometryTest {
         }
         throw new AssertionError("no fan buttons");
     }
+
+    @Test public void cardRadiusIgnoresScaleAndSqueeze() {
+        WidgetConfig config = new WidgetConfig();
+        config.cardRadiusDp = 24;
+        config.scalePercent = 100;
+        assertEquals(24f * 2f, WidgetGeometry.plan(config, 640f, 0f, 2f, 25).cardRadius, 0f);
+        config.scalePercent = 250;
+        WidgetGeometry.Plan large = WidgetGeometry.plan(config, 640f, 0f, 2f, 25);
+        assertEquals(48f, large.cardRadius, 0f);
+        WidgetGeometry.Plan squeezed = WidgetGeometry.plan(config, 640f,
+                large.totalHeight() * 0.3f, 2f, 25);
+        assertTrue(squeezed.verticalScale < 1f);
+        assertEquals(48f, squeezed.cardRadius, 0f);
+    }
 }
