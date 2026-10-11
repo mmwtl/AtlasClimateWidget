@@ -152,8 +152,9 @@ final class WidgetRenderer {
     // ---- temperature -------------------------------------------------------------------------
 
     /**
-     * Cabin and outside temperature, optionally the fuel in the tank and its free volume, as
-     * one aligned line; the bridge status follows them. A line wider than the widget shrinks.
+     * Cabin and outside temperature, optionally the fuel in the tank (liters, percent or both)
+     * and its free volume, as one aligned line; the bridge status follows them. A line wider
+     * than the widget shrinks.
      */
     private void drawHeader(Canvas canvas, WidgetGeometry.Strip strip) {
         float height = strip.contentHeight;
@@ -170,11 +171,20 @@ final class WidgetRenderer {
                     formatWhole(state.sensor(Hvac.SENSOR_TEMPERATURE_AMBIENT))});
         }
         if (config.headerShowsFuel()) {
-            Fuel fuel = Fuel.of(state.sensor(Hvac.SENSOR_FUEL_PERCENTAGE),
-                    config.fuelMultiplier, config.fuelOffset);
+            Double sensor = state.sensor(Hvac.SENSOR_FUEL_PERCENTAGE);
+            Fuel fuel = Fuel.of(sensor, config.fuelMultiplier, config.fuelOffset);
+            String percent = Fuel.percentText(sensor);
+            String value = null;
             if (config.headerFuel) {
-                parts.add(new String[] {context.getString(R.string.header_fuel),
-                        liters(fuel == null ? null : fuel.litersText())});
+                value = liters(fuel == null ? null : fuel.litersText());
+                if (config.headerFuelPercent && percent != null) {
+                    value = context.getString(R.string.header_liters_percent, value, percent);
+                }
+            } else if (config.headerFuelPercent) {
+                value = percent == null ? "—" : percent;
+            }
+            if (value != null) {
+                parts.add(new String[] {context.getString(R.string.header_fuel), value});
             }
             if (config.headerFuelFree) {
                 parts.add(new String[] {context.getString(R.string.header_fuel_free),

@@ -69,6 +69,14 @@ final class Fuel {
         return text.replaceAll("0+$", "").replaceAll("\\.$", "");
     }
 
+    /** The sensor value itself, in whole percent; {@code null} without a fresh reading. */
+    static String percentText(Double sensorValue) {
+        if (sensorValue == null || !Double.isFinite(sensorValue)) {
+            return null;
+        }
+        return Math.round(Math.max(API_MIN, Math.min(API_MAX, sensorValue))) + "%";
+    }
+
     String litersText() {
         return (atFloor ? "<" : "") + liters;
     }

@@ -174,11 +174,15 @@ final class WidgetConfig {
     boolean tilesEnabled = true;
 
     boolean temperatureDual;
-    /** Sensor line parts: cabin and outside temperature, liters in the tank, free volume. */
+    /**
+     * Sensor line parts: cabin and outside temperature, liters in the tank, the sensor's own
+     * percent (beside the liters when both are on) and free volume.
+     */
     HeaderAlign headerAlign = HeaderAlign.CENTER;
     boolean headerCabin = true;
     boolean headerOutside = true;
     boolean headerFuel;
+    boolean headerFuelPercent;
     boolean headerFuelFree;
     boolean temperatureButtons = true;
     boolean fanButtons = true;
@@ -201,7 +205,7 @@ final class WidgetConfig {
     Style style = Style.CLASSIC;
 
     boolean headerShowsFuel() {
-        return headerFuel || headerFuelFree;
+        return headerFuel || headerFuelPercent || headerFuelFree;
     }
 
     /** Enabled tiles in display order. */
@@ -440,6 +444,7 @@ final class WidgetConfig {
             json.put("headerCabin", headerCabin);
             json.put("headerOutside", headerOutside);
             json.put("headerFuel", headerFuel);
+            json.put("headerFuelPercent", headerFuelPercent);
             json.put("headerFuelFree", headerFuelFree);
             json.put("temperatureButtons", temperatureButtons);
             json.put("fanButtons", fanButtons);
@@ -519,6 +524,7 @@ final class WidgetConfig {
         config.headerCabin = json.optBoolean("headerCabin", temperatures);
         config.headerOutside = json.optBoolean("headerOutside", temperatures);
         config.headerFuel = json.optBoolean("headerFuel", config.headerFuel);
+        config.headerFuelPercent = json.optBoolean("headerFuelPercent", config.headerFuelPercent);
         config.headerFuelFree = json.optBoolean("headerFuelFree", config.headerFuelFree);
         if (json.optInt("version", 1) < 3) {
             // The temperature block held the sensor line and the bar; each is a block now.

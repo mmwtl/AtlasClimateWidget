@@ -834,6 +834,9 @@ public final class MainActivity extends ScaledActivity {
                             value -> config.headerOutside = value, config::hasInfoParts));
                     options.addView(partSwitch(R.string.info_fuel, config.headerFuel,
                             value -> config.headerFuel = value, config::hasInfoParts));
+                    options.addView(partSwitch(R.string.info_fuel_percent,
+                            config.headerFuelPercent, value -> config.headerFuelPercent = value,
+                            config::hasInfoParts));
                     options.addView(partSwitch(R.string.info_fuel_free, config.headerFuelFree,
                             value -> config.headerFuelFree = value, config::hasInfoParts));
                     options.addView(hint(R.string.info_hint));

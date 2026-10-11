@@ -25,6 +25,7 @@ public final class WidgetConfigTest {
         config.cardLayout = WidgetConfig.CardLayout.SINGLE;
         config.headerAlign = WidgetConfig.HeaderAlign.RIGHT;
         config.headerFuelFree = true;
+        config.headerFuelPercent = true;
         config.headerCabin = false;
         config.style = WidgetConfig.Style.CONSOLE;
         config.iconSet = WidgetConfig.IconSet.OEM;
@@ -67,7 +68,8 @@ public final class WidgetConfigTest {
         assertEquals(WidgetConfig.HeaderAlign.RIGHT, copy.headerAlign);
         assertTrue(copy.headerFuelFree);
         assertFalse(copy.headerFuel);
-        assertFalse(fresh.headerFuel || fresh.headerFuelFree);
+        assertTrue(copy.headerFuelPercent);
+        assertFalse(fresh.headerFuel || fresh.headerFuelPercent || fresh.headerFuelFree);
         assertFalse(copy.headerCabin);
         assertTrue(copy.headerOutside);
         assertTrue(fresh.headerCabin && fresh.headerOutside);

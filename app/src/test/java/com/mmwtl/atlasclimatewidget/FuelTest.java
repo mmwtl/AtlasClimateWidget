@@ -49,4 +49,12 @@ public final class FuelTest {
         assertNull(Fuel.of(null));
         assertNull(Fuel.of(Double.NaN));
     }
+
+    @Test public void percentIsTheSensorValueRounded() {
+        assertEquals("58%", Fuel.percentText(57.6d));
+        assertEquals("0%", Fuel.percentText(-3d));
+        assertEquals("100%", Fuel.percentText(120d));
+        assertNull(Fuel.percentText(null));
+        assertNull(Fuel.percentText(Double.NaN));
+    }
 }
