@@ -1087,7 +1087,7 @@ final class WidgetRenderer {
             }
             // The console sets every text glyph in one size, so MAX and AUTO match.
             boolean small = longest > 3 || config.style == WidgetConfig.Style.CONSOLE;
-            textPaint.setTextSize(glyph * (lines.length > 1 ? 0.42f : small ? 0.36f : 0.44f));
+            textPaint.setTextSize(glyph * (lines.length > 1 ? 0.46f : small ? 0.40f : 0.48f));
             float maxWidth = tile.width() * 0.84f;
             float measured = 0f;
             for (String line : lines) {
