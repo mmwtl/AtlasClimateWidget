@@ -46,6 +46,18 @@ public final class ClimateService extends Service {
     private static final String CHANNEL_ID = "climate_bridge";
     private static final int NOTIFICATION_ID = 17;
     private static final long POLL_INTERVAL_MS = 60_000L;
+    /**
+     * GInputBridge drops requests that arrive before it reaches the car, which takes a while
+     * after boot, so the service asks again this often until the first answer.
+     */
+    private static final long POLL_RETRY_MS = 2_000L;
+    /** How long after the service start a silent bridge is asked at the retry pace. */
+    private static final long POLL_RETRY_WINDOW_MS = 3 * 60_000L;
+    /**
+     * The first answers may come while earlier requests were still being dropped, so the
+     * whole watch list, subscriptions included, is requested once more after this delay.
+     */
+    private static final long REPOLL_AFTER_CONNECT_MS = 1_500L;
     private static final long RENDER_DELAY_MS = 120L;
     private static final long CONFIRM_FIRST_MS = 800L;
     private static final long CONFIRM_SECOND_MS = 2_500L;
@@ -73,6 +85,7 @@ public final class ClimateService extends Service {
     private Handler worker;
     private Prefs prefs;
     private volatile long keepAliveUntil;
+    private long startedAt;
     private boolean polling;
     private boolean receiverRegistered;
     private boolean lastConnected;
@@ -84,7 +97,7 @@ public final class ClimateService extends Service {
         @Override
         public void run() {
             poll();
-            worker.postDelayed(this, POLL_INTERVAL_MS);
+            worker.postDelayed(this, nextPollDelay());
         }
     };
 
@@ -150,6 +163,7 @@ public final class ClimateService extends Service {
     public void onCreate() {
         super.onCreate();
         running = true;
+        startedAt = SystemClock.elapsedRealtime();
         prefs = new Prefs(this);
         startInForeground();
         workerThread = new HandlerThread("climate-bridge");
@@ -248,6 +262,10 @@ public final class ClimateService extends Service {
                     + " area=" + Gib.extra(intent, Gib.EXTRA_AREA) + " value=" + rawValue);
         }
         long now = SystemClock.elapsedRealtime();
+        if (!STORE.snapshot(now).isConnected()) {
+            worker.removeCallbacks(pollTask);
+            worker.postDelayed(pollTask, REPOLL_AFTER_CONNECT_MS);
+        }
         boolean changed;
         if (action.equals(Gib.SENSOR_FLOAT_RESULT) || action.equals(Gib.SENSOR_FLOAT_CHANGED)) {
             if (id != Hvac.SENSOR_TEMPERATURE_INDOOR && id != Hvac.SENSOR_TEMPERATURE_AMBIENT
@@ -318,6 +336,13 @@ public final class ClimateService extends Service {
             Gib.getFloatSensor(this, sensor);
         }
         scheduleRender();
+    }
+
+    private long nextPollDelay() {
+        long now = SystemClock.elapsedRealtime();
+        boolean retry = !STORE.snapshot(now).isConnected()
+                && now - startedAt < POLL_RETRY_WINDOW_MS;
+        return retry ? POLL_RETRY_MS : POLL_INTERVAL_MS;
     }
 
     private void request(int id, int area, boolean isFloat) {
