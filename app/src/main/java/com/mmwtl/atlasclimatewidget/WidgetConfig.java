@@ -6,6 +6,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /** User-built layout of one widget instance. */
@@ -166,6 +167,19 @@ final class WidgetConfig {
             ClimateFunction.PASSENGER_VENT
     );
 
+    /** What a new «switch off» tile switches off: every heating and ventilation. */
+    static final List<ClimateFunction> DEFAULT_OFF_TARGETS = Arrays.asList(
+            ClimateFunction.WINDSHIELD_HEAT,
+            ClimateFunction.REAR_DEFROST,
+            ClimateFunction.WHEEL_HEAT,
+            ClimateFunction.DRIVER_HEAT,
+            ClimateFunction.PASSENGER_HEAT,
+            ClimateFunction.DRIVER_VENT,
+            ClimateFunction.PASSENGER_VENT,
+            ClimateFunction.REAR_LEFT_HEAT,
+            ClimateFunction.REAR_RIGHT_HEAT
+    );
+
     /** All blocks in display order. */
     final List<Block> blockOrder = new ArrayList<>(Arrays.asList(Block.values()));
     boolean infoEnabled = true;
@@ -211,6 +225,11 @@ final class WidgetConfig {
 
     /** Enabled tiles in display order. */
     final List<ClimateFunction> functions = new ArrayList<>(DEFAULT_FUNCTIONS);
+    /**
+     * Functions the {@link ClimateFunction#ALL_OFF} tile switches off, in
+     * {@link ClimateFunction} order; never empty.
+     */
+    final List<ClimateFunction> offTargets = new ArrayList<>(DEFAULT_OFF_TARGETS);
     int columns = 6;
     TileStyle tileStyle = TileStyle.TILE;
 
@@ -423,6 +442,16 @@ final class WidgetConfig {
         }
     }
 
+    /** Adds or removes a «switch off» target; the last one stays. */
+    void setOffTarget(ClimateFunction function, boolean enabled) {
+        if (enabled && function.canSwitchOff() && !offTargets.contains(function)) {
+            offTargets.add(function);
+            Collections.sort(offTargets);
+        } else if (!enabled && offTargets.size() > 1) {
+            offTargets.remove(function);
+        }
+    }
+
     WidgetConfig copy() {
         return fromJson(toJson());
     }
@@ -464,6 +493,11 @@ final class WidgetConfig {
                 tiles.put(function.name());
             }
             json.put("functions", tiles);
+            JSONArray off = new JSONArray();
+            for (ClimateFunction function : offTargets) {
+                off.put(function.name());
+            }
+            json.put("offTargets", off);
             json.put("columns", columns);
             json.put("tileStyle", tileStyle.name());
             json.put("palette", palette.name());
@@ -574,6 +608,21 @@ final class WidgetConfig {
                 if (function != null && !config.functions.contains(function)) {
                     config.functions.add(function);
                 }
+            }
+        }
+        JSONArray off = json.optJSONArray("offTargets");
+        if (off != null) {
+            List<ClimateFunction> parsed = new ArrayList<>();
+            for (int index = 0; index < off.length(); index++) {
+                ClimateFunction function = ClimateFunction.fromName(off.optString(index));
+                if (function != null && function.canSwitchOff() && !parsed.contains(function)) {
+                    parsed.add(function);
+                }
+            }
+            if (!parsed.isEmpty()) {
+                Collections.sort(parsed);
+                config.offTargets.clear();
+                config.offTargets.addAll(parsed);
             }
         }
         if (config.style == Style.CONSOLE && json.optInt("version", 1) < 2) {

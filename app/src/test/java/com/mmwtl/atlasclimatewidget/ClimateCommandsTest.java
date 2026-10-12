@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.List;
 
 public final class ClimateCommandsTest {
@@ -349,5 +350,46 @@ public final class ClimateCommandsTest {
         store.putProperty(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL, Hvac.FAN_SPEED_LEVEL_1 + 3, 0);
         assertFalse(ClimateCommands.fanState(store.snapshot(0)).auto);
         assertEquals(1, ClimateCommands.setFan(store.snapshot(0), 5).size());
+    }
+
+    @Test public void switchOffSendsOnlyWhatIsOnSpacedAndPowerLast() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.SEAT_HEATING, Hvac.ZONE_DRIVER, Hvac.SEAT_HEAT_LEVELS[2], 0);
+        store.putProperty(Hvac.SEAT_HEATING, Hvac.ZONE_PASSENGER, 0, 0);
+        store.putProperty(Hvac.POWER, Gib.AREA_GLOBAL, 1, 0);
+        store.putProperty(Hvac.CIRCULATION, Gib.AREA_GLOBAL, Hvac.CIRCULATION_INNER, 0);
+        List<ClimateCommands.Command> commands = ClimateCommands.switchOff(Arrays.asList(
+                ClimateFunction.POWER, ClimateFunction.DRIVER_HEAT,
+                ClimateFunction.PASSENGER_HEAT, ClimateFunction.RECIRCULATION,
+                ClimateFunction.WHEEL_HEAT, ClimateFunction.SUNROOF),
+                store.snapshot(0), CarModel.ATLAS);
+        assertEquals(4, commands.size());
+        assertEquals(Hvac.SEAT_HEATING, commands.get(0).id);
+        assertEquals(Hvac.ZONE_DRIVER, commands.get(0).area);
+        assertEquals(0d, commands.get(0).value, 0d);
+        assertEquals(0L, commands.get(0).delayMs);
+        assertEquals(Hvac.CIRCULATION_OUTSIDE, (int) commands.get(1).value);
+        // An unknown wheel heating is switched off as well.
+        assertEquals(Hvac.STEERING_WHEEL_HEAT, commands.get(2).id);
+        assertEquals(ClimateCommands.OFF_SPACING_MS, commands.get(2).delayMs);
+        assertEquals(Hvac.POWER, commands.get(3).id);
+        assertEquals(0d, commands.get(3).value, 0d);
+    }
+
+    @Test public void switchOffTileIsLitWhileATargetIsOn() {
+        List<ClimateFunction> targets = Arrays.asList(
+                ClimateFunction.DRIVER_HEAT, ClimateFunction.WHEEL_HEAT);
+        ClimateStore store = store(0);
+        assertFalse(ClimateCommands.offState(targets, store.snapshot(0), CarModel.ATLAS).known);
+        store.putProperty(Hvac.SEAT_HEATING, Hvac.ZONE_DRIVER, 0, 0);
+        ClimateCommands.TileState off = ClimateCommands.offState(targets, store.snapshot(0),
+                CarModel.ATLAS);
+        assertTrue(off.known);
+        assertFalse(off.active);
+        assertTrue(ClimateCommands.switchOff(Arrays.asList(ClimateFunction.DRIVER_HEAT),
+                store.snapshot(0), CarModel.ATLAS).isEmpty());
+        store.putProperty(Hvac.STEERING_WHEEL_HEAT, Gib.AREA_GLOBAL,
+                Hvac.STEERING_HEAT_LEVELS[1], 0);
+        assertTrue(ClimateCommands.offState(targets, store.snapshot(0), CarModel.ATLAS).active);
     }
 }

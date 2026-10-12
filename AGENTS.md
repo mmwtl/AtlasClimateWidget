@@ -114,6 +114,11 @@ line, read as in AtlasAppWidget (`Fuel`).
   fallback (that value belongs to another glass) and positions are not resent.
   Both always step upwards; the «levels from the maximum» setting applies only to heating
   and ventilation.
+- The «Выключить всё» tile (`ClimateFunction.ALL_OFF`) switches off the widget's own targets
+  (`WidgetConfig.offTargets`, toggles and levels only, at least one; heating and ventilation
+  by default), chosen in a collapsed section of the Tiles tab. The targets travel in the
+  control URI. It is lit while any target is on and sends the off value only to targets that
+  are on or unknown, `ClimateCommands.OFF_SPACING_MS` apart, climate power last.
 - The settings preview uses the same `RemoteViews` as the widget, inert; demo values are labelled.
 - Preserve per-widget layouts across upgrades; `WidgetConfig.fromJson` must tolerate unknown and
   missing fields.

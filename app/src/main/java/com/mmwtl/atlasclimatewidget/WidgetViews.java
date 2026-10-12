@@ -184,6 +184,9 @@ final class WidgetViews {
                 List<ClimateFunction[]> rows = config.tileRows();
                 ClimateFunction function = strip.row.index < rows.size()
                         ? rows.get(strip.row.index)[cell] : null;
+                if (function == ClimateFunction.ALL_OFF) {
+                    return "off/" + offTargets(config);
+                }
                 return function == null ? null : "fn/" + function.name();
             }
             default:
@@ -216,6 +219,18 @@ final class WidgetViews {
             return "fanstep/1";
         }
         return auto ? "fanpreset/" + level : "fan/" + (level + 1);
+    }
+
+    /** The widget's own targets travel in the URI, as the service gets no widget id. */
+    private static String offTargets(WidgetConfig config) {
+        StringBuilder names = new StringBuilder();
+        for (ClimateFunction function : config.offTargets) {
+            if (names.length() > 0) {
+                names.append(',');
+            }
+            names.append(function.name());
+        }
+        return names.toString();
     }
 
     static String stripKey(WidgetGeometry.Strip strip) {

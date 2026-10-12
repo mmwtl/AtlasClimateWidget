@@ -94,6 +94,7 @@ public final class MainActivity extends ScaledActivity {
     private LinearLayout tilesHost;
     private LinearLayout functionsHost;
     private LinearLayout availableHost;
+    private LinearLayout offHost;
     private LinearLayout appearanceHost;
     private LinearLayout cardsHost;
 
@@ -330,6 +331,8 @@ public final class MainActivity extends ScaledActivity {
 
         availableHost = collapsibleCard(page, R.string.functions_available,
                 R.string.functions_available_summary);
+        offHost = collapsibleCard(page, R.string.off_targets_title,
+                R.string.off_targets_summary);
     }
 
     private void buildLookTab(LinearLayout page) {
@@ -980,6 +983,34 @@ public final class MainActivity extends ScaledActivity {
             if (!enabled.contains(function)) {
                 availableHost.addView(functionRow(function, false, false, false));
             }
+        }
+        rebuildOffTargets();
+    }
+
+    private void rebuildOffTargets() {
+        offHost.removeAllViews();
+        offHost.addView(hint(config.functions.contains(ClimateFunction.ALL_OFF)
+                ? R.string.off_targets_hint : R.string.off_targets_no_tile));
+        for (ClimateFunction function : ClimateFunction.values()) {
+            if (!function.canSwitchOff()) {
+                continue;
+            }
+            CheckBox box = new CheckBox(this);
+            box.setText(function.titleRes);
+            box.setTextColor(Ui.TEXT);
+            box.setTextSize(15);
+            box.setChecked(config.offTargets.contains(function));
+            box.setOnCheckedChangeListener((view, checked) -> {
+                config.setOffTarget(function, checked);
+                if (config.offTargets.contains(function) != checked) {
+                    // The tile keeps at least one target.
+                    view.setChecked(true);
+                    return;
+                }
+                changed();
+            });
+            Ui.topMargin(box, 6);
+            offHost.addView(box);
         }
     }
 

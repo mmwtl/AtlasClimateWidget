@@ -94,7 +94,10 @@ enum ClimateFunction {
     ME_COLD(R.string.fn_me_cold, R.string.fn_me_cold_short, Tone.WARM,
             Spec.action("ME_COLD").icon(R.drawable.ic_fn_me_cold)),
     CLIMATE_MENU(R.string.fn_climate_menu, R.string.fn_climate_menu_short, Tone.NEUTRAL,
-            Spec.action("CLIMATE_MENU").icon(R.drawable.ic_fn_climate));
+            Spec.action("CLIMATE_MENU").icon(R.drawable.ic_fn_climate)),
+    /** Switches off the widget's chosen functions, see {@link WidgetConfig#offTargets}. */
+    ALL_OFF(R.string.fn_all_off, R.string.fn_all_off_short, Tone.NEUTRAL,
+            Spec.off().glyph("OFF"));
 
     enum Kind {
         TOGGLE,
@@ -103,7 +106,9 @@ enum ClimateFunction {
         POSITION,
         BLOW,
         SELECT,
-        ACTION
+        ACTION,
+        /** Switches off several other functions at once. */
+        OFF
     }
 
     /** Colour family used by the "by meaning" palette. */
@@ -166,7 +171,17 @@ enum ClimateFunction {
     }
 
     boolean hasProperty() {
-        return kind != Kind.ACTION;
+        return kind != Kind.ACTION && kind != Kind.OFF;
+    }
+
+    /** Whether {@link #ALL_OFF} can switch this function off: toggles and levels. */
+    boolean canSwitchOff() {
+        return kind == Kind.TOGGLE || kind == Kind.LEVEL;
+    }
+
+    /** The value that switches this function off, see {@link #canSwitchOff}. */
+    int offValue() {
+        return kind == Kind.LEVEL ? levels[0] : offValue;
     }
 
     boolean isFloat() {
@@ -293,6 +308,12 @@ enum ClimateFunction {
             Spec spec = new Spec();
             spec.kind = Kind.ACTION;
             spec.carFunction = carFunction;
+            return spec;
+        }
+
+        static Spec off() {
+            Spec spec = new Spec();
+            spec.kind = Kind.OFF;
             return spec;
         }
 
