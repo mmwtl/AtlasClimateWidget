@@ -1079,16 +1079,29 @@ final class WidgetRenderer {
         if (icon == 0) {
             textPaint.setTypeface(Typeface.DEFAULT_BOLD);
             textPaint.setColor(content);
+            // A glyph may hold several lines, such as ALL above OFF.
+            String[] lines = function.glyph.split("\n");
+            int longest = 0;
+            for (String line : lines) {
+                longest = Math.max(longest, line.length());
+            }
             // The console sets every text glyph in one size, so MAX and AUTO match.
-            boolean small = function.glyph.length() > 3
+            boolean small = longest > 3 || lines.length > 1
                     || config.style == WidgetConfig.Style.CONSOLE;
             textPaint.setTextSize(glyph * (small ? 0.36f : 0.44f));
             float maxWidth = tile.width() * 0.84f;
-            float measured = textPaint.measureText(function.glyph);
+            float measured = 0f;
+            for (String line : lines) {
+                measured = Math.max(measured, textPaint.measureText(line));
+            }
             if (measured > maxWidth) {
                 textPaint.setTextSize(textPaint.getTextSize() * maxWidth / measured);
             }
-            drawCentered(canvas, function.glyph, cx, glyphCy);
+            float pitch = textPaint.getTextSize() * 1.1f;
+            float firstCy = glyphCy - pitch * (lines.length - 1) / 2f;
+            for (int i = 0; i < lines.length; i++) {
+                drawCentered(canvas, lines[i], cx, firstCy + pitch * i);
+            }
         } else {
             drawIcon(canvas, icon, cx, glyphCy, glyph, content);
         }
