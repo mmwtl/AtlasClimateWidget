@@ -97,7 +97,7 @@ enum ClimateFunction {
             Spec.action("CLIMATE_MENU").icon(R.drawable.ic_fn_climate)),
     /** Switches off the widget's chosen functions, see {@link WidgetConfig#offTargets}. */
     ALL_OFF(R.string.fn_all_off, R.string.fn_all_off_short, Tone.NEUTRAL,
-            Spec.off().glyph("OFF"));
+            Spec.off().icon(R.drawable.ic_fn_all_off));
 
     enum Kind {
         TOGGLE,
