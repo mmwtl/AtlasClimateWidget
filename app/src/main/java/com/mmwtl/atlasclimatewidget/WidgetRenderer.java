@@ -1086,9 +1086,8 @@ final class WidgetRenderer {
                 longest = Math.max(longest, line.length());
             }
             // The console sets every text glyph in one size, so MAX and AUTO match.
-            boolean small = longest > 3 || lines.length > 1
-                    || config.style == WidgetConfig.Style.CONSOLE;
-            textPaint.setTextSize(glyph * (small ? 0.36f : 0.44f));
+            boolean small = longest > 3 || config.style == WidgetConfig.Style.CONSOLE;
+            textPaint.setTextSize(glyph * (lines.length > 1 ? 0.42f : small ? 0.36f : 0.44f));
             float maxWidth = tile.width() * 0.84f;
             float measured = 0f;
             for (String line : lines) {
@@ -1097,7 +1096,7 @@ final class WidgetRenderer {
             if (measured > maxWidth) {
                 textPaint.setTextSize(textPaint.getTextSize() * maxWidth / measured);
             }
-            float pitch = textPaint.getTextSize() * 1.1f;
+            float pitch = textPaint.getTextSize() * 1.4f;
             float firstCy = glyphCy - pitch * (lines.length - 1) / 2f;
             for (int i = 0; i < lines.length; i++) {
                 drawCentered(canvas, lines[i], cx, firstCy + pitch * i);
