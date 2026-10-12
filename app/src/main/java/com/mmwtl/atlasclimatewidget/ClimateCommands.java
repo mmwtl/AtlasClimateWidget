@@ -25,7 +25,7 @@ final class ClimateCommands {
      * Wait between opening a closed sunshade and moving the sunroof. Sent together, the car
      * drops one of them: both stops above airing are the same {@link Hvac#WINDOW_POS}.
      */
-    static final long SUNSHADE_LEAD_MS = 2_000L;
+    static final long SUNSHADE_LEAD_MS = 3_000L;
 
     /**
      * Wait between the switch-offs of one {@link ClimateFunction#ALL_OFF} press, so a burst of
