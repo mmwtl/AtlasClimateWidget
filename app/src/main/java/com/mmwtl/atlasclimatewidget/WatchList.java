@@ -82,6 +82,11 @@ final class WatchList {
                 if (function.hasProperty()) {
                     property(function.propertyId(model), function.area, function.isFloat());
                 }
+                if (function == ClimateFunction.ALL_OFF) {
+                    for (ClimateFunction target : config.offTargets) {
+                        property(target.propertyId(model), target.area, false);
+                    }
+                }
                 roof |= function.kind == ClimateFunction.Kind.POSITION;
                 blow |= function.kind == ClimateFunction.Kind.BLOW;
                 presets |= function.propertyId(model) == Hvac.AUTO_FAN_SETTING;

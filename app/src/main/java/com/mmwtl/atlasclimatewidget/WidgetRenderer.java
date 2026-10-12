@@ -1002,8 +1002,9 @@ final class WidgetRenderer {
             }
             float left = plan.padding + column * cellWidth;
             rect.set(left, 0f, left + tileWidth, strip.contentHeight);
-            drawTile(canvas, new RectF(rect), function,
-                    ClimateCommands.tileState(function, state, model));
+            drawTile(canvas, new RectF(rect), function, function == ClimateFunction.ALL_OFF
+                    ? ClimateCommands.offState(config.offTargets, state, model)
+                    : ClimateCommands.tileState(function, state, model));
         }
     }
 

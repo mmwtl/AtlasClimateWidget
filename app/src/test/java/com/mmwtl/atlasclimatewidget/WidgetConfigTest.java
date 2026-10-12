@@ -248,4 +248,25 @@ public final class WidgetConfigTest {
                 WidgetConfig.fromJson("{\"version\":3,\"cardRadiusDp\":18,"
                         + "\"scalePercent\":250}").cardRadiusDp);
     }
+
+    @Test public void offTargetsRoundTripAndKeepOne() {
+        WidgetConfig config = new WidgetConfig();
+        assertEquals(WidgetConfig.DEFAULT_OFF_TARGETS, config.offTargets);
+        config.offTargets.clear();
+        config.offTargets.add(ClimateFunction.WHEEL_HEAT);
+        config.setOffTarget(ClimateFunction.POWER, true);
+        config.setOffTarget(ClimateFunction.SUNROOF, true);
+        config.setOffTarget(ClimateFunction.WHEEL_HEAT, false);
+        assertEquals(java.util.Collections.singletonList(ClimateFunction.POWER),
+                config.offTargets);
+        config.setOffTarget(ClimateFunction.POWER, false);
+        assertEquals(1, config.offTargets.size());
+        config.setOffTarget(ClimateFunction.AC, true);
+        assertEquals(config.offTargets, WidgetConfig.fromJson(config.toJson()).offTargets);
+
+        WidgetConfig broken = WidgetConfig.fromJson(
+                "{\"offTargets\":[\"SUNROOF\",\"NOPE\"]}");
+        assertEquals(WidgetConfig.DEFAULT_OFF_TARGETS, broken.offTargets);
+        assertEquals(WidgetConfig.DEFAULT_OFF_TARGETS, WidgetConfig.fromJson("{}").offTargets);
+    }
 }

@@ -22,6 +22,12 @@ final class ClimateCommands {
     /** Sunroof stop sent as {@link Hvac#SUNROOF_TILT} rather than a position. */
     static final int SUNROOF_AIRING = 1;
 
+    /**
+     * Wait between the switch-offs of one {@link ClimateFunction#ALL_OFF} press, so a burst of
+     * sets to different properties does not lose any of them.
+     */
+    static final long OFF_SPACING_MS = 150L;
+
     private static final int SEAT_HEAT_MAX_ALIAS = 0x1005020F;
     private static final int SEAT_VENT_MAX_ALIAS = 0x1005010F;
     /** Atlas auto-fan presets «Мягко», «Комфорт», «Сильно», as used by GInputBridge. */
@@ -86,7 +92,8 @@ final class ClimateCommands {
     }
 
     static TileState tileState(ClimateFunction function, ClimateState state, CarModel model) {
-        if (function.kind == ClimateFunction.Kind.ACTION) {
+        if (function.kind == ClimateFunction.Kind.ACTION
+                || function.kind == ClimateFunction.Kind.OFF) {
             return TileState.ACTION;
         }
         if (function == ClimateFunction.SUNROOF) {
@@ -124,6 +131,26 @@ final class ClimateCommands {
             default:
                 return TileState.UNKNOWN;
         }
+    }
+
+    /**
+     * The «switch off» tile is lit while any of its targets is on, so it shows whether a tap
+     * has anything to do.
+     */
+    static TileState offState(List<ClimateFunction> targets, ClimateState state,
+            CarModel model) {
+        boolean known = false;
+        for (ClimateFunction target : targets) {
+            if (!target.canSwitchOff()) {
+                continue;
+            }
+            TileState tileState = tileState(target, state, model);
+            if (tileState.active) {
+                return new TileState(true, true, 0);
+            }
+            known |= tileState.known;
+        }
+        return known ? new TileState(true, false, 0) : TileState.UNKNOWN;
     }
 
     /** Maps a raw level value, including the short 1..3 and alias encodings, to 0..count. */
@@ -402,6 +429,32 @@ final class ClimateCommands {
             default:
                 return Collections.emptyList();
         }
+    }
+
+    /**
+     * Switches off every target that is on or unknown, {@link #OFF_SPACING_MS} apart. Climate
+     * power goes last, as the car may ignore the others once it is off.
+     */
+    static List<Command> switchOff(List<ClimateFunction> targets, ClimateState state,
+            CarModel model) {
+        List<ClimateFunction> ordered = new ArrayList<>(targets);
+        if (ordered.remove(ClimateFunction.POWER)) {
+            ordered.add(ClimateFunction.POWER);
+        }
+        List<Command> commands = new ArrayList<>(ordered.size());
+        for (ClimateFunction target : ordered) {
+            if (!target.canSwitchOff()) {
+                continue;
+            }
+            TileState tileState = tileState(target, state, model);
+            if (tileState.known && !tileState.active) {
+                continue;
+            }
+            Command off = Command.setInt(target.propertyId(model), target.area,
+                    target.offValue());
+            commands.add(commands.isEmpty() ? off : off.after(OFF_SPACING_MS));
+        }
+        return commands;
     }
 
     /**

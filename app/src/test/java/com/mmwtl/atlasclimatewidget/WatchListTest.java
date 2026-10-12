@@ -84,4 +84,15 @@ public final class WatchListTest {
     private static boolean watches(WatchList watch, int area) {
         return watch.properties.contains(new WatchList.Key(Hvac.BLOWING_MODE, area, false));
     }
+
+    @Test public void switchOffTileWatchesItsTargets() {
+        WidgetConfig config = new WidgetConfig();
+        config.functions.clear();
+        config.setFunctionEnabled(ClimateFunction.ALL_OFF, true);
+        config.offTargets.clear();
+        config.offTargets.add(ClimateFunction.REAR_LEFT_HEAT);
+        WatchList watch = WatchList.of(Collections.singletonList(config), CarModel.ATLAS);
+        assertTrue(watch.properties.contains(
+                new WatchList.Key(Hvac.SEAT_HEATING, Hvac.ZONE_REAR_LEFT, false)));
+    }
 }

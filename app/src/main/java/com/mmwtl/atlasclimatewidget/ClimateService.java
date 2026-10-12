@@ -391,6 +391,16 @@ public final class ClimateService extends Service {
                 }
                 return ClimateCommands.press(function, state, model, prefs.levelsFromMax());
             }
+            case "off": {
+                List<ClimateFunction> targets = new ArrayList<>();
+                for (String name : parts.get(1).split(",")) {
+                    ClimateFunction function = ClimateFunction.fromName(name);
+                    if (function != null) {
+                        targets.add(function);
+                    }
+                }
+                return ClimateCommands.switchOff(targets, state, model);
+            }
             case "temp": {
                 int zone = Integer.parseInt(parts.get(1));
                 int step = Integer.parseInt(parts.get(2));

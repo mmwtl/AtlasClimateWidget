@@ -133,6 +133,10 @@
     <string name="functions_hint">Отмеченные функции выводятся плитками в этом порядке. Плитку можно перетащить пальцем прямо на предпросмотре.</string>
     <string name="functions_available">Доступные функции</string>
     <string name="functions_available_summary">Отметьте функцию, чтобы добавить её плиткой в конец списка.</string>
+    <string name="off_targets_title">Кнопка «Выключить всё»</string>
+    <string name="off_targets_summary">Что выключает одно касание плитки OFF на этом виджете.</string>
+    <string name="off_targets_hint">Плитка горит, пока включено что-то из отмеченного, и выключает только включённое. Хотя бы одна функция остаётся отмеченной.</string>
+    <string name="off_targets_no_tile">Плитки «Выключить всё» пока нет на виджете — отметьте её в доступных функциях.</string>
     <string name="functions_empty">Пока ни одной функции — добавьте их из списка доступных ниже.</string>
 
     <string name="appearance_title">Оформление</string>
@@ -273,4 +277,6 @@
     <string name="fn_me_cold_short">Я замёрз</string>
     <string name="fn_climate_menu">Штатное меню климата</string>
     <string name="fn_climate_menu_short">Меню</string>
+    <string name="fn_all_off">Выключить всё</string>
+    <string name="fn_all_off_short">Выкл. всё</string>
 </resources>
