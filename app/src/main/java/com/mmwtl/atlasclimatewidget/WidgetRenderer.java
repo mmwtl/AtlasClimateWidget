@@ -1102,7 +1102,8 @@ final class WidgetRenderer {
                 drawCentered(canvas, lines[i], cx, firstCy + pitch * i);
             }
         } else {
-            drawIcon(canvas, icon, cx, glyphCy, glyph, content);
+            drawIcon(canvas, icon, cx, glyphCy, glyph * function.iconScale(config.iconSet),
+                    content);
         }
 
         float y = top + glyph;

@@ -6,7 +6,7 @@ enum ClimateFunction {
             Spec.toggle(Hvac.POWER, Gib.AREA_GLOBAL, 1, 0).icon(R.drawable.ic_power)),
     AUTO(R.string.fn_auto, R.string.fn_auto_short, Tone.NEUTRAL,
             Spec.toggle(Hvac.AUTO, Hvac.ZONE_DRIVER, 1, 0).glyph("AUTO")
-                    .oem(R.drawable.ic_oem_auto)),
+                    .oem(R.drawable.ic_oem_auto).oemScale(1.14f)),
     AC(R.string.fn_ac, R.string.fn_ac_short, Tone.COOL,
             Spec.toggle(Hvac.AC, Gib.AREA_GLOBAL, 1, 0).glyph("A/C").oem(R.drawable.ic_oem_ac)),
     AC_MAX(R.string.fn_ac_max, R.string.fn_ac_max_short, Tone.COOL,
@@ -133,6 +133,7 @@ enum ClimateFunction {
     final int iconRes;
     final int[] levelIcons;
     private final int[] oemIcons;
+    private final float oemScale;
     private final int propertyId;
 
     ClimateFunction(int titleRes, int shortRes, Tone tone, Spec spec) {
@@ -152,6 +153,7 @@ enum ClimateFunction {
         this.iconRes = spec.iconRes;
         this.levelIcons = spec.levelIcons;
         this.oemIcons = spec.oemIcons;
+        this.oemScale = spec.oemScale;
     }
 
     /**
@@ -164,6 +166,11 @@ enum ClimateFunction {
             return glyph != null ? 0 : iconRes;
         }
         return icons[Math.max(0, Math.min(icons.length - 1, level))];
+    }
+
+    /** How much larger than the glyph box {@link #icon} is drawn for this set. */
+    float iconScale(WidgetConfig.IconSet set) {
+        return set == WidgetConfig.IconSet.OEM && oemIcons != null ? oemScale : 1f;
     }
 
     int propertyId(CarModel model) {
@@ -259,6 +266,7 @@ enum ClimateFunction {
         int iconRes;
         int[] levelIcons;
         int[] oemIcons;
+        float oemScale = 1f;
 
         static Spec toggle(int propertyId, int area, int onValue, int offValue) {
             Spec spec = new Spec();
@@ -331,6 +339,12 @@ enum ClimateFunction {
         /** Stock head-unit icon, one per level for level functions. */
         Spec oem(int... res) {
             oemIcons = res;
+            return this;
+        }
+
+        /** Grows a stock icon whose word is set smaller than the text glyphs, as AUTO is. */
+        Spec oemScale(float scale) {
+            oemScale = scale;
             return this;
         }
 
