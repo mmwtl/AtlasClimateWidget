@@ -10,12 +10,17 @@ import android.os.SystemClock;
 public final class ClimateWidgetProvider extends AppWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] widgetIds) {
+        draw(context, manager, widgetIds);
+        ClimateService.start(context, ClimateService.ACTION_REFRESH);
+    }
+
+    /** Draws the widgets with the values known so far, before the service starts. */
+    static void draw(Context context, AppWidgetManager manager, int[] widgetIds) {
         Prefs prefs = new Prefs(context);
         ClimateState state = ClimateService.STORE.snapshot(SystemClock.elapsedRealtime());
         for (int widgetId : widgetIds) {
             ClimateService.update(context, manager, prefs, state, widgetId);
         }
-        ClimateService.start(context, ClimateService.ACTION_REFRESH);
     }
 
     @Override
