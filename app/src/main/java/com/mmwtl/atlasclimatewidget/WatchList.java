@@ -70,6 +70,8 @@ final class WatchList {
         boolean blow = false;
         boolean presets = false;
         boolean roof = false;
+        // Power goes off through manual mode, see ClimateCommands.powerOff.
+        boolean power = false;
         if (config.isEnabled(WidgetConfig.Block.FAN)) {
             property(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL, false);
             property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL, false);
@@ -85,8 +87,10 @@ final class WatchList {
                 if (function == ClimateFunction.ALL_OFF) {
                     for (ClimateFunction target : config.offTargets) {
                         property(target.propertyId(model), target.area, false);
+                        power |= target == ClimateFunction.POWER;
                     }
                 }
+                power |= function == ClimateFunction.POWER;
                 roof |= function.kind == ClimateFunction.Kind.POSITION;
                 blow |= function.kind == ClimateFunction.Kind.BLOW;
                 presets |= function.propertyId(model) == Hvac.AUTO_FAN_SETTING;
@@ -101,7 +105,7 @@ final class WatchList {
             property(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, true);
             property(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF, false);
         }
-        if (blow || presets) {
+        if (blow || presets || power) {
             // Directions apply only in manual mode and presets only in AUTO.
             property(Hvac.AUTO, Hvac.ZONE_DRIVER, false);
         }
