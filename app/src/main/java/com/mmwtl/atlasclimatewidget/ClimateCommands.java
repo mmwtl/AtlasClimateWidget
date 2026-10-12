@@ -21,6 +21,11 @@ final class ClimateCommands {
     static final double POSITION_TOLERANCE = 2d;
     /** Sunroof stop sent as {@link Hvac#SUNROOF_TILT} rather than a position. */
     static final int SUNROOF_AIRING = 1;
+    /**
+     * Wait between opening a closed sunshade and moving the sunroof. Sent together, the car
+     * drops one of them: both stops above airing are the same {@link Hvac#WINDOW_POS}.
+     */
+    static final long SUNSHADE_LEAD_MS = 1_500L;
 
     private static final int SEAT_HEAT_MAX_ALIAS = 0x1005020F;
     private static final int SEAT_VENT_MAX_ALIAS = 0x1005010F;
@@ -428,23 +433,25 @@ final class ClimateCommands {
             next = index + 1 < levels.length ? index + 1 : lowest;
         }
         List<Command> commands = new ArrayList<>(3);
+        long roofDelay = 0L;
         if (function == ClimateFunction.SUNROOF && levels[next] > 0) {
             Double shade = state.property(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE);
             if (shade != null && shade <= POSITION_TOLERANCE) {
                 commands.add(Command.setFloat(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE,
                         stopAtLeast(Hvac.SUNSHADE_POSITIONS, levels[next])));
+                roofDelay = SUNSHADE_LEAD_MS;
             }
         }
         if (function != ClimateFunction.SUNROOF) {
             commands.add(Command.setFloat(id, function.area, levels[next]));
         } else if (next == SUNROOF_AIRING) {
-            addTilt(commands, 1);
+            addTilt(commands, 1, roofDelay);
         } else if (next > 0) {
-            commands.add(Command.setFloat(id, function.area, levels[next]));
+            commands.add(Command.setFloat(id, function.area, levels[next]).after(roofDelay));
         } else {
             // Close what is open: the airing flag, the slid position or both.
             if (sunroofAiring(state)) {
-                addTilt(commands, 0);
+                addTilt(commands, 0, 0L);
             }
             if (raw == null || raw > POSITION_TOLERANCE || !sunroofAiring(state)) {
                 commands.add(Command.setFloat(id, function.area, 0f));
@@ -454,8 +461,8 @@ final class ClimateCommands {
     }
 
     /** FX11 sets the airing flag both in the sunroof zone and globally. */
-    private static void addTilt(List<Command> commands, int value) {
-        commands.add(Command.setInt(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF, value));
+    private static void addTilt(List<Command> commands, int value, long delayMs) {
+        commands.add(Command.setInt(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF, value).after(delayMs));
         commands.add(Command.setInt(Hvac.SUNROOF_TILT, Gib.AREA_GLOBAL, value));
     }
 

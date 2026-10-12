@@ -105,7 +105,7 @@ final class WatchList {
     /** Adds the zoned key and the global fallback that {@link ClimateStore} reads. */
     private void property(int id, int area, boolean isFloat) {
         properties.add(new Key(id, area, isFloat));
-        if (area != Gib.AREA_GLOBAL) {
+        if (ClimateStore.hasGlobalFallback(id, area)) {
             properties.add(new Key(id, Gib.AREA_GLOBAL, isFloat));
         }
     }

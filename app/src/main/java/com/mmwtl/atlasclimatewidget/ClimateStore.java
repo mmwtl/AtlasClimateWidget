@@ -56,7 +56,7 @@ final class ClimateStore {
             public Double property(int id, int area) {
                 synchronized (ClimateStore.this) {
                     Double value = read(propertyKey(id, area), now);
-                    if (value == null && area != Gib.AREA_GLOBAL) {
+                    if (value == null && hasGlobalFallback(id, area)) {
                         value = read(propertyKey(id, Gib.AREA_GLOBAL), now);
                     }
                     return value;
@@ -101,6 +101,15 @@ final class ClimateStore {
             return null;
         }
         return reading.value;
+    }
+
+    /**
+     * Whether a zoned read may use the global value. {@link Hvac#WINDOW_POS} describes another
+     * glass in each area, so its global value belongs to none of them: the sunroof would show
+     * the sunshade's position.
+     */
+    static boolean hasGlobalFallback(int id, int area) {
+        return area != Gib.AREA_GLOBAL && id != Hvac.WINDOW_POS;
     }
 
     static String propertyKey(int id, int area) {

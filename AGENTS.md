@@ -109,7 +109,9 @@ line, read as in AtlasAppWidget (`Fuel`).
   as `SUNROOF_TILT` = 1) and its sunshade
   (`Hvac.SUNSHADE_POSITIONS`) step like heating levels through `WINDOW_POS` percentages. The
   sunshade never closes under an open sunroof: its cycle skips closed then, and opening the
-  sunroof first opens a closed sunshade to its lowest stop at or above the sunroof's.
+  sunroof first opens a closed sunshade to its lowest stop at or above the sunroof's, the
+  sunroof following `ClimateCommands.SUNSHADE_LEAD_MS` later. `WINDOW_POS` has no global
+  fallback (that value belongs to another glass) and positions are not resent.
   Both always step upwards; the «levels from the maximum» setting applies only to heating
   and ventilation.
 - The settings preview uses the same `RemoteViews` as the widget, inert; demo values are labelled.

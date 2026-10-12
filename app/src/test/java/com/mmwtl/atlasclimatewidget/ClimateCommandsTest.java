@@ -158,13 +158,24 @@ public final class ClimateCommandsTest {
         assertEquals(3, commands.size());
         assertEquals(Hvac.ZONE_SUNSHADE, commands.get(0).area);
         assertEquals(20d, commands.get(0).value, 0d);
+        assertEquals(0L, commands.get(0).delayMs);
         assertTilt(commands.subList(1, 3), 1);
+        // The sunroof waits for the sunshade, so the car takes both.
+        assertEquals(ClimateCommands.SUNSHADE_LEAD_MS, commands.get(1).delayMs);
+        assertEquals(0L, commands.get(2).delayMs);
 
         store.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 20, 0);
         commands = ClimateCommands.press(ClimateFunction.SUNROOF, store.snapshot(0),
                 CarModel.ATLAS, false);
         assertEquals(100d, commands.get(0).value, 0d);
         assertEquals(100d, commands.get(1).value, 0d);
+        assertEquals(ClimateCommands.SUNSHADE_LEAD_MS, commands.get(1).delayMs);
+
+        store.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 100, 0);
+        commands = ClimateCommands.press(ClimateFunction.SUNROOF, store.snapshot(0),
+                CarModel.ATLAS, false);
+        assertEquals(1, commands.size());
+        assertEquals(0L, commands.get(0).delayMs);
     }
 
     @Test public void levelIndexAcceptsShortAndAliasValues() {

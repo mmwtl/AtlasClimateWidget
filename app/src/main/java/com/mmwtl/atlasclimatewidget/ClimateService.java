@@ -447,7 +447,9 @@ public final class ClimateService extends Service {
             boolean retry = previous != null && previous.command == command;
             Sent sent = new Sent(command, now);
             lastSets.put(key, sent);
-            if (!retry) {
+            // A moving roof reports positions short of its target, and the same target sent
+            // again while it moves may stop it.
+            if (!retry && command.id != Hvac.WINDOW_POS) {
                 worker.postDelayed(() -> retry(key, sent), SET_RETRY_MS);
             }
         }
@@ -455,7 +457,7 @@ public final class ClimateService extends Service {
         int id = command.id == ClimateCommands.FAN_BLOWER ? Hvac.FAN_SPEED : command.id;
         Runnable confirm = () -> {
             request(id, command.area, isFloat);
-            if (command.area != Gib.AREA_GLOBAL) {
+            if (ClimateStore.hasGlobalFallback(id, command.area)) {
                 request(id, Gib.AREA_GLOBAL, isFloat);
             }
         };

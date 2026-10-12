@@ -26,6 +26,14 @@ public final class ClimateStoreTest {
         assertEquals(5d, store.snapshot(0L).property(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL), 0d);
     }
 
+    @Test public void roofPositionDoesNotFallBackToGlobal() {
+        ClimateStore store = new ClimateStore();
+        // The global window position may be the sunshade's, not the sunroof's.
+        store.putProperty(Hvac.WINDOW_POS, Gib.AREA_GLOBAL, 20, 0L);
+        assertNull(store.snapshot(0L).property(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF));
+        assertEquals(20d, store.snapshot(0L).property(Hvac.WINDOW_POS, Gib.AREA_GLOBAL), 0d);
+    }
+
     @Test public void pendingValueWinsUntilConfirmedOrExpired() {
         ClimateStore store = new ClimateStore();
         store.putProperty(Hvac.AC, Gib.AREA_GLOBAL, 0, 0L);
