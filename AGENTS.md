@@ -108,6 +108,9 @@ line, read as in AtlasAppWidget (`Fuel`).
 - Climate power never goes off straight from AUTO: the car takes that for leaving AUTO and
   stays on in manual mode, so AUTO goes off first and the power `AUTO_SETTLE_MS` later
   (`ClimateCommands.powerOff`, also for «Выключить всё»).
+- Blowing directions are set in the front-row zone like the stock panel
+  (`ClimateCommands.BLOW_SET_ZONE`) and read in the driver zone (`Command.stateArea`): a set
+  in the driver zone is suspected of breaking power-off from AUTO, the stock panel's too.
 - The sunroof (`Hvac.SUNROOF_POSITIONS`; the first stop is airing, sent through the bridge
   as `SUNROOF_TILT` = 1) and its sunshade
   (`Hvac.SUNSHADE_POSITIONS`) step like heating levels through `WINDOW_POS` percentages. The

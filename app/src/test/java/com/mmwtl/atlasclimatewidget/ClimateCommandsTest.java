@@ -191,8 +191,12 @@ public final class ClimateCommandsTest {
         ClimateStore store = store(0);
         store.putProperty(Hvac.BLOWING_MODE, Hvac.ZONE_DRIVER, Hvac.BLOWING_FACE, 0);
         ClimateState state = store.snapshot(0);
-        assertEquals(Hvac.BLOWING_FACE_AND_LEG, (int) ClimateCommands.press(
-                ClimateFunction.BLOW_LEGS, state, CarModel.ATLAS, false).get(0).value);
+        ClimateCommands.Command legs = ClimateCommands.press(
+                ClimateFunction.BLOW_LEGS, state, CarModel.ATLAS, false).get(0);
+        assertEquals(Hvac.BLOWING_FACE_AND_LEG, (int) legs.value);
+        // Set for the front row like the stock panel, still read in the driver zone.
+        assertEquals(Hvac.ZONE_ROW_1_ALL, legs.area);
+        assertEquals(Hvac.ZONE_DRIVER, legs.stateArea());
         assertTrue(ClimateCommands.press(ClimateFunction.BLOW_FACE, state, CarModel.ATLAS,
                 false).isEmpty());
         for (int bits = 1; bits <= 7; bits++) {

@@ -373,7 +373,7 @@ public final class ClimateService extends Service {
             }
             if (command.isOptimistic()) {
                 // The widget shows the whole press at once, not step by step.
-                STORE.setPending(command.id, command.area, command.value, now);
+                STORE.setPending(command.id, command.stateArea(), command.value, now);
             }
             worker.postDelayed(() -> execute(command, SystemClock.elapsedRealtime()), delay);
         }
@@ -433,8 +433,8 @@ public final class ClimateService extends Service {
             send(command, now);
             return;
         }
-        STORE.setPending(command.id, command.area, command.value, now);
-        String key = ClimateStore.propertyKey(command.id, command.area);
+        STORE.setPending(command.id, command.stateArea(), command.value, now);
+        String key = ClimateStore.propertyKey(command.id, command.stateArea());
         if (queued.containsKey(key) || isSpacing(key, now)) {
             queued.put(key, command);
             worker.postDelayed(() -> sendQueued(key), SET_SPACING_MS);
@@ -451,8 +451,8 @@ public final class ClimateService extends Service {
         }
         if (command.isOptimistic()) {
             // Restart the optimistic window: a queued value leaves later than it was chosen.
-            STORE.setPending(command.id, command.area, command.value, now);
-            String key = ClimateStore.propertyKey(command.id, command.area);
+            STORE.setPending(command.id, command.stateArea(), command.value, now);
+            String key = ClimateStore.propertyKey(command.id, command.stateArea());
             Sent previous = lastSets.get(key);
             boolean retry = previous != null && previous.command == command;
             Sent sent = new Sent(command, now);
@@ -465,9 +465,10 @@ public final class ClimateService extends Service {
         }
         boolean isFloat = command.type == ClimateCommands.Command.Type.FLOAT;
         int id = command.id == ClimateCommands.FAN_BLOWER ? Hvac.FAN_SPEED : command.id;
+        int area = command.stateArea();
         Runnable confirm = () -> {
-            request(id, command.area, isFloat);
-            if (ClimateStore.hasGlobalFallback(id, command.area)) {
+            request(id, area, isFloat);
+            if (ClimateStore.hasGlobalFallback(id, area)) {
                 request(id, Gib.AREA_GLOBAL, isFloat);
             }
         };
