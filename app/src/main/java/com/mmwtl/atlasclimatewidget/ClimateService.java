@@ -251,7 +251,7 @@ public final class ClimateService extends Service {
         boolean changed;
         if (action.equals(Gib.SENSOR_FLOAT_RESULT) || action.equals(Gib.SENSOR_FLOAT_CHANGED)) {
             if (id != Hvac.SENSOR_TEMPERATURE_INDOOR && id != Hvac.SENSOR_TEMPERATURE_AMBIENT
-                    && id != Hvac.SENSOR_FUEL_PERCENTAGE) {
+                    && id != Hvac.SENSOR_FUEL_PERCENTAGE && id != Hvac.SENSOR_RANGE_FUEL) {
                 return;
             }
             Float value = Gib.parseFloat(rawValue);
@@ -287,10 +287,13 @@ public final class ClimateService extends Service {
         }
     }
 
-    /** The sensor value as the widget shows it: temperatures in whole degrees. */
+    /** The sensor value as the widget shows it: temperatures and range in whole units. */
     private static Double shownSensor(int id, Double value) {
         if (value == null || id == Hvac.SENSOR_FUEL_PERCENTAGE) {
             return value;
+        }
+        if (id == Hvac.SENSOR_RANGE_FUEL) {
+            return Math.floor(value);
         }
         return (double) Math.round(value);
     }

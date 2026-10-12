@@ -50,6 +50,8 @@ final class Hvac {
     static final int SENSOR_TEMPERATURE_INDOOR = 1051648;
     /** Fuel level 0–100; {@link Fuel} turns it into liters. */
     static final int SENSOR_FUEL_PERCENTAGE = 4211968;
+    /** Range on fuel, km, as in AtlasAppWidget; 1 and below mean the car has no estimate. */
+    static final int SENSOR_RANGE_FUEL = 1054720;
 
     static final int CIRCULATION_INNER = 268632321;
     static final int CIRCULATION_OUTSIDE = 268632322;

@@ -58,6 +58,9 @@ final class DemoState implements ClimateState {
         if (id == Hvac.SENSOR_FUEL_PERCENTAGE) {
             return 56d;
         }
+        if (id == Hvac.SENSOR_RANGE_FUEL) {
+            return 412d;
+        }
         return id == Hvac.SENSOR_TEMPERATURE_AMBIENT ? 13d : null;
     }
 

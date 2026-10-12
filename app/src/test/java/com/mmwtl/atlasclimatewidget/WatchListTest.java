@@ -39,9 +39,14 @@ public final class WatchListTest {
         config.headerFuelPercent = true;
         watch = WatchList.of(Collections.singletonList(config), CarModel.ATLAS);
         assertTrue(watch.sensors.contains(Hvac.SENSOR_FUEL_PERCENTAGE));
+        assertFalse(watch.sensors.contains(Hvac.SENSOR_RANGE_FUEL));
+        config.headerRange = true;
+        watch = WatchList.of(Collections.singletonList(config), CarModel.ATLAS);
+        assertTrue(watch.sensors.contains(Hvac.SENSOR_RANGE_FUEL));
         config.infoEnabled = false;
         watch = WatchList.of(Collections.singletonList(config), CarModel.ATLAS);
         assertFalse(watch.sensors.contains(Hvac.SENSOR_FUEL_PERCENTAGE));
+        assertFalse(watch.sensors.contains(Hvac.SENSOR_RANGE_FUEL));
     }
 
     @Test public void sensorLineWatchesOnlyItsParts() {

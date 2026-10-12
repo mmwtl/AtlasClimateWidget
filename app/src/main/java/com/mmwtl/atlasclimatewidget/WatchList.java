@@ -63,6 +63,9 @@ final class WatchList {
             if (config.headerShowsFuel()) {
                 sensors.add(Hvac.SENSOR_FUEL_PERCENTAGE);
             }
+            if (config.headerRange) {
+                sensors.add(Hvac.SENSOR_RANGE_FUEL);
+            }
         }
         boolean blow = false;
         boolean presets = false;

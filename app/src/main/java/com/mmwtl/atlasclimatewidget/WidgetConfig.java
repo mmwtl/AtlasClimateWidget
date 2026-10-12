@@ -176,7 +176,7 @@ final class WidgetConfig {
     boolean temperatureDual;
     /**
      * Sensor line parts: cabin and outside temperature, liters in the tank, the sensor's own
-     * percent (beside the liters when both are on) and free volume.
+     * percent (beside the liters when both are on), free volume and range.
      */
     HeaderAlign headerAlign = HeaderAlign.CENTER;
     boolean headerCabin = true;
@@ -184,6 +184,7 @@ final class WidgetConfig {
     boolean headerFuel;
     boolean headerFuelPercent;
     boolean headerFuelFree;
+    boolean headerRange;
     boolean temperatureButtons = true;
     boolean fanButtons = true;
     /** Fan block parts, as in FX11: speed bar, blowing directions and auto-fan presets. */
@@ -240,7 +241,7 @@ final class WidgetConfig {
     }
 
     boolean hasInfoParts() {
-        return headerCabin || headerOutside || headerShowsFuel();
+        return headerCabin || headerOutside || headerShowsFuel() || headerRange;
     }
 
     boolean hasFanParts() {
@@ -446,6 +447,7 @@ final class WidgetConfig {
             json.put("headerFuel", headerFuel);
             json.put("headerFuelPercent", headerFuelPercent);
             json.put("headerFuelFree", headerFuelFree);
+            json.put("headerRange", headerRange);
             json.put("temperatureButtons", temperatureButtons);
             json.put("fanButtons", fanButtons);
             json.put("fanBar", fanBar);
@@ -526,6 +528,7 @@ final class WidgetConfig {
         config.headerFuel = json.optBoolean("headerFuel", config.headerFuel);
         config.headerFuelPercent = json.optBoolean("headerFuelPercent", config.headerFuelPercent);
         config.headerFuelFree = json.optBoolean("headerFuelFree", config.headerFuelFree);
+        config.headerRange = json.optBoolean("headerRange", config.headerRange);
         if (json.optInt("version", 1) < 3) {
             // The temperature block held the sensor line and the bar; each is a block now.
             config.infoEnabled = config.temperatureEnabled

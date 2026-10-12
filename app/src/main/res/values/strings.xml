@@ -95,6 +95,7 @@
     <string name="info_fuel">Топливо в баке, л</string>
     <string name="info_fuel_percent" formatted="false">Топливо в баке, %</string>
     <string name="info_fuel_free">Свободный объём бака, л</string>
+    <string name="info_range">Запас хода, км</string>
     <string name="info_hint">Одна строка с показаниями датчиков. Если она не помещается по ширине, шрифт уменьшается. Формула топлива — во вкладке «Система».</string>
     <string name="temp_buttons">Кнопки − и +</string>
     <string name="temp_hint">Нажатие на полосу задаёт температуру, после нажатия её можно тянуть пальцем — значение видно над полосой.</string>
@@ -208,6 +209,8 @@
     <string name="header_fuel_free">Свободно</string>
     <string name="header_liters">%1$s л</string>
     <string name="header_liters_percent">%1$s (%2$s)</string>
+    <string name="header_range">Запас</string>
+    <string name="header_kilometers">%1$d км</string>
     <string name="header_no_bridge">нет связи с GInputBridge</string>
     <string name="zone_driver">Водитель</string>
     <string name="zone_passenger">Пассажир</string>

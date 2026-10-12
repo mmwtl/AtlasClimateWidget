@@ -26,6 +26,7 @@ public final class WidgetConfigTest {
         config.headerAlign = WidgetConfig.HeaderAlign.RIGHT;
         config.headerFuelFree = true;
         config.headerFuelPercent = true;
+        config.headerRange = true;
         config.headerCabin = false;
         config.style = WidgetConfig.Style.CONSOLE;
         config.iconSet = WidgetConfig.IconSet.OEM;
@@ -69,6 +70,8 @@ public final class WidgetConfigTest {
         assertTrue(copy.headerFuelFree);
         assertFalse(copy.headerFuel);
         assertTrue(copy.headerFuelPercent);
+        assertTrue(copy.headerRange);
+        assertFalse(fresh.headerRange);
         assertFalse(fresh.headerFuel || fresh.headerFuelPercent || fresh.headerFuelFree);
         assertFalse(copy.headerCabin);
         assertTrue(copy.headerOutside);

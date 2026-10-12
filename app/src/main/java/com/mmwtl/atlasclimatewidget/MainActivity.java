@@ -839,6 +839,8 @@ public final class MainActivity extends ScaledActivity {
                             config::hasInfoParts));
                     options.addView(partSwitch(R.string.info_fuel_free, config.headerFuelFree,
                             value -> config.headerFuelFree = value, config::hasInfoParts));
+                    options.addView(partSwitch(R.string.info_range, config.headerRange,
+                            value -> config.headerRange = value, config::hasInfoParts));
                     options.addView(hint(R.string.info_hint));
                     break;
                 case TEMPERATURE:

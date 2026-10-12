@@ -51,8 +51,9 @@ line, read as in AtlasAppWidget (`Fuel`).
 - The sensor line is its own block (`Block.INFO`), the temperature block is only the
   set-temperature bar. The line sits left, centred or right (`HeaderAlign`, centred by default)
   and shows any of its parts, at least one: cabin temperature, outside temperature, the liters in the tank,
-  the sensor's own percent (beside the liters when both are on) and the free tank volume from the Fuel Percentage sensor (`Fuel`: value × 0.5 + 4, a 54 l
-  tank; at 0 the values become `<4`/`>50`). A line wider than the widget shrinks its font.
+  the sensor's own percent (beside the liters when both are on), the free tank volume from the Fuel Percentage sensor (`Fuel`: value × 0.5 + 4, a 54 l
+  tank; at 0 the values become `<4`/`>50`) and the range on fuel (`Hvac.SENSOR_RANGE_FUEL`,
+  km; 1 and below show `—`, as in AtlasAppWidget). A line wider than the widget shrinks its font.
   Layouts saved before version 3 kept the line inside the temperature block; they get the line
   block right before the temperature one, each enabled as its old part was.
   A custom formula (System tab, global, in the backup) replaces the default; the tank is the

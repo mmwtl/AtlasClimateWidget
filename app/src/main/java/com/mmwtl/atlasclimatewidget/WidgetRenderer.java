@@ -153,8 +153,8 @@ final class WidgetRenderer {
 
     /**
      * Cabin and outside temperature, optionally the fuel in the tank (liters, percent or both)
-     * and its free volume, as one aligned line; the bridge status follows them. A line wider
-     * than the widget shrinks.
+     * and its free volume, and the range, as one aligned line; the bridge status follows them.
+     * A line wider than the widget shrinks.
      */
     private void drawHeader(Canvas canvas, WidgetGeometry.Strip strip) {
         float height = strip.contentHeight;
@@ -191,6 +191,10 @@ final class WidgetRenderer {
                         liters(fuel == null ? null : fuel.freeText())});
             }
         }
+        if (config.headerRange) {
+            parts.add(new String[] {context.getString(R.string.header_range),
+                    kilometers(state.sensor(Hvac.SENSOR_RANGE_FUEL))});
+        }
         String status = state.isConnected() ? null
                 : context.getString(R.string.header_no_bridge);
         float available = plan.width - 2f * plan.padding;
@@ -219,6 +223,12 @@ final class WidgetRenderer {
             statusWidth(status, size);
             canvas.drawText(status, x, baseline, textPaint);
         }
+    }
+
+    /** Range in whole km; the car reports 1 and below when it has no estimate. */
+    private String kilometers(Double value) {
+        return value == null || !Double.isFinite(value) || value <= 1d ? "—"
+                : context.getString(R.string.header_kilometers, (int) Math.floor(value));
     }
 
     private String liters(String value) {
