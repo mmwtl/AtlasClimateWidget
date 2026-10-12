@@ -33,13 +33,6 @@ final class ClimateCommands {
      */
     static final long OFF_SPACING_MS = 150L;
 
-    /**
-     * Zone the blowing direction is set in, as the stock climate panel does. A set in the
-     * driver zone, where the direction is read, leaves the car in a state where switching the
-     * power off from AUTO only switches AUTO off, even from the stock panel.
-     */
-    static final int BLOW_SET_ZONE = Hvac.ZONE_ROW_1_ALL;
-
     private static final int SEAT_HEAT_MAX_ALIAS = 0x1005020F;
     private static final int SEAT_VENT_MAX_ALIAS = 0x1005010F;
     /** Atlas auto-fan presets «Мягко», «Комфорт», «Сильно», as used by GInputBridge. */
@@ -392,12 +385,7 @@ final class ClimateCommands {
             return new Command(Type.CAR_FUNCTION, 0, 0, 0d, function);
         }
 
-            /** Zone the car reports this set in, see {@link #BLOW_SET_ZONE}. */
-        int stateArea() {
-            return id == Hvac.BLOWING_MODE && area == BLOW_SET_ZONE ? Hvac.ZONE_DRIVER : area;
-        }
-
-    /** Commands that only nudge the car have no state to preview optimistically. */
+        /** Commands that only nudge the car have no state to preview optimistically. */
         boolean isOptimistic() {
             return type != Type.CAR_FUNCTION && id != FAN_BLOWER;
         }
@@ -439,7 +427,7 @@ final class ClimateCommands {
                 if (nextBits == 0) {
                     return Collections.emptyList();
                 }
-                return single(Command.setInt(id, BLOW_SET_ZONE, blowMode(nextBits)));
+                return single(Command.setInt(id, function.area, blowMode(nextBits)));
             }
             case SELECT: {
                 Command select = Command.setInt(id, function.area, function.onValue);
