@@ -105,9 +105,6 @@ line, read as in AtlasAppWidget (`Fuel`).
   in AUTO, auto-fan presets outside it, the speed bar in AUTO. They never light up; the choice
   the car keeps is outlined. A tap on a resting speed bar or preset switches AUTO first and
   sends the value after `ClimateCommands.AUTO_SETTLE_MS`, since the switch restores the kept one.
-- Climate power never goes off straight from AUTO: the car takes that for leaving AUTO and
-  stays on in manual mode, so AUTO goes off first and the power `AUTO_SETTLE_MS` later
-  (`ClimateCommands.powerOff`, also for «Выключить всё»).
 - The sunroof (`Hvac.SUNROOF_POSITIONS`; the first stop is airing, sent through the bridge
   as `SUNROOF_TILT` = 1) and its sunshade
   (`Hvac.SUNSHADE_POSITIONS`) step like heating levels through `WINDOW_POS` percentages. The

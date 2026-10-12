@@ -405,10 +405,8 @@ final class ClimateCommands {
                 return single(Command.carFunction(function.carFunction));
             case TOGGLE: {
                 boolean on = current == function.onValue;
-                Command toggle = Command.setInt(id, function.area,
-                        on ? function.offValue : function.onValue);
-                return on && function == ClimateFunction.POWER
-                        ? powerOff(state, toggle) : single(toggle);
+                return single(Command.setInt(id, function.area,
+                        on ? function.offValue : function.onValue));
             }
             case LEVEL: {
                 int count = function.levels.length;
@@ -459,22 +457,9 @@ final class ClimateCommands {
             }
             Command off = Command.setInt(target.propertyId(model), target.area,
                     target.offValue());
-            List<Command> steps = target == ClimateFunction.POWER
-                    ? powerOff(state, off) : single(off);
-            for (Command step : steps) {
-                commands.add(commands.isEmpty() || step != steps.get(0)
-                        ? step : step.after(OFF_SPACING_MS));
-            }
+            commands.add(commands.isEmpty() ? off : off.after(OFF_SPACING_MS));
         }
         return commands;
-    }
-
-    /**
-     * In AUTO the car takes a power-off for leaving AUTO and stays on in manual mode, so AUTO
-     * goes off first and the power follows once the car has settled.
-     */
-    static List<Command> powerOff(ClimateState state, Command off) {
-        return Boolean.TRUE.equals(autoMode(state)) ? switchAuto(false, off) : single(off);
     }
 
     /**

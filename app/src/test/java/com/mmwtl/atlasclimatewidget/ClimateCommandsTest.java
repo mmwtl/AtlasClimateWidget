@@ -376,40 +376,6 @@ public final class ClimateCommandsTest {
         assertEquals(0d, commands.get(3).value, 0d);
     }
 
-    @Test public void powerOffInAutoLeavesAutoFirst() {
-        ClimateStore store = store(0);
-        store.putProperty(Hvac.POWER, Gib.AREA_GLOBAL, 1, 0);
-        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 1, 0);
-        List<ClimateCommands.Command> commands = ClimateCommands.press(
-                ClimateFunction.POWER, store.snapshot(0), CarModel.ATLAS, false);
-        assertEquals(2, commands.size());
-        assertEquals(Hvac.AUTO, commands.get(0).id);
-        assertEquals(0, (int) commands.get(0).value);
-        assertEquals(Hvac.POWER, commands.get(1).id);
-        assertEquals(0, (int) commands.get(1).value);
-        assertEquals(ClimateCommands.AUTO_SETTLE_MS, commands.get(1).delayMs);
-
-        commands = ClimateCommands.switchOff(Arrays.asList(
-                ClimateFunction.POWER, ClimateFunction.WHEEL_HEAT),
-                store.snapshot(0), CarModel.ATLAS);
-        assertEquals(3, commands.size());
-        assertEquals(Hvac.AUTO, commands.get(1).id);
-        assertEquals(ClimateCommands.OFF_SPACING_MS, commands.get(1).delayMs);
-        assertEquals(Hvac.POWER, commands.get(2).id);
-        assertEquals(ClimateCommands.AUTO_SETTLE_MS, commands.get(2).delayMs);
-
-        // Manual mode and switching on need no detour.
-        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 0, 0);
-        assertEquals(1, ClimateCommands.press(ClimateFunction.POWER, store.snapshot(0),
-                CarModel.ATLAS, false).size());
-        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 1, 0);
-        store.putProperty(Hvac.POWER, Gib.AREA_GLOBAL, 0, 0);
-        commands = ClimateCommands.press(ClimateFunction.POWER, store.snapshot(0),
-                CarModel.ATLAS, false);
-        assertEquals(1, commands.size());
-        assertEquals(1, (int) commands.get(0).value);
-    }
-
     @Test public void switchOffTileIsLitWhileATargetIsOn() {
         List<ClimateFunction> targets = Arrays.asList(
                 ClimateFunction.DRIVER_HEAT, ClimateFunction.WHEEL_HEAT);
