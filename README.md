@@ -78,8 +78,12 @@
 
 ## Установка и запуск
 
-1. Установите подписанный APK из [Releases](https://github.com/mmwtl/AtlasClimateWidget/releases)
-   и откройте **Atlas Climate Widget**.
+Для установки и автоматического обновления рекомендую магазин приложений **GStore**:
+[скачать GStore](https://disk.yandex.ru/d/bJoMhjqGw8rMtg).
+
+1. Установите Atlas Climate Widget из GStore или подписанный APK из
+   [Releases](https://github.com/mmwtl/AtlasClimateWidget/releases) и откройте
+   **Atlas Climate Widget**.
 2. Добавьте виджет «Atlas Climate» через меню виджетов лаунчера и выберите основной вид в
    появившемся окне настройки.
 3. Для точной сборки нажмите «Добавить и открыть все настройки» или откройте приложение.

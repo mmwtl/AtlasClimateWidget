@@ -364,6 +364,7 @@ public final class MainActivity extends ScaledActivity {
         page.addView(buildFuelCard());
         page.addView(buildInterfaceCard());
         page.addView(buildBackupCard());
+        page.addView(buildGStoreCard());
         page.addView(buildDonateCard());
     }
 
@@ -621,6 +622,17 @@ public final class MainActivity extends ScaledActivity {
         Ui.topMargin(importButton, 10);
         importButton.setOnClickListener(view -> chooseBackup());
         card.addView(importButton);
+        return card;
+    }
+
+    private LinearLayout buildGStoreCard() {
+        LinearLayout card = Ui.card(this);
+        card.addView(Ui.heading(this, R.string.gstore_title, 20));
+        card.addView(hint(R.string.gstore_hint));
+        Button gstore = Ui.button(this, R.string.gstore_button);
+        Ui.topMargin(gstore, 12);
+        gstore.setOnClickListener(view -> GStoreDialog.show(this));
+        card.addView(gstore);
         return card;
     }
 
