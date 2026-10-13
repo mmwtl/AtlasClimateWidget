@@ -210,7 +210,7 @@
     <string name="donate_url" translatable="false">https://pay.cloudtips.ru/p/5c3a9385</string>
     <string name="donate_title">Поддержать проект</string>
     <string name="donate_hint">Приложение бесплатное и останется таким. Если оно вам пригодилось, можно добровольно поддержать его развитие.</string>
-    <string name="donate_button">Поддержать проект</string>
+    <string name="donate_button">♥ Поддержать проект</string>
     <string name="donate_message">Приложение бесплатное и останется таким. Добровольная поддержка помогает развивать его дальше. Спасибо!</string>
     <string name="donate_scan">Наведите камеру телефона на QR-код</string>
     <string name="donate_open">Открыть ссылку</string>
