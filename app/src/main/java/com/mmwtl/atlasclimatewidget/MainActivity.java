@@ -21,6 +21,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -180,6 +181,18 @@ public final class MainActivity extends ScaledActivity {
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         previewTitle = Ui.text(this, R.string.preview_title, 13, Ui.TEXT_SECONDARY);
         titleRow.addView(previewTitle);
+        ImageView donate = new ImageView(this);
+        donate.setImageResource(R.drawable.ic_heart);
+        donate.setColorFilter(Ui.ACCENT);
+        int heartPad = Ui.dp(this, 8);
+        donate.setPadding(heartPad, heartPad, heartPad, heartPad);
+        donate.setBackground(Ui.rounded(Ui.SURFACE, Ui.dp(this, 8)));
+        donate.setContentDescription(getString(R.string.donate_title));
+        donate.setOnClickListener(view -> DonateDialog.show(this));
+        LinearLayout.LayoutParams heartParams = new LinearLayout.LayoutParams(
+                Ui.dp(this, 40), Ui.dp(this, 40));
+        heartParams.leftMargin = Ui.dp(this, 12);
+        titleRow.addView(donate, heartParams);
         stickyHeader.addView(titleRow);
 
         LinearLayout tabs = new LinearLayout(this);
@@ -351,6 +364,7 @@ public final class MainActivity extends ScaledActivity {
         page.addView(buildFuelCard());
         page.addView(buildInterfaceCard());
         page.addView(buildBackupCard());
+        page.addView(buildDonateCard());
     }
 
     private LinearLayout buildStatusCard() {
@@ -607,6 +621,17 @@ public final class MainActivity extends ScaledActivity {
         Ui.topMargin(importButton, 10);
         importButton.setOnClickListener(view -> chooseBackup());
         card.addView(importButton);
+        return card;
+    }
+
+    private LinearLayout buildDonateCard() {
+        LinearLayout card = Ui.card(this);
+        card.addView(Ui.heading(this, R.string.donate_title, 20));
+        card.addView(hint(R.string.donate_hint));
+        Button donate = Ui.button(this, R.string.donate_button);
+        Ui.topMargin(donate, 12);
+        donate.setOnClickListener(view -> DonateDialog.show(this));
+        card.addView(donate);
         return card;
     }
 
