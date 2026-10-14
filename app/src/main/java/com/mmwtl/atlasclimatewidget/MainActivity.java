@@ -685,12 +685,12 @@ public final class MainActivity extends ScaledActivity {
         }
     }
 
-    /** "v1.3.0 (38)" beside the title, as in the other Atlas apps. */
+    /** "1.3.0 (38)" beside the title, as in the other Atlas apps. */
     private String versionLabel() {
         try {
             android.content.pm.PackageInfo info =
                     getPackageManager().getPackageInfo(getPackageName(), 0);
-            return "v" + info.versionName + " (" + info.getLongVersionCode() + ")";
+            return info.versionName + " (" + info.getLongVersionCode() + ")";
         } catch (android.content.pm.PackageManager.NameNotFoundException error) {
             return "";
         }
