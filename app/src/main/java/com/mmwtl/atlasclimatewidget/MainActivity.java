@@ -177,7 +177,17 @@ public final class MainActivity extends ScaledActivity {
         LinearLayout titleRow = new LinearLayout(this);
         titleRow.setOrientation(LinearLayout.HORIZONTAL);
         titleRow.setGravity(Gravity.CENTER_VERTICAL);
-        titleRow.addView(Ui.heading(this, R.string.app_name, 24), new LinearLayout.LayoutParams(
+        // The version sits on the title's baseline, the pair centred in the row.
+        LinearLayout titleText = new LinearLayout(this);
+        titleText.setOrientation(LinearLayout.HORIZONTAL);
+        titleText.addView(Ui.heading(this, R.string.app_name, 24));
+        TextView version = Ui.text(this, versionLabel(), 13, Ui.TEXT_SECONDARY);
+        version.setSingleLine(true);
+        LinearLayout.LayoutParams versionParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        versionParams.leftMargin = Ui.dp(this, 10);
+        titleText.addView(version, versionParams);
+        titleRow.addView(titleText, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         previewTitle = Ui.text(this, R.string.preview_title, 13, Ui.TEXT_SECONDARY);
         titleRow.addView(previewTitle);
@@ -672,6 +682,17 @@ public final class MainActivity extends ScaledActivity {
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
         } catch (ActivityNotFoundException error) {
             Toast.makeText(this, R.string.backup_no_target, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /** "v1.3.0 (38)" beside the title, as in the other Atlas apps. */
+    private String versionLabel() {
+        try {
+            android.content.pm.PackageInfo info =
+                    getPackageManager().getPackageInfo(getPackageName(), 0);
+            return "v" + info.versionName + " (" + info.getLongVersionCode() + ")";
+        } catch (android.content.pm.PackageManager.NameNotFoundException error) {
+            return "";
         }
     }
 
