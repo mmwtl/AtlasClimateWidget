@@ -6,6 +6,7 @@ import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -762,6 +763,16 @@ public final class MainActivity extends ScaledActivity {
         confirmImport(text);
     }
 
+    /** The button shows the colour itself, as in AtlasAppWidget. */
+    private void colorButton(Button button, String label, int color) {
+        button.setText(String.format("%s  #%06X", label, color & 0xFFFFFF));
+        button.setBackground(Ui.rounded(color, Ui.dp(this, 8)));
+        double luminance = (0.2126 * Color.red(color)
+                + 0.7152 * Color.green(color)
+                + 0.0722 * Color.blue(color)) / 255.0;
+        button.setTextColor(luminance > 0.62 ? Color.BLACK : Color.WHITE);
+    }
+
     /** The scaled activity density widens default dialogs past the screen edge. */
     private void sized(AlertDialog dialog) {
         int screen = getResources().getDisplayMetrics().widthPixels;
@@ -1147,6 +1158,16 @@ public final class MainActivity extends ScaledActivity {
                     config.cardOpacityPercent = value;
                     changed();
                 }, null);
+        Button cardColorButton = Ui.button(this, "");
+        Ui.topMargin(cardColorButton, 12);
+        colorButton(cardColorButton, getString(R.string.card_color), config.cardColor);
+        cardColorButton.setOnClickListener(view -> sized(ColorPickerDialog.show(this,
+                getString(R.string.card_color), config.cardColor, color -> {
+                    config.cardColor = color;
+                    colorButton(cardColorButton, getString(R.string.card_color), color);
+                    changed();
+                })));
+        cardsHost.addView(cardColorButton);
         addSlider(cardsHost, getString(R.string.card_radius), 0,
                 WidgetConfig.CARD_RADIUS_MAX_DP, config.cardRadiusDp,
                 value -> getString(R.string.dp_value, value), value -> {

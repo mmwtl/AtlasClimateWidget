@@ -78,6 +78,9 @@ line, read as in AtlasAppWidget (`Fuel`).
 - Cards: `CardLayout.SEPARATE` gives every block its own card; `SINGLE` puts all rows in one card,
   blocks a card padding apart without dividers. Fill shares extra height per block in both
   modes.
+- Card colour (`cardColor`, per widget, opaque RGB; `cardOpacityPercent` is separate) is picked on
+  the Look tab with `ColorPickerDialog`, the RGB dialog of AtlasAppWidget; the button shows the
+  colour and its hex code.
 - Card radius (`cardRadiusDp`, 0–40, default 24 like the stock OneOS cards) is screen dp, the
   same contract as the other Atlas widgets: `WidgetGeometry.plan` sets `Plan.cardRadius` from
   the display density, outside `scalePercent`, the vertical squeeze and the card size. Layouts
