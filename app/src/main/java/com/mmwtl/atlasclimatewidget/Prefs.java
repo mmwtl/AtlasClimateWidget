@@ -11,6 +11,7 @@ final class Prefs {
     static final String KEY_CAR_MODEL = "car_model";
     static final String KEY_TEMP_STEP_TENTHS = "temp_step_tenths";
     static final String KEY_LEVELS_FROM_MAX = "levels_from_max";
+    static final String KEY_KEPT_WHEN_OFF = "kept_when_off";
     static final String KEY_UI_SCALE_TENTHS = "ui_scale_tenths";
     static final String KEY_TEMPLATE = "widget_template";
     static final String KEY_FAN_PRESETS = "fan_presets";
@@ -52,6 +53,14 @@ final class Prefs {
 
     void setLevelsFromMax(boolean value) {
         preferences.edit().putBoolean(KEY_LEVELS_FROM_MAX, value).apply();
+    }
+
+    boolean keptWhenOff() {
+        return preferences.getBoolean(KEY_KEPT_WHEN_OFF, false);
+    }
+
+    void setKeptWhenOff(boolean value) {
+        preferences.edit().putBoolean(KEY_KEPT_WHEN_OFF, value).apply();
     }
 
     int uiScaleTenths(int fallback) {
@@ -147,6 +156,7 @@ final class Prefs {
 
     WidgetConfig resolved(WidgetConfig config) {
         config.fanPresetCount = fanPresetCount();
+        config.keptWhenOff = keptWhenOff();
         config.fuelMultiplier = fuelMultiplier();
         config.fuelOffset = fuelOffset();
         return config;
@@ -180,6 +190,7 @@ final class Prefs {
         backup.carModel = carModel().name();
         backup.tempStepTenths = temperatureStep() >= 1f ? 10 : 5;
         backup.levelsFromMax = levelsFromMax();
+        backup.keptWhenOff = keptWhenOff();
         backup.fanPresets = fanPresets().name();
         backup.uiScaleTenths = preferences.getInt(KEY_UI_SCALE_TENTHS, 0);
         backup.fuelCustomFormula = fuelCustomFormula();
@@ -198,6 +209,7 @@ final class Prefs {
                 .putString(KEY_CAR_MODEL, CarModel.fromName(backup.carModel).name())
                 .putInt(KEY_TEMP_STEP_TENTHS, backup.tempStepTenths >= 10 ? 10 : 5)
                 .putBoolean(KEY_LEVELS_FROM_MAX, backup.levelsFromMax)
+                .putBoolean(KEY_KEPT_WHEN_OFF, backup.keptWhenOff)
                 .putString(KEY_FAN_PRESETS, backup.fanPresets)
                 .putBoolean(KEY_FUEL_CUSTOM_FORMULA, backup.fuelCustomFormula)
                 .putFloat(KEY_FUEL_MULTIPLIER, backup.fuelMultiplier)

@@ -113,7 +113,9 @@ line, read as in AtlasAppWidget (`Fuel`).
   the car keeps is outlined. A tap on a resting speed bar or preset switches AUTO first and
   sends the value after `ClimateCommands.AUTO_SETTLE_MS`, since the switch restores the kept one.
 - With the climate off (`ClimateCommands.powerOff`) directions and presets rest as well and the
-  fan levels stay unlit. The car then reports AUTO off but returns to the kept mode, so the
+  fan levels stay unlit. Nothing is outlined then unless the global «Обводить выбор при
+  выключенном климате» switch (System tab, `Prefs.keptWhenOff`, in the backup, put into the
+  layout unsaved by `Prefs.resolved`) is on. The car then reports AUTO off but returns to the kept mode, so the
   fan block keeps the mode the climate was switched off in (`ClimateCommands.shownAutoMode`,
   remembered by `ClimateStore`; an AUTO change within `POWER_OFF_WINDOW_MS` before the power
   value comes from switching off). Commands still follow the reported AUTO.

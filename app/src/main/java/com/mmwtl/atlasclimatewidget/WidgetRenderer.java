@@ -598,10 +598,11 @@ final class WidgetRenderer {
         float textHeight = WidgetGeometry.FAN_ROW_DP * dp * plan.verticalScale;
         ClimateCommands.FanState fan = ClimateCommands.fanState(state);
         boolean off = ClimateCommands.powerOff(state);
+        boolean showKept = keptShown();
         if (strip.autoCells > 0) {
             List<BarButton> auto = new ArrayList<>();
             auto.add(new BarButton(ClimateFunction.AUTO.icon(config.iconSet, 0),
-                    ClimateFunction.AUTO.glyph, fan.auto,
+                    ClimateFunction.AUTO.glyph, fan.auto && showKept,
                     ClimateCommands.shownAutoMode(state) != null, off));
             drawBarButtons(canvas, new float[]{plan.padding,
                     plan.padding + strip.autoCells * cell}, top, bottom, auto, true, textHeight);
@@ -619,7 +620,7 @@ final class WidgetRenderer {
             for (int index = 0; index < count; index++) {
                 presets.add(new BarButton(0,
                         context.getString(labels[Math.min(index, labels.length - 1)]),
-                        index == active, known, off));
+                        index == active && showKept, known, off));
             }
             drawBarButtons(canvas, partEdges(strip, count, cell), 0f, strip.contentHeight,
                     presets, false, strip.contentHeight);
@@ -630,11 +631,19 @@ final class WidgetRenderer {
             ClimateCommands.TileState tileState = ClimateCommands.tileState(direction, state,
                     model);
             directions.add(new BarButton(direction.icon(config.iconSet, 0),
-                    context.getString(direction.shortRes), tileState.active, tileState.known,
-                    tileState.dormant));
+                    context.getString(direction.shortRes), tileState.active && showKept,
+                    tileState.known, tileState.dormant));
         }
         drawBarButtons(canvas, partEdges(strip, directions.size(), cell), 0f,
                 strip.contentHeight, directions, false, strip.contentHeight);
+    }
+
+    /**
+     * Whether resting controls outline the choice the car keeps. With the climate off that is
+     * a setting, as nothing is in use then.
+     */
+    private boolean keptShown() {
+        return config.keptWhenOff || !ClimateCommands.powerOff(state);
     }
 
     private float[] partEdges(WidgetGeometry.Strip strip, int parts, float cell) {
@@ -801,7 +810,7 @@ final class WidgetRenderer {
                 known = presetsKnown;
                 dormant = presetsDormant;
             }
-            boolean kept = dormant && on;
+            boolean kept = dormant && on && keptShown();
             on &= !dormant;
             float left = plan.padding + index * cell + (index == 0 ? 0f : gap / 2f);
             float right = plan.padding + (index + 1) * cell
@@ -939,7 +948,7 @@ final class WidgetRenderer {
                 known = presetsKnown;
                 dormant = presetsDormant;
             }
-            boolean kept = dormant && on;
+            boolean kept = dormant && on && keptShown();
             on &= !dormant;
             float left = plan.padding + index * cell;
             float right = left + cell;
@@ -1031,7 +1040,7 @@ final class WidgetRenderer {
         boolean iconStyle = config.tileStyle == WidgetConfig.TileStyle.ICON;
         boolean withLabel = config.tileStyle == WidgetConfig.TileStyle.TILE_LABEL;
         boolean dormant = tileState.dormant;
-        boolean kept = dormant && tileState.active;
+        boolean kept = dormant && tileState.active && keptShown();
         if (dormant) {
             // A resting control never lights up; its kept choice is only outlined.
             tileState = new ClimateCommands.TileState(tileState.known, false,

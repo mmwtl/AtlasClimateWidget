@@ -463,11 +463,11 @@ public final class MainActivity extends ScaledActivity {
         custom.setOnCheckedChangeListener((view, checked) -> {
             prefs.setFuelCustomFormula(checked);
             refresh.run();
-            presetsChanged();
+            globalChanged();
         });
         edit.setOnClickListener(view -> showFuelFormulaDialog(() -> {
             refresh.run();
-            presetsChanged();
+            globalChanged();
         }));
         return card;
     }
@@ -556,7 +556,7 @@ public final class MainActivity extends ScaledActivity {
             button.setOnCheckedChangeListener((view, checked) -> {
                 if (checked) {
                     prefs.setCarModel(model);
-                    presetsChanged();
+                    globalChanged();
                 }
             });
             models.addView(button);
@@ -591,7 +591,7 @@ public final class MainActivity extends ScaledActivity {
             button.setOnCheckedChangeListener((view, checked) -> {
                 if (checked) {
                     prefs.setFanPresets(value);
-                    presetsChanged();
+                    globalChanged();
                 }
             });
             presets.addView(button);
@@ -603,6 +603,14 @@ public final class MainActivity extends ScaledActivity {
         fromMax.setOnCheckedChangeListener((view, checked) -> prefs.setLevelsFromMax(checked));
         card.addView(fromMax);
         card.addView(hint(R.string.levels_from_max_hint));
+
+        Switch keptWhenOff = switchRow(R.string.kept_when_off, prefs.keptWhenOff());
+        keptWhenOff.setOnCheckedChangeListener((view, checked) -> {
+            prefs.setKeptWhenOff(checked);
+            globalChanged();
+        });
+        card.addView(keptWhenOff);
+        card.addView(hint(R.string.kept_when_off_hint));
         return card;
     }
 
@@ -1172,7 +1180,8 @@ public final class MainActivity extends ScaledActivity {
     }
 
     /** The preset count and fuel formula follow global settings; re-resolve the edited layout. */
-    private void presetsChanged() {
+    /** A global setting the widgets draw with changed. */
+    private void globalChanged() {
         prefs.resolved(config);
         ClimateService.start(this, ClimateService.ACTION_REFRESH);
         refreshPreview();

@@ -22,6 +22,7 @@ final class SettingsBackup {
     String carModel = CarModel.ATLAS.name();
     int tempStepTenths = 5;
     boolean levelsFromMax;
+    boolean keptWhenOff;
     String fanPresets = "AUTO";
     /** Settings screen scale; 0 when the backup does not carry one. */
     int uiScaleTenths;
@@ -42,6 +43,7 @@ final class SettingsBackup {
             settings.put("carModel", carModel);
             settings.put("tempStepTenths", tempStepTenths);
             settings.put("levelsFromMax", levelsFromMax);
+            settings.put("keptWhenOff", keptWhenOff);
             settings.put("fanPresets", fanPresets);
             if (uiScaleTenths > 0) {
                 settings.put("uiScaleTenths", uiScaleTenths);
@@ -84,6 +86,7 @@ final class SettingsBackup {
             backup.carModel = CarModel.fromName(settings.optString("carModel")).name();
             backup.tempStepTenths = settings.optInt("tempStepTenths", 5) >= 10 ? 10 : 5;
             backup.levelsFromMax = settings.optBoolean("levelsFromMax", false);
+            backup.keptWhenOff = settings.optBoolean("keptWhenOff", false);
             backup.fanPresets = settings.optString("fanPresets", backup.fanPresets);
             backup.uiScaleTenths = settings.optInt("uiScaleTenths", 0);
             JSONObject fuel = settings.optJSONObject("fuel");

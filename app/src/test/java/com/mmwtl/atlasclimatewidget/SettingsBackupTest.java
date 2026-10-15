@@ -14,6 +14,7 @@ public final class SettingsBackupTest {
         backup.carModel = CarModel.CITYRAY.name();
         backup.tempStepTenths = 10;
         backup.levelsFromMax = true;
+        backup.keptWhenOff = true;
         backup.fanPresets = "FIVE";
         backup.uiScaleTenths = 17;
         backup.fuelCustomFormula = true;
@@ -33,6 +34,7 @@ public final class SettingsBackupTest {
             assertEquals(CarModel.CITYRAY.name(), copy.carModel);
             assertEquals(10, copy.tempStepTenths);
             assertTrue(copy.levelsFromMax);
+            assertTrue(copy.keptWhenOff);
             assertEquals("FIVE", copy.fanPresets);
             assertEquals(17, copy.uiScaleTenths);
             assertTrue(copy.fuelCustomFormula);
@@ -63,6 +65,7 @@ public final class SettingsBackupTest {
         assertEquals(1, json.getInt("schemaVersion"));
         assertEquals("1.2", json.getString("appVersion"));
         assertFalse(SettingsBackup.parse(json.toString()).levelsFromMax);
+        assertFalse(SettingsBackup.parse(json.toString()).keptWhenOff);
     }
 
     @Test public void dropsABrokenFuelFormula() {

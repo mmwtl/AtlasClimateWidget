@@ -212,6 +212,8 @@ final class WidgetConfig {
     HeightMode heightMode = HeightMode.FILL;
     /** Resolved from the global car setting by {@link Prefs}; not part of the saved layout. */
     int fanPresetCount = 3;
+    /** Whether the kept choice is outlined with the climate off; global, not saved either. */
+    boolean keptWhenOff;
     /** Fuel formula, resolved from the global setting by {@link Prefs}; not saved either. */
     float fuelMultiplier = Fuel.MULTIPLIER;
     float fuelOffset = Fuel.OFFSET;
