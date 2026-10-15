@@ -316,6 +316,42 @@ public final class ClimateCommandsTest {
                 CarModel.ATLAS).dormant);
     }
 
+    @Test public void climateOffRestsTheFanBlockInTheModeItWasSwitchedOffIn() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.POWER, Gib.AREA_GLOBAL, 1, 0);
+        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 1, 0);
+        store.putProperty(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL, Hvac.AUTO_FAN_NORMAL, 0);
+        store.putProperty(Hvac.BLOWING_MODE, Hvac.ZONE_DRIVER, Hvac.BLOWING_FACE_AND_LEG, 0);
+        assertFalse(ClimateCommands.powerOff(store.snapshot(0)));
+        // The car reports AUTO off and a manual direction while the climate is off.
+        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 0, 10_000);
+        store.putProperty(Hvac.POWER, Gib.AREA_GLOBAL, 0, 10_000);
+        store.putProperty(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL, Hvac.FAN_SPEED_OFF, 10_000);
+        ClimateState off = store.snapshot(10_000);
+        assertTrue(ClimateCommands.powerOff(off));
+        assertEquals(Boolean.FALSE, ClimateCommands.autoMode(off));
+        assertTrue(ClimateCommands.fanState(off).auto);
+        ClimateCommands.TileState legs = ClimateCommands.tileState(ClimateFunction.BLOW_LEGS,
+                off, CarModel.ATLAS);
+        assertTrue(legs.dormant);
+        assertTrue(legs.active);
+        assertTrue(ClimateCommands.tileState(ClimateFunction.FAN_NORMAL, off,
+                CarModel.ATLAS).dormant);
+        // A direction tap picks only that direction rather than toggling the kept ones off.
+        assertEquals(Hvac.BLOWING_LEG, (int) ClimateCommands.press(ClimateFunction.BLOW_LEGS,
+                off, CarModel.ATLAS, false).get(0).value);
+        // The bar steps the kept presets and switches AUTO on first.
+        List<ClimateCommands.Command> step = ClimateCommands.stepFan(off, CarModel.ATLAS, 1, 3);
+        assertEquals(2, step.size());
+        assertEquals(Hvac.AUTO, step.get(0).id);
+        assertEquals(Hvac.AUTO_FAN_HIGHER, (int) step.get(1).value);
+
+        store.putProperty(Hvac.POWER, Gib.AREA_GLOBAL, 1, 20_000);
+        assertFalse(ClimateCommands.fanState(store.snapshot(20_000)).auto);
+        assertFalse(ClimateCommands.tileState(ClimateFunction.BLOW_LEGS, store.snapshot(20_000),
+                CarModel.ATLAS).dormant);
+    }
+
     @Test public void presetInManualModeTurnsAutoOnFirst() {
         ClimateStore store = store(0);
         store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 0, 0);

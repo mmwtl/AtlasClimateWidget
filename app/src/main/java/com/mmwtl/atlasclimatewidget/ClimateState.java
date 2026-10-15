@@ -11,6 +11,14 @@ interface ClimateState {
     /** Returns a fresh sensor value or {@code null}. */
     Double sensor(int id);
 
+    /**
+     * The AUTO value the climate was switched off in while it stays off, or {@code null}. The
+     * car reports AUTO off meanwhile and returns to this mode when switched on.
+     */
+    default Double autoBeforePowerOff() {
+        return null;
+    }
+
     /** Whether the bridge answered recently. */
     boolean isConnected();
 

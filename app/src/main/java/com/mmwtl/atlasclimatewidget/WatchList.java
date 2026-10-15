@@ -102,8 +102,10 @@ final class WatchList {
             property(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF, false);
         }
         if (blow || presets) {
-            // Directions apply only in manual mode and presets only in AUTO.
+            // Directions apply only in manual mode and presets only in AUTO; both rest while
+            // the climate is off.
             property(Hvac.AUTO, Hvac.ZONE_DRIVER, false);
+            property(Hvac.POWER, ClimateFunction.POWER.area, false);
         }
     }
 

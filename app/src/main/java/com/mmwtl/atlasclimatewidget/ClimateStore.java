@@ -9,6 +9,9 @@ import java.util.Map;
  * <p>Values expire when the bridge stops answering the periodic refresh, so a stopped bridge
  * shows an explicit "no data" state instead of stale values. A command stores an optimistic
  * pending value that is shown until the bridge confirms it or the pending timeout expires.
+ *
+ * <p>The car reports AUTO off while the climate is off and returns to the kept mode when it is
+ * switched on, so the store remembers the AUTO value the climate was switched off in.
  */
 final class ClimateStore {
     static final long STALE_AFTER_MS = 150_000L;
@@ -16,10 +19,18 @@ final class ClimateStore {
     /** Results that arrive this soon after a command may describe the state before it. */
     static final long PENDING_GRACE_MS = 1_500L;
     static final long CONNECTED_WINDOW_MS = STALE_AFTER_MS;
+    /** An AUTO change this soon before the climate goes off comes from switching it off. */
+    static final long POWER_OFF_WINDOW_MS = 2_000L;
 
     private final Map<String, Reading> values = new HashMap<>();
     private final Map<String, Pending> pending = new HashMap<>();
     private long lastResultAt;
+    private Double auto;
+    private Double autoBefore;
+    private long autoChangedAt;
+    private boolean autoFromDriver;
+    private Boolean powerOn;
+    private Double autoWhenOff;
 
     /** Stores a property result. The bridge reports failed reads as -1. */
     synchronized void putProperty(int id, int area, double value, long now) {
@@ -28,6 +39,7 @@ final class ClimateStore {
             return;
         }
         put(propertyKey(id, area), value, now);
+        track(id, area, value, now);
     }
 
     synchronized void putSensor(int id, double value, long now) {
@@ -37,6 +49,7 @@ final class ClimateStore {
 
     synchronized void setPending(int id, int area, double value, long now) {
         pending.put(propertyKey(id, area), new Pending(value, now));
+        track(id, area, value, now);
     }
 
     synchronized long lastResultAt() {
@@ -47,6 +60,11 @@ final class ClimateStore {
         values.clear();
         pending.clear();
         lastResultAt = 0L;
+        auto = null;
+        autoBefore = null;
+        autoFromDriver = false;
+        powerOn = null;
+        autoWhenOff = null;
     }
 
     /** Returns a view that evaluates freshness at {@code now}. */
@@ -71,6 +89,13 @@ final class ClimateStore {
             }
 
             @Override
+            public Double autoBeforePowerOff() {
+                synchronized (ClimateStore.this) {
+                    return Boolean.FALSE.equals(powerOn) ? autoWhenOff : null;
+                }
+            }
+
+            @Override
             public boolean isConnected() {
                 synchronized (ClimateStore.this) {
                     return lastResultAt > 0L && now - lastResultAt <= CONNECTED_WINDOW_MS;
@@ -85,6 +110,32 @@ final class ClimateStore {
         if (current != null
                 && (current.value == value || now - current.setAt > PENDING_GRACE_MS)) {
             pending.remove(key);
+        }
+    }
+
+    /**
+     * Follows AUTO and the climate power. The AUTO change that switching off causes may arrive
+     * before or after the power value, so a change just before it does not count. The kept value
+     * is known only when the climate is seen going off.
+     */
+    private void track(int id, int area, double value, long now) {
+        if (id == Hvac.AUTO && (area == Hvac.ZONE_DRIVER
+                || area == Gib.AREA_GLOBAL && !autoFromDriver)) {
+            autoFromDriver |= area == Hvac.ZONE_DRIVER;
+            if (auto == null || auto != value) {
+                autoBefore = auto;
+                auto = value;
+                autoChangedAt = now;
+            }
+        } else if (id == Hvac.POWER && area == Gib.AREA_GLOBAL) {
+            boolean on = value != ClimateFunction.POWER.offValue;
+            if (!on && Boolean.TRUE.equals(powerOn)) {
+                autoWhenOff = auto != null && now - autoChangedAt <= POWER_OFF_WINDOW_MS
+                        ? autoBefore : auto;
+            } else if (on) {
+                autoWhenOff = null;
+            }
+            powerOn = on;
         }
     }
 

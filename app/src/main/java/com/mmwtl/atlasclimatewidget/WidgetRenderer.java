@@ -508,6 +508,8 @@ final class WidgetRenderer {
                     0.72f);
         }
         ClimateCommands.FanState fan = ClimateCommands.fanState(state);
+        // The fan does not blow while the climate is off.
+        boolean off = ClimateCommands.powerOff(state);
         int lit = config.palette.tile(ClimateFunction.Tone.NEUTRAL);
         float segmentHeight = Math.max(4f * dp, height * 0.26f);
         float segmentGap = Math.max(2f, 3f * dp);
@@ -526,7 +528,7 @@ final class WidgetRenderer {
             float left = start + (level - 1) * step
                     + (level == 1 && strip.buttonCells == 0 ? lead : segmentGap / 2f);
             float right = start + level * step - segmentGap / 2f;
-            boolean on = known && level <= litLevels;
+            boolean on = known && !off && level <= litLevels;
             int color = on ? lit : Ui.SURFACE_RAISED;
             if (fan.auto && !presets) {
                 color = withAlpha(lit, 90);
@@ -543,7 +545,7 @@ final class WidgetRenderer {
             float badgeHeight = textPaint.getTextSize() * 1.7f;
             float badgeWidth = textPaint.measureText(text) + badgeHeight;
             float cx = start + step * levels / 2f;
-            paint.setColor(lit);
+            paint.setColor(off ? withAlpha(lit, DORMANT_ALPHA) : lit);
             rect.set(cx - badgeWidth / 2f, centerY - badgeHeight / 2f, cx + badgeWidth / 2f,
                     centerY + badgeHeight / 2f);
             canvas.drawRoundRect(rect, badgeHeight / 2f, badgeHeight / 2f, paint);
@@ -552,17 +554,24 @@ final class WidgetRenderer {
         }
     }
 
-    /** A button of the fan bar: an icon with its name when there is room, or the name. */
+    /**
+     * A button of the fan bar: an icon with its name when there is room, or the name. A resting
+     * button never lights up; the choice the car keeps is outlined.
+     */
     private static final class BarButton {
         final int icon;
         final String label;
         final boolean on;
+        final boolean kept;
+        final boolean dormant;
         final boolean known;
 
-        BarButton(int icon, String label, boolean on, boolean known) {
+        BarButton(int icon, String label, boolean active, boolean known, boolean dormant) {
             this.icon = icon;
             this.label = label;
-            this.on = on;
+            this.on = active && !dormant;
+            this.kept = active && dormant;
+            this.dormant = dormant;
             this.known = known;
         }
     }
@@ -588,11 +597,12 @@ final class WidgetRenderer {
         }
         float textHeight = WidgetGeometry.FAN_ROW_DP * dp * plan.verticalScale;
         ClimateCommands.FanState fan = ClimateCommands.fanState(state);
+        boolean off = ClimateCommands.powerOff(state);
         if (strip.autoCells > 0) {
             List<BarButton> auto = new ArrayList<>();
             auto.add(new BarButton(ClimateFunction.AUTO.icon(config.iconSet, 0),
                     ClimateFunction.AUTO.glyph, fan.auto,
-                    ClimateCommands.autoMode(state) != null));
+                    ClimateCommands.shownAutoMode(state) != null, off));
             drawBarButtons(canvas, new float[]{plan.padding,
                     plan.padding + strip.autoCells * cell}, top, bottom, auto, true, textHeight);
         }
@@ -609,7 +619,7 @@ final class WidgetRenderer {
             for (int index = 0; index < count; index++) {
                 presets.add(new BarButton(0,
                         context.getString(labels[Math.min(index, labels.length - 1)]),
-                        index == active, known));
+                        index == active, known, off));
             }
             drawBarButtons(canvas, partEdges(strip, count, cell), 0f, strip.contentHeight,
                     presets, false, strip.contentHeight);
@@ -620,7 +630,8 @@ final class WidgetRenderer {
             ClimateCommands.TileState tileState = ClimateCommands.tileState(direction, state,
                     model);
             directions.add(new BarButton(direction.icon(config.iconSet, 0),
-                    context.getString(direction.shortRes), tileState.active, tileState.known));
+                    context.getString(direction.shortRes), tileState.active, tileState.known,
+                    tileState.dormant));
         }
         drawBarButtons(canvas, partEdges(strip, directions.size(), cell), 0f,
                 strip.contentHeight, directions, false, strip.contentHeight);
@@ -713,17 +724,24 @@ final class WidgetRenderer {
             } else {
                 paint.setColor(Ui.SURFACE_RAISED);
             }
+            rect.set(start + inset, top + inset, end - inset, bottom - inset);
+            float r = console ? innerRadius : radius;
             if (button.on || !console) {
-                rect.set(start + inset, top + inset, end - inset, bottom - inset);
-                float r = console ? innerRadius : radius;
                 canvas.drawRoundRect(rect, r, r, paint);
-            } else if (index > 0 && !previousOn) {
+            }
+            if (button.kept) {
+                drawKeptOutline(canvas, rect, r, ClimateFunction.Tone.NEUTRAL);
+                content = withAlpha(Ui.TEXT, DORMANT_KEPT_ALPHA);
+            } else if (button.dormant) {
+                content = withAlpha(Ui.TEXT, DORMANT_ALPHA);
+            }
+            if (console && !button.on && !button.kept && index > 0 && !previousOn) {
                 paint.setColor(withAlpha(Ui.TEXT, 22));
                 float thickness = Math.max(1f, dp);
                 canvas.drawRect(start - thickness / 2f, top + height * 0.28f,
                         start + thickness / 2f, bottom - height * 0.28f, paint);
             }
-            previousOn = button.on;
+            previousOn = button.on || button.kept;
             if (!button.known) {
                 content = withAlpha(content, Math.round(255 * UNKNOWN_ALPHA));
             }
@@ -756,7 +774,7 @@ final class WidgetRenderer {
         int[] labels = presetLabels();
         int activePreset = ClimateCommands.fanPreset(state, config.fanPresetCount);
         boolean presetsKnown = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL) != null;
-        boolean presetsDormant = ClimateCommands.presetsDormant(state);
+        boolean presetsDormant = ClimateCommands.presetsResting(state);
         boolean withLabels = directions == 0;
 
         float height = strip.contentHeight;
@@ -869,7 +887,7 @@ final class WidgetRenderer {
         int[] labels = presetLabels();
         int activePreset = ClimateCommands.fanPreset(state, config.fanPresetCount);
         boolean presetsKnown = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL) != null;
-        boolean presetsDormant = ClimateCommands.presetsDormant(state);
+        boolean presetsDormant = ClimateCommands.presetsResting(state);
         float height = strip.contentHeight;
         float inner = plan.width - 2f * plan.padding;
         float cell = inner / strip.zoneCount;

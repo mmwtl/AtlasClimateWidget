@@ -53,4 +53,40 @@ public final class ClimateStoreTest {
         store.putProperty(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL, Hvac.FAN_SPEED_LEVEL_1 + 2, 0L);
         assertEquals(3, ClimateCommands.fanState(store.snapshot(0L)).level);
     }
+
+    @Test public void keepsTheAutoModeTheClimateWasSwitchedOffIn() {
+        ClimateStore store = new ClimateStore();
+        store.putProperty(Hvac.POWER, Gib.AREA_GLOBAL, 1, 0L);
+        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 1, 0L);
+        assertNull(store.snapshot(0L).autoBeforePowerOff());
+        // Switching off reports AUTO off, just before or after the power value.
+        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 0, 10_000L);
+        store.putProperty(Hvac.POWER, Gib.AREA_GLOBAL, 0, 10_300L);
+        assertEquals(1d, store.snapshot(10_300L).autoBeforePowerOff(), 0d);
+        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 0, 40_000L);
+        assertEquals(1d, store.snapshot(40_000L).autoBeforePowerOff(), 0d);
+        store.putProperty(Hvac.POWER, Gib.AREA_GLOBAL, 1, 50_000L);
+        assertNull(store.snapshot(50_000L).autoBeforePowerOff());
+
+        // AUTO reported off after the power value, here from the widget's own command.
+        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 1, 60_000L);
+        store.setPending(Hvac.POWER, Gib.AREA_GLOBAL, 0, 70_000L);
+        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 0, 70_500L);
+        store.putProperty(Hvac.POWER, Gib.AREA_GLOBAL, 0, 70_800L);
+        assertEquals(1d, store.snapshot(70_800L).autoBeforePowerOff(), 0d);
+    }
+
+    @Test public void manualModeIsKeptAndAnOffStartKeepsNothing() {
+        ClimateStore store = new ClimateStore();
+        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 0, 0L);
+        store.putProperty(Hvac.POWER, Gib.AREA_GLOBAL, 1, 0L);
+        store.putProperty(Hvac.POWER, Gib.AREA_GLOBAL, 0, 10_000L);
+        assertEquals(0d, store.snapshot(10_000L).autoBeforePowerOff(), 0d);
+
+        // The climate was already off when the widget started: the mode is not known.
+        ClimateStore late = new ClimateStore();
+        late.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 0, 0L);
+        late.putProperty(Hvac.POWER, Gib.AREA_GLOBAL, 0, 0L);
+        assertNull(late.snapshot(0L).autoBeforePowerOff());
+    }
 }

@@ -86,6 +86,24 @@ final class ClimateCommands {
         return raw == null ? null : (int) Math.round(raw) == ClimateFunction.AUTO.onValue;
     }
 
+    /** Whether the climate is known to be off. */
+    static boolean powerOff(ClimateState state) {
+        Double raw = state.property(Hvac.POWER, ClimateFunction.POWER.area);
+        return raw != null && (int) Math.round(raw) == ClimateFunction.POWER.offValue;
+    }
+
+    /**
+     * The mode the fan block shows: the car's, or while the climate is off the one it was
+     * switched off in, as the car then reports AUTO off but returns to the kept mode.
+     */
+    static Boolean shownAutoMode(ClimateState state) {
+        Double kept = powerOff(state) ? state.autoBeforePowerOff() : null;
+        if (kept == null) {
+            return autoMode(state);
+        }
+        return (int) Math.round(kept) == ClimateFunction.AUTO.onValue;
+    }
+
     /** Blowing directions only apply in manual mode. */
     static boolean directionsDormant(ClimateState state) {
         return Boolean.TRUE.equals(autoMode(state));
@@ -94,6 +112,16 @@ final class ClimateCommands {
     /** Auto-fan presets only apply in AUTO. */
     static boolean presetsDormant(ClimateState state) {
         return Boolean.FALSE.equals(autoMode(state));
+    }
+
+    /** Directions rest where the car ignores them, and while the climate is off. */
+    static boolean directionsResting(ClimateState state) {
+        return directionsDormant(state) || powerOff(state);
+    }
+
+    /** Presets rest where the car ignores them, and while the climate is off. */
+    static boolean presetsResting(ClimateState state) {
+        return presetsDormant(state) || powerOff(state);
     }
 
     static TileState tileState(ClimateFunction function, ClimateState state, CarModel model) {
@@ -125,12 +153,12 @@ final class ClimateCommands {
             }
             case BLOW: {
                 boolean on = (blowBits(value) & function.blowBit) != 0;
-                return new TileState(true, on, on ? 1 : 0, directionsDormant(state));
+                return new TileState(true, on, on ? 1 : 0, directionsResting(state));
             }
             case SELECT: {
                 boolean on = value == function.onValue;
                 boolean dormant = function.propertyId(model) == Hvac.AUTO_FAN_SETTING
-                        && presetsDormant(state);
+                        && presetsResting(state);
                 return new TileState(true, on, function.rank, dormant);
             }
             default:
@@ -310,7 +338,7 @@ final class ClimateCommands {
     static FanState fanState(ClimateState state) {
         Double speed = state.property(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL);
         Double autoFan = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL);
-        Boolean mode = autoMode(state);
+        Boolean mode = shownAutoMode(state);
         boolean auto = mode != null ? mode
                 : autoFan != null && isAutoFan((int) Math.round(autoFan));
         if (speed == null) {
@@ -419,8 +447,9 @@ final class ClimateCommands {
             case POSITION:
                 return roofPress(function, state, id, raw);
             case BLOW: {
-                // In AUTO the kept directions are not in use, so a tap picks only this one.
-                int bits = raw == null || directionsDormant(state) ? 0 : blowBits(current);
+                // In AUTO or with the climate off the kept directions are not in use, so a tap
+                // picks only this one.
+                int bits = raw == null || directionsResting(state) ? 0 : blowBits(current);
                 int nextBits = bits ^ function.blowBit;
                 if (nextBits == 0) {
                     return Collections.emptyList();
@@ -620,7 +649,8 @@ final class ClimateCommands {
             if (next == index) {
                 return Collections.emptyList();
             }
-            return single(Command.setInt(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL,
+            // With the climate off the bar shows the kept AUTO, which the car reports off.
+            return withAuto(state, Command.setInt(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL,
                     cycle[next]));
         }
         int next = Math.max(1, Math.min(Hvac.FAN_SPEED_LEVEL_COUNT, fan.level + direction));

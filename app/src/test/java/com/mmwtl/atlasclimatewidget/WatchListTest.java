@@ -17,6 +17,8 @@ public final class WatchListTest {
 
         assertTrue(watch.properties.contains(
                 new WatchList.Key(Hvac.AUTO, Hvac.ZONE_DRIVER, false)));
+        assertTrue(watch.properties.contains(
+                new WatchList.Key(Hvac.POWER, Gib.AREA_GLOBAL, false)));
 
         for (ClimateFunction function : ClimateFunction.values()) {
             if (function.kind == ClimateFunction.Kind.BLOW) {

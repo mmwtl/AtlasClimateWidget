@@ -314,6 +314,11 @@ public final class ScrubActivity extends Activity {
         }
 
         @Override
+        public Double autoBeforePowerOff() {
+            return base.autoBeforePowerOff();
+        }
+
+        @Override
         public boolean isConnected() {
             return base.isConnected();
         }
