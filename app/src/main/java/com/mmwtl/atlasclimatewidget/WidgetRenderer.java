@@ -605,7 +605,8 @@ final class WidgetRenderer {
                     ClimateFunction.AUTO.glyph, fan.auto && showKept,
                     ClimateCommands.shownAutoMode(state) != null, off));
             drawBarButtons(canvas, new float[]{plan.padding,
-                    plan.padding + strip.autoCells * cell}, top, bottom, auto, true, textHeight);
+                    plan.padding + strip.autoCells * cell}, top, bottom, auto, true, textHeight,
+                    false);
         }
         if (strip.row.kind == WidgetGeometry.RowKind.FAN) {
             drawFan(canvas, strip);
@@ -623,7 +624,7 @@ final class WidgetRenderer {
                         index == active && showKept, known, off));
             }
             drawBarButtons(canvas, partEdges(strip, count, cell), 0f, strip.contentHeight,
-                    presets, false, strip.contentHeight);
+                    presets, false, strip.contentHeight, false);
             return;
         }
         List<BarButton> directions = new ArrayList<>();
@@ -635,7 +636,8 @@ final class WidgetRenderer {
                     tileState.known, tileState.dormant));
         }
         drawBarButtons(canvas, partEdges(strip, directions.size(), cell), 0f,
-                strip.contentHeight, directions, false, strip.contentHeight);
+                strip.contentHeight, directions, false, strip.contentHeight,
+                config.fanDirectionIcons);
     }
 
     /**
@@ -664,9 +666,10 @@ final class WidgetRenderer {
      *
      * @param glyph whether the labels are bold tile glyphs such as AUTO rather than names
      * @param textHeight row height the labels are sized for
+     * @param bare whether the buttons are bare icons without pills, see {@link #bareContent}
      */
     private void drawBarButtons(Canvas canvas, float[] edges, float top, float bottom,
-            List<BarButton> buttons, boolean glyph, float textHeight) {
+            List<BarButton> buttons, boolean glyph, float textHeight, boolean bare) {
         boolean console = config.style == WidgetConfig.Style.CONSOLE;
         float half = barGap() / 2f;
         float left = edges[0];
@@ -685,7 +688,7 @@ final class WidgetRenderer {
         float innerRadius = Math.max(0f, radius - inset);
         paint.setShader(null);
         paint.setStyle(Paint.Style.FILL);
-        if (console) {
+        if (console && !bare) {
             paint.setColor(Ui.SURFACE_RAISED);
             rect.set(groupLeft, top, groupRight, bottom);
             canvas.drawRoundRect(rect, radius, radius, paint);
@@ -723,6 +726,12 @@ final class WidgetRenderer {
             float start = index == 0 ? groupLeft : edges[index] + (console ? 0f : half);
             float end = index == buttons.size() - 1 ? groupRight
                     : edges[index + 1] - (console ? 0f : half);
+            float cx = (start + end) / 2f;
+            if (bare) {
+                drawBarContent(canvas, button, bareContent(button.on, button.kept,
+                        button.dormant, button.known), cx, cy, icon, iconGap, named, glyph);
+                continue;
+            }
             int content = Ui.TEXT;
             if (button.on) {
                 paint.setColor(config.filledActive
@@ -754,19 +763,38 @@ final class WidgetRenderer {
             if (!button.known) {
                 content = withAlpha(content, Math.round(255 * UNKNOWN_ALPHA));
             }
-            float cx = (start + end) / 2f;
-            textPaint.setColor(content);
-            if (button.icon == 0) {
-                drawCenteredLine(canvas, button.label, cx, cy);
-            } else if (!named || glyph) {
-                drawIcon(canvas, button.icon, cx, cy, icon, content);
-            } else {
-                float width = textPaint.measureText(button.label);
-                float x = cx - (icon + iconGap + width) / 2f;
-                drawIcon(canvas, button.icon, x + icon / 2f, cy, icon, content);
-                drawCenteredLine(canvas, button.label, x + icon + iconGap + width / 2f, cy);
-            }
+            drawBarContent(canvas, button, content, cx, cy, icon, iconGap, named, glyph);
         }
+    }
+
+    private void drawBarContent(Canvas canvas, BarButton button, int content, float cx,
+            float cy, float icon, float iconGap, boolean named, boolean glyph) {
+        textPaint.setColor(content);
+        if (button.icon == 0) {
+            drawCenteredLine(canvas, button.label, cx, cy);
+        } else if (!named || glyph) {
+            drawIcon(canvas, button.icon, cx, cy, icon, content);
+        } else {
+            float width = textPaint.measureText(button.label);
+            float x = cx - (icon + iconGap + width) / 2f;
+            drawIcon(canvas, button.icon, x + icon / 2f, cy, icon, content);
+            drawCenteredLine(canvas, button.label, x + icon + iconGap + width / 2f, cy);
+        }
+    }
+
+    /**
+     * Colour of a bare direction icon, lit like an {@link WidgetConfig.TileStyle#ICON} tile:
+     * the accent when on, a faded accent for the kept choice of a resting row.
+     */
+    private int bareContent(boolean on, boolean kept, boolean dormant, boolean known) {
+        int lit = config.palette.tile(ClimateFunction.Tone.NEUTRAL);
+        int content = on ? lit : Ui.TEXT;
+        if (kept) {
+            content = withAlpha(lit, DORMANT_KEPT_ALPHA);
+        } else if (dormant) {
+            content = withAlpha(Ui.TEXT, DORMANT_ALPHA);
+        }
+        return known ? content : withAlpha(content, Math.round(255 * UNKNOWN_ALPHA));
     }
 
     /**
@@ -815,6 +843,13 @@ final class WidgetRenderer {
             float left = plan.padding + index * cell + (index == 0 ? 0f : gap / 2f);
             float right = plan.padding + (index + 1) * cell
                     - (index == strip.zoneCount - 1 ? 0f : gap / 2f);
+            if (direction && config.fanDirectionIcons) {
+                drawIcon(canvas, WidgetConfig.FAN_DIRECTIONS[index].icon(config.iconSet, 0),
+                        (left + right) / 2f, top + pillHeight / 2f,
+                        Math.min(right - left, pillHeight) * 0.92f,
+                        bareContent(on, kept, dormant, known));
+                continue;
+            }
             int background;
             int content;
             if (on && config.filledActive) {
@@ -902,11 +937,14 @@ final class WidgetRenderer {
         float cell = inner / strip.zoneCount;
         float radius = Math.min(height / 2f,
                 height * config.tileRadiusPercent / 100f * 1.4f);
+        boolean bare = directions && config.fanDirectionIcons;
         paint.setShader(null);
         paint.setStyle(Paint.Style.FILL);
-        paint.setColor(Ui.SURFACE_RAISED);
-        rect.set(plan.padding, 0f, plan.width - plan.padding, height);
-        canvas.drawRoundRect(rect, radius, radius, paint);
+        if (!bare) {
+            paint.setColor(Ui.SURFACE_RAISED);
+            rect.set(plan.padding, 0f, plan.width - plan.padding, height);
+            canvas.drawRoundRect(rect, radius, radius, paint);
+        }
 
         float inset = Math.max(2f, 3f * dp);
         // One text size for the whole row, and direction names on all segments or on none.
@@ -953,7 +991,9 @@ final class WidgetRenderer {
             float left = plan.padding + index * cell;
             float right = left + cell;
             int content = Ui.TEXT;
-            if (kept) {
+            if (bare) {
+                content = bareContent(on, kept, dormant, true);
+            } else if (kept) {
                 content = withAlpha(Ui.TEXT, DORMANT_KEPT_ALPHA);
                 float innerRadius = Math.max(0f, radius - inset);
                 rect.set(left + inset, inset, right - inset, height - inset);
@@ -961,7 +1001,7 @@ final class WidgetRenderer {
             } else if (dormant) {
                 content = withAlpha(Ui.TEXT, DORMANT_ALPHA);
             }
-            if (on) {
+            if (on && !bare) {
                 paint.setColor(config.filledActive
                         ? config.palette.tile(ClimateFunction.Tone.NEUTRAL)
                         : config.palette.softTile(ClimateFunction.Tone.NEUTRAL));
@@ -970,7 +1010,7 @@ final class WidgetRenderer {
                 float innerRadius = Math.max(0f, radius - inset);
                 rect.set(left + inset, inset, right - inset, height - inset);
                 canvas.drawRoundRect(rect, innerRadius, innerRadius, paint);
-            } else if (index > 0 && !previousOn && !kept) {
+            } else if (index > 0 && !previousOn && !kept && !bare) {
                 paint.setColor(withAlpha(Ui.TEXT, 22));
                 float thickness = Math.max(1f, dp);
                 canvas.drawRect(left - thickness / 2f, height * 0.28f, left + thickness / 2f,

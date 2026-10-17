@@ -937,6 +937,7 @@ public final class MainActivity extends ScaledActivity {
                                 value -> config.fanAuto = value));
                         options.addView(configSwitch(R.string.fan_part_directions,
                                 config.fanDirections, value -> config.fanDirections = value));
+                        options.addView(directionIconsSwitch());
                         options.addView(configSwitch(R.string.fan_buttons, config.fanButtons,
                                 value -> config.fanButtons = value));
                         options.addView(hint(R.string.fan_bar_hint));
@@ -951,6 +952,7 @@ public final class MainActivity extends ScaledActivity {
                     options.addView(partSwitch(R.string.fan_part_directions,
                             config.fanDirections, value -> config.fanDirections = value,
                             config::hasFanParts));
+                    options.addView(directionIconsSwitch());
                     options.addView(partSwitch(R.string.fan_part_presets, config.fanPresets,
                             value -> config.fanPresets = value, config::hasFanParts));
                     options.addView(hint(R.string.fan_hint));
@@ -965,6 +967,11 @@ public final class MainActivity extends ScaledActivity {
             options.setAlpha(enabled ? 1f : 0.45f);
             blocksHost.addView(options);
         }
+    }
+
+    private View directionIconsSwitch() {
+        return configSwitch(R.string.fan_direction_icons, config.fanDirectionIcons,
+                value -> config.fanDirectionIcons = value);
     }
 
     private LinearLayout fanLayouts() {

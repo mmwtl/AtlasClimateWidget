@@ -205,6 +205,8 @@ final class WidgetConfig {
     boolean fanBar = true;
     boolean fanDirections = true;
     boolean fanPresets = true;
+    /** Blowing directions as bare icons, lit like {@link TileStyle#ICON} tiles, not buttons. */
+    boolean fanDirectionIcons;
     /** Layouts saved before the bar existed keep their rows, see {@link #fromJson}. */
     FanLayout fanLayout = FanLayout.BAR;
     /** The bar layout's AUTO button, fixed at the bar's start in both modes. */
@@ -484,6 +486,7 @@ final class WidgetConfig {
             json.put("fanBar", fanBar);
             json.put("fanDirections", fanDirections);
             json.put("fanPresets", fanPresets);
+            json.put("fanDirectionIcons", fanDirectionIcons);
             json.put("fanLayout", fanLayout.name());
             json.put("fanAuto", fanAuto);
             json.put("heightMode", heightMode.name());
@@ -591,6 +594,8 @@ final class WidgetConfig {
             config.fanPresets = presets;
             config.fanDirections = false;
         }
+        config.fanDirectionIcons = json.optBoolean("fanDirectionIcons",
+                config.fanDirectionIcons);
         // Layouts saved before the bar layout keep their rows.
         config.fanLayout = enumValue(FanLayout.class, json.optString("fanLayout"),
                 FanLayout.ROWS);

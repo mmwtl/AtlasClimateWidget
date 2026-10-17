@@ -110,6 +110,7 @@
     <string name="fan_part_presets">Пресеты авто-обдува</string>
     <string name="setup_fan_parts">Блок обдува</string>
     <string name="setup_fan_bar">Полоса</string>
+    <string name="fan_direction_icons">Направления без плиток</string>
     <string name="setup_fan_directions">Направление</string>
     <string name="fan_presets_title">Пресеты авто-обдува</string>
     <string name="fan_presets_auto">По модели: Atlas — 3, Cityray — 5</string>
