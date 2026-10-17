@@ -606,7 +606,7 @@ final class WidgetRenderer {
                     ClimateCommands.shownAutoMode(state) != null, off));
             drawBarButtons(canvas, new float[]{plan.padding,
                     plan.padding + strip.autoCells * cell}, top, bottom, auto, true, textHeight,
-                    false);
+                    config.bareButtons());
         }
         if (strip.row.kind == WidgetGeometry.RowKind.FAN) {
             drawFan(canvas, strip);
@@ -624,7 +624,7 @@ final class WidgetRenderer {
                         index == active && showKept, known, off));
             }
             drawBarButtons(canvas, partEdges(strip, count, cell), 0f, strip.contentHeight,
-                    presets, false, strip.contentHeight, false);
+                    presets, false, strip.contentHeight, config.bareButtons());
             return;
         }
         List<BarButton> directions = new ArrayList<>();
@@ -637,7 +637,7 @@ final class WidgetRenderer {
         }
         drawBarButtons(canvas, partEdges(strip, directions.size(), cell), 0f,
                 strip.contentHeight, directions, false, strip.contentHeight,
-                config.fanDirectionIcons);
+                config.bareButtons());
     }
 
     /**
@@ -666,7 +666,8 @@ final class WidgetRenderer {
      *
      * @param glyph whether the labels are bold tile glyphs such as AUTO rather than names
      * @param textHeight row height the labels are sized for
-     * @param bare whether the buttons are bare icons without pills, see {@link #bareContent}
+     * @param bare whether the buttons are bare icons or names without pills, see
+     *         {@link #bareContent}
      */
     private void drawBarButtons(Canvas canvas, float[] edges, float top, float bottom,
             List<BarButton> buttons, boolean glyph, float textHeight, boolean bare) {
@@ -728,9 +729,10 @@ final class WidgetRenderer {
                     : edges[index + 1] - (console ? 0f : half);
             float cx = (start + end) / 2f;
             if (bare) {
+                // A glyph such as AUTO spans the whole block, so it keeps the pill's size.
                 drawBarContent(canvas, button, bareContent(button.on, button.kept,
-                        button.dormant, button.known), cx, cy, bareIcon(end - start, height),
-                        iconGap, false, glyph);
+                        button.dormant, button.known), cx, cy,
+                        glyph ? icon : bareIcon(end - start, height), iconGap, false, glyph);
                 continue;
             }
             int content = Ui.TEXT;
@@ -783,13 +785,13 @@ final class WidgetRenderer {
         }
     }
 
-    /** Size of a bare direction icon, the same in every fan layout and style. */
+    /** Size of a bare fan icon, the same in every fan layout and style. */
     private static float bareIcon(float width, float height) {
         return Math.min(width * 0.8f, height * 0.72f);
     }
 
     /**
-     * Colour of a bare direction icon, lit like an {@link WidgetConfig.TileStyle#ICON} tile:
+     * Colour of a bare fan button, lit like an {@link WidgetConfig.TileStyle#ICON} tile:
      * the accent when on, a faded accent for the kept choice of a resting row.
      */
     private int bareContent(boolean on, boolean kept, boolean dormant, boolean known) {
@@ -819,6 +821,7 @@ final class WidgetRenderer {
         boolean presetsKnown = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL) != null;
         boolean presetsDormant = ClimateCommands.presetsResting(state);
         boolean withLabels = directions == 0;
+        boolean bare = config.bareButtons();
 
         float height = strip.contentHeight;
         float inner = plan.width - 2f * plan.padding;
@@ -849,7 +852,7 @@ final class WidgetRenderer {
             float left = plan.padding + index * cell + (index == 0 ? 0f : gap / 2f);
             float right = plan.padding + (index + 1) * cell
                     - (index == strip.zoneCount - 1 ? 0f : gap / 2f);
-            if (direction && config.fanDirectionIcons) {
+            if (bare && direction) {
                 drawIcon(canvas, WidgetConfig.FAN_DIRECTIONS[index].icon(config.iconSet, 0),
                         (left + right) / 2f, height / 2f, bareIcon(right - left, height),
                         bareContent(on, kept, dormant, known));
@@ -873,12 +876,16 @@ final class WidgetRenderer {
             if (!known) {
                 content = withAlpha(content, Math.round(255 * UNKNOWN_ALPHA));
             }
-            paint.setShader(null);
-            paint.setColor(background);
             rect.set(left, top, right, top + pillHeight);
-            canvas.drawRoundRect(rect, radius, radius, paint);
-            if (kept) {
-                drawKeptOutline(canvas, rect, radius, ClimateFunction.Tone.NEUTRAL);
+            if (bare) {
+                content = bareContent(on, kept, dormant, known);
+            } else {
+                paint.setShader(null);
+                paint.setColor(background);
+                canvas.drawRoundRect(rect, radius, radius, paint);
+                if (kept) {
+                    drawKeptOutline(canvas, rect, radius, ClimateFunction.Tone.NEUTRAL);
+                }
             }
             float cx = (left + right) / 2f;
             float cy = top + pillHeight / 2f;
@@ -942,7 +949,7 @@ final class WidgetRenderer {
         float cell = inner / strip.zoneCount;
         float radius = Math.min(height / 2f,
                 height * config.tileRadiusPercent / 100f * 1.4f);
-        boolean bare = directions && config.fanDirectionIcons;
+        boolean bare = config.bareButtons();
         paint.setShader(null);
         paint.setStyle(Paint.Style.FILL);
         if (!bare) {
@@ -1054,9 +1061,11 @@ final class WidgetRenderer {
     }
 
     private void drawFanButton(Canvas canvas, float cx, float cy, float size, float iconRatio) {
-        paint.setShader(null);
-        paint.setColor(Ui.SURFACE_RAISED);
-        canvas.drawCircle(cx, cy, size * 0.4f, paint);
+        if (!config.bareButtons()) {
+            paint.setShader(null);
+            paint.setColor(Ui.SURFACE_RAISED);
+            canvas.drawCircle(cx, cy, size * 0.4f, paint);
+        }
         drawIcon(canvas, fanIcon(), cx, cy, size * iconRatio, Ui.TEXT);
     }
 

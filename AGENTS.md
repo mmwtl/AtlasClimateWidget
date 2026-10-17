@@ -75,8 +75,9 @@ line, read as in AtlasAppWidget (`Fuel`).
   directions and names the row evenly or finely (`Strip.partStart`); a level
   may span several cells, so the scrubber gets the tapped cell in its URI. `FanLayout.ROWS` is
   the FX11-style stack (speed bar, directions, presets); layouts saved before the bar keep it.
-  `fanDirectionIcons` (per widget, off by default) draws the blowing directions as bare icons
-  without names in every layout and style, lit like `TileStyle.ICON` tiles; other fan buttons keep pills.
+  `TileStyle.ICON` (per widget, the Look tab's «Вид плиток и кнопок», `WidgetConfig.bareButtons`)
+  is one look for tiles and the fan block: directions, presets, AUTO and the fan −/+ lose their
+  pills in every layout and style and light up like icon tiles; the speed levels stay.
 - Cards: `CardLayout.SEPARATE` gives every block its own card; `SINGLE` puts all rows in one card,
   blocks a card padding apart without dividers. Fill shares extra height per block in both
   modes.

@@ -110,7 +110,6 @@
     <string name="fan_part_presets">Пресеты авто-обдува</string>
     <string name="setup_fan_parts">Блок обдува</string>
     <string name="setup_fan_bar">Полоса</string>
-    <string name="fan_direction_icons">Направления без плиток</string>
     <string name="setup_fan_directions">Направление</string>
     <string name="fan_presets_title">Пресеты авто-обдува</string>
     <string name="fan_presets_auto">По модели: Atlas — 3, Cityray — 5</string>
@@ -122,10 +121,11 @@
     <string name="fan_preset_max">Макс</string>
     <string name="fan_hint">Как в FX11: полоса задаёт скорость вручную (после нажатия её можно тянуть пальцем), ниже — кнопки направления и пресеты. Направления сочетаются: например, лицо + ноги. В режиме AUTO кнопки − и + меняют профиль авто-обдува. Количество пресетов — во вкладке «Система».</string>
     <string name="tiles_title">Сетка плиток</string>
-    <string name="tiles_block_hint">Столбцы, вид и набор плиток — во вкладке «Плитки».</string>
+    <string name="tiles_block_hint">Столбцы и набор плиток — во вкладке «Плитки», их вид — во вкладке «Вид».</string>
     <string name="tiles_disabled_hint">Блок плиток выключен во вкладке «Блоки».</string>
     <string name="tile_columns">Столбцы плиток</string>
-    <string name="tile_style_title">Вид плиток</string>
+    <string name="tile_style_title">Вид плиток и кнопок</string>
+    <string name="tile_style_hint">«Только иконка» убирает подложки и в блоке обдува: у направлений, пресетов, AUTO и кнопок − и +. Включённое светится цветом акцента, как плитки-иконки.</string>
     <string name="tile_style_tile">Плитка</string>
     <string name="tile_style_tile_label">Плитка с подписью</string>
     <string name="tile_style_icon">Только иконка</string>

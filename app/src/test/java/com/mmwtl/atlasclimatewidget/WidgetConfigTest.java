@@ -32,7 +32,6 @@ public final class WidgetConfigTest {
         config.iconSet = WidgetConfig.IconSet.OEM;
         config.fanLayout = WidgetConfig.FanLayout.ROWS;
         config.fanAuto = false;
-        config.fanDirectionIcons = true;
         WidgetConfig copy = WidgetConfig.fromJson(config.toJson());
         assertEquals(WidgetConfig.Block.TILES, copy.blockOrder.get(0));
         assertFalse(copy.fanEnabled);
@@ -49,7 +48,8 @@ public final class WidgetConfigTest {
         assertTrue(copy.fanPresets);
         assertEquals(WidgetConfig.FanLayout.ROWS, copy.fanLayout);
         assertFalse(copy.fanAuto);
-        assertTrue(copy.fanDirectionIcons);
+        assertTrue("icon-only tiles bare the fan buttons too", copy.bareButtons());
+        assertFalse(WidgetConfig.fromJson(null).bareButtons());
         assertEquals("new widgets get the bar", WidgetConfig.FanLayout.BAR,
                 WidgetConfig.fromJson(null).fanLayout);
         assertEquals("saved layouts keep their rows", WidgetConfig.FanLayout.ROWS,

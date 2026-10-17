@@ -937,11 +937,7 @@ public final class MainActivity extends ScaledActivity {
                         options.addView(configSwitch(R.string.fan_auto_button, config.fanAuto,
                                 value -> config.fanAuto = value));
                         options.addView(configSwitch(R.string.fan_part_directions,
-                                config.fanDirections, value -> {
-                                    config.fanDirections = value;
-                                    options.post(this::rebuildBlocks);
-                                }));
-                        addDirectionIconsSwitch(options);
+                                config.fanDirections, value -> config.fanDirections = value));
                         options.addView(configSwitch(R.string.fan_buttons, config.fanButtons,
                                 value -> config.fanButtons = value));
                         options.addView(hint(R.string.fan_bar_hint));
@@ -956,7 +952,6 @@ public final class MainActivity extends ScaledActivity {
                     options.addView(partSwitch(R.string.fan_part_directions,
                             config.fanDirections, value -> config.fanDirections = value,
                             config::hasFanParts));
-                    addDirectionIconsSwitch(options);
                     options.addView(partSwitch(R.string.fan_part_presets, config.fanPresets,
                             value -> config.fanPresets = value, config::hasFanParts));
                     options.addView(hint(R.string.fan_hint));
@@ -970,14 +965,6 @@ public final class MainActivity extends ScaledActivity {
             setGroupEnabled(options, enabled);
             options.setAlpha(enabled ? 1f : 0.45f);
             blocksHost.addView(options);
-        }
-    }
-
-    /** The bare icons switch, shown only while the fan block has its blowing directions. */
-    private void addDirectionIconsSwitch(LinearLayout options) {
-        if (config.fanDirections) {
-            options.addView(configSwitch(R.string.fan_direction_icons, config.fanDirectionIcons,
-                    value -> config.fanDirectionIcons = value));
         }
     }
 
@@ -1039,20 +1026,6 @@ public final class MainActivity extends ScaledActivity {
                     config.columns = value;
                     changed();
                 }, null);
-        options.addView(label(R.string.tile_style_title));
-        RadioGroup styles = radioGroup();
-        for (WidgetConfig.TileStyle style : WidgetConfig.TileStyle.values()) {
-            RadioButton button = radio(style.titleRes);
-            button.setChecked(config.tileStyle == style);
-            button.setOnCheckedChangeListener((view, checked) -> {
-                if (checked) {
-                    config.tileStyle = style;
-                    changed();
-                }
-            });
-            styles.addView(button);
-        }
-        options.addView(styles);
         setGroupEnabled(options, config.tilesEnabled);
         options.setAlpha(config.tilesEnabled ? 1f : 0.45f);
         tilesHost.addView(options);
@@ -1162,6 +1135,22 @@ public final class MainActivity extends ScaledActivity {
         }
         appearanceHost.addView(iconSets);
         appearanceHost.addView(hint(R.string.icons_hint));
+        // One look for tiles and fan buttons, so it lives here rather than on the Tiles tab.
+        appearanceHost.addView(label(R.string.tile_style_title));
+        RadioGroup styles = radioGroup();
+        for (WidgetConfig.TileStyle style : WidgetConfig.TileStyle.values()) {
+            RadioButton button = radio(style.titleRes);
+            button.setChecked(config.tileStyle == style);
+            button.setOnCheckedChangeListener((view, checked) -> {
+                if (checked) {
+                    config.tileStyle = style;
+                    changed();
+                }
+            });
+            styles.addView(button);
+        }
+        appearanceHost.addView(styles);
+        appearanceHost.addView(hint(R.string.tile_style_hint));
         addSlider(appearanceHost, getString(R.string.widget_scale),
                 WidgetConfig.SCALE_MIN_PERCENT, WidgetConfig.SCALE_MAX_PERCENT,
                 config.scalePercent, value -> value + "%", value -> {
