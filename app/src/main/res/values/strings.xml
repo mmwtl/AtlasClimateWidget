@@ -192,7 +192,7 @@
     <string name="temp_step_half">0,5 °C</string>
     <string name="temp_step_whole">1 °C</string>
     <string name="levels_from_max">Уровни с максимального</string>
-    <string name="levels_from_max_hint">Нажатие на подогрев или вентиляцию: выкл → 3 → 2 → 1 → выкл. Иначе выкл → 1 → 2 → 3 → выкл. Люк и шторка всегда открываются по шагам, начиная с малого.</string>
+    <string name="levels_from_max_hint">Нажатие на подогрев или вентиляцию: выкл → 3 → 2 → 1 → выкл. Иначе выкл → 1 → 2 → 3 → выкл. Люк, шторка и фары всегда переключаются по шагам, начиная с малого.</string>
     <string name="kept_when_off">Обводить выбор при выключенном климате</string>
     <string name="kept_when_off_hint">Когда климат выключен, направления обдува, пресеты и AUTO не подсвечиваются. С этой настройкой сохранённый машиной выбор обводится рамкой, без неё не выделяется ничего.</string>
 
@@ -300,6 +300,20 @@
     <string name="fn_me_cold_short">Я замёрз</string>
     <string name="fn_climate_menu">Штатное меню климата</string>
     <string name="fn_climate_menu_short">Меню</string>
+    <string name="fn_interior_light">Свет в салоне</string>
+    <string name="fn_interior_light_short">Салон</string>
+    <string name="fn_headlights">Фары</string>
+    <string name="fn_headlights_short">Фары</string>
+    <string name="fn_trunk">Багажник</string>
+    <string name="fn_trunk_short">Багажник</string>
+    <string name="fn_mirrors">Сложить зеркала</string>
+    <string name="fn_mirrors_short">Зеркала</string>
+    <string name="fn_wipers">Сервисное положение дворников</string>
+    <string name="fn_wipers_short">Дворники</string>
+    <string name="fn_traction">Антибукс</string>
+    <string name="fn_traction_short">Антибукс</string>
+    <string name="fn_seat_memory">Память сидений (GInputBridge)</string>
+    <string name="fn_seat_memory_short">Память</string>
     <string name="fn_all_off">Выключить всё</string>
     <string name="fn_all_off_short">Выкл. всё</string>
 </resources>

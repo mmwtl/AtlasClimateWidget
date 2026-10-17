@@ -95,6 +95,28 @@ enum ClimateFunction {
             Spec.action("ME_COLD").icon(R.drawable.ic_fn_me_cold)),
     CLIMATE_MENU(R.string.fn_climate_menu, R.string.fn_climate_menu_short, Tone.NEUTRAL,
             Spec.action("CLIMATE_MENU").icon(R.drawable.ic_fn_climate)),
+    INTERIOR_LIGHT(R.string.fn_interior_light, R.string.fn_interior_light_short, Tone.NEUTRAL,
+            Spec.toggle(Hvac.READING_LIGHT, Hvac.ZONE_PASSENGER, 1, 0)
+                    .writeAreas(Hvac.READING_LIGHT_ZONES).body()
+                    .icon(R.drawable.ic_fn_interior_light)),
+    HEADLIGHTS(R.string.fn_headlights, R.string.fn_headlights_short, Tone.NEUTRAL,
+            Spec.level(Hvac.EXTERIOR_LIGHT, Gib.AREA_GLOBAL, Hvac.EXTERIOR_LIGHT_LEVELS).body()
+                    .icons(R.drawable.ic_fn_light, R.drawable.ic_fn_light_pos,
+                            R.drawable.ic_fn_light_low, R.drawable.ic_fn_light_auto)),
+    TRUNK(R.string.fn_trunk, R.string.fn_trunk_short, Tone.NEUTRAL,
+            Spec.toggle(Hvac.DOOR, Hvac.ZONE_TRUNK, 1, 0).body()
+                    .icon(R.drawable.ic_fn_trunk)),
+    MIRRORS(R.string.fn_mirrors, R.string.fn_mirrors_short, Tone.NEUTRAL,
+            Spec.toggle(Hvac.FOLD_REAR_MIRROR, Gib.AREA_GLOBAL, 1, 0).body()
+                    .icon(R.drawable.ic_fn_mirrors)),
+    WIPERS(R.string.fn_wipers, R.string.fn_wipers_short, Tone.NEUTRAL,
+            Spec.toggle(Hvac.WINDSCREEN_SERVICE_POSITION, Hvac.ZONE_DRIVER, 1, 0).body()
+                    .icon(R.drawable.ic_fn_wipers)),
+    TRACTION(R.string.fn_traction, R.string.fn_traction_short, Tone.NEUTRAL,
+            Spec.toggle(Hvac.ESC_SPORT_MODE, Gib.AREA_GLOBAL, 0, 1).body()
+                    .icon(R.drawable.ic_fn_antibuks)),
+    SEAT_MEMORY(R.string.fn_seat_memory, R.string.fn_seat_memory_short, Tone.NEUTRAL,
+            Spec.action("SEAT_MEMORY").icon(R.drawable.ic_fn_seat_memory)),
     /** Switches off the widget's chosen functions, see {@link WidgetConfig#offTargets}. */
     ALL_OFF(R.string.fn_all_off, R.string.fn_all_off_short, Tone.NEUTRAL,
             Spec.off().glyph("ALL\nOFF"));
@@ -129,6 +151,13 @@ enum ClimateFunction {
     final int blowBit;
     final int rank;
     final String carFunction;
+    /** Areas a toggle writes, for a light switched in every zone; null writes {@link #area}. */
+    final int[] writeAreas;
+    /**
+     * A body function from GInputBridge rather than a climate one: «switch off all» skips it
+     * and its levels always step upwards.
+     */
+    final boolean body;
     final String glyph;
     final int iconRes;
     final int[] levelIcons;
@@ -149,6 +178,8 @@ enum ClimateFunction {
         this.blowBit = spec.blowBit;
         this.rank = spec.rank;
         this.carFunction = spec.carFunction;
+        this.writeAreas = spec.writeAreas;
+        this.body = spec.body;
         this.glyph = spec.glyph;
         this.iconRes = spec.iconRes;
         this.levelIcons = spec.levelIcons;
@@ -181,9 +212,9 @@ enum ClimateFunction {
         return kind != Kind.ACTION && kind != Kind.OFF;
     }
 
-    /** Whether {@link #ALL_OFF} can switch this function off: toggles and levels. */
+    /** Whether {@link #ALL_OFF} can switch this function off: climate toggles and levels. */
     boolean canSwitchOff() {
-        return kind == Kind.TOGGLE || kind == Kind.LEVEL;
+        return !body && (kind == Kind.TOGGLE || kind == Kind.LEVEL);
     }
 
     /** The value that switches this function off, see {@link #canSwitchOff}. */
@@ -262,6 +293,8 @@ enum ClimateFunction {
         int blowBit;
         int rank;
         String carFunction;
+        int[] writeAreas;
+        boolean body;
         String glyph;
         int iconRes;
         int[] levelIcons;
@@ -323,6 +356,16 @@ enum ClimateFunction {
             Spec spec = new Spec();
             spec.kind = Kind.OFF;
             return spec;
+        }
+
+        Spec writeAreas(int... areas) {
+            writeAreas = areas;
+            return this;
+        }
+
+        Spec body() {
+            body = true;
+            return this;
         }
 
         Spec icon(int res) {

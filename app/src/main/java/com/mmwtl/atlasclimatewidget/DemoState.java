@@ -38,6 +38,12 @@ final class DemoState implements ClimateState {
         put(Hvac.TEMP_DUAL, Gib.AREA_GLOBAL, 0);
         put(Hvac.ECO, Gib.AREA_GLOBAL, 0);
         put(Hvac.IONIZER, Gib.AREA_GLOBAL, 0);
+        put(Hvac.READING_LIGHT, Hvac.ZONE_PASSENGER, 0);
+        put(Hvac.EXTERIOR_LIGHT, Gib.AREA_GLOBAL, Hvac.EXTERIOR_LIGHT_LEVELS[3]);
+        put(Hvac.DOOR, Hvac.ZONE_TRUNK, 0);
+        put(Hvac.FOLD_REAR_MIRROR, Gib.AREA_GLOBAL, 0);
+        put(Hvac.WINDSCREEN_SERVICE_POSITION, Hvac.ZONE_DRIVER, 0);
+        put(Hvac.ESC_SPORT_MODE, Gib.AREA_GLOBAL, 0);
     }
 
     private void put(int id, int area, double value) {

@@ -136,6 +136,10 @@ line, read as in AtlasAppWidget (`Fuel`).
   by default), chosen in a collapsed section of the Tiles tab. The targets travel in the
   control URI. It is lit while any target is on and sends the off value only to targets that
   are on or unknown, `ClimateCommands.OFF_SPACING_MS` apart, climate power last.
+- Body tiles from GInputBridge (`ClimateFunction.body`: interior light, headlights, trunk,
+  mirrors, wiper service position, traction control) are never «switch off all» targets and
+  their levels always step upwards. The interior light writes every `Hvac.READING_LIGHT_ZONES`
+  zone and reads the passenger one, as FX11 does; seat memory is the bridge's `SEAT_MEMORY`.
 - The settings preview uses the same `RemoteViews` as the widget, inert; demo values are labelled.
 - Preserve per-widget layouts across upgrades; `WidgetConfig.fromJson` must tolerate unknown and
   missing fields.

@@ -16,6 +16,10 @@ final class Hvac {
     /** {@link #WINDOW_POS} areas for the sunroof glass and its sunshade, after FX11. */
     static final int ZONE_SUNROOF = 4;
     static final int ZONE_SUNSHADE = 65544;
+    /** {@link #DOOR} area of the tailgate, as in GInputBridge and FX11. */
+    static final int ZONE_TRUNK = 536870912;
+    /** Reading light zones FX11 switches together; it reads the state from the passenger's. */
+    static final int[] READING_LIGHT_ZONES = {1, 4, 16, 64};
 
     static final int POWER = 268501248;
     static final int AUTO = 268501504;
@@ -41,6 +45,15 @@ final class Hvac {
     static final int WINDOW_POS = 553845504;
     /** Sunroof airing (tilt), 1 = on; FX11 sets it in {@link #ZONE_SUNROOF} and globally. */
     static final int SUNROOF_TILT = 553845760;
+
+    /** Body functions from GInputBridge's launcher tiles; 1 = open, folded, on. */
+    static final int DOOR = 553779456;
+    static final int FOLD_REAR_MIRROR = 554041600;
+    static final int READING_LIGHT = 553980672;
+    static final int WINDSCREEN_SERVICE_POSITION = 537657600;
+    /** ESC sport mode: 0 keeps traction control («антибукс») on, 1 switches it off. */
+    static final int ESC_SPORT_MODE = 537002752;
+    static final int EXTERIOR_LIGHT = 537136640;
 
     static final int WINDSHIELD_HEAT_ATLAS = 269027328;
     static final int WINDSHIELD_HEAT_PREFACE = 269753088;
@@ -80,6 +93,8 @@ final class Hvac {
     static final int[] SEAT_HEAT_LEVELS = {0, 268763649, 268763650, 268763651};
     static final int[] SEAT_VENT_LEVELS = {0, 268763393, 268763394, 268763395};
     static final int[] STEERING_HEAT_LEVELS = {0, 269025537, 269025538, 269025539};
+    /** Headlights: off, parking lights, low beam, automatic. */
+    static final int[] EXTERIOR_LIGHT_LEVELS = {0, 537136641, 537136642, 537136643};
 
     /**
      * Sunroof stops: closed, airing, 20 %, fully open. Airing is sent as {@link #SUNROOF_TILT};

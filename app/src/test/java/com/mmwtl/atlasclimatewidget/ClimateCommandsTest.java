@@ -31,6 +31,56 @@ public final class ClimateCommandsTest {
         assertEquals(Hvac.CIRCULATION_INNER, (int) command.value);
     }
 
+    @Test public void interiorLightSwitchesEveryZoneFromThePassengers() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.READING_LIGHT, Hvac.ZONE_PASSENGER, 1, 0);
+        ClimateState state = store.snapshot(0);
+        assertTrue(ClimateCommands.tileState(ClimateFunction.INTERIOR_LIGHT, state,
+                CarModel.ATLAS).active);
+        List<ClimateCommands.Command> commands = ClimateCommands.press(
+                ClimateFunction.INTERIOR_LIGHT, state, CarModel.ATLAS, false);
+        assertEquals(Hvac.READING_LIGHT_ZONES.length, commands.size());
+        for (int index = 0; index < commands.size(); index++) {
+            assertEquals(Hvac.READING_LIGHT, commands.get(index).id);
+            assertEquals(Hvac.READING_LIGHT_ZONES[index], commands.get(index).area);
+            assertEquals(0d, commands.get(index).value, 0d);
+        }
+    }
+
+    @Test public void tractionControlIsOnWhileEscSportIsOff() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.ESC_SPORT_MODE, Gib.AREA_GLOBAL, 0, 0);
+        ClimateState state = store.snapshot(0);
+        assertTrue(ClimateCommands.tileState(ClimateFunction.TRACTION, state,
+                CarModel.ATLAS).active);
+        assertEquals(1, (int) ClimateCommands.press(ClimateFunction.TRACTION, state,
+                CarModel.ATLAS, false).get(0).value);
+    }
+
+    @Test public void trunkOpensInItsZone() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.DOOR, Hvac.ZONE_TRUNK, 0, 0);
+        ClimateCommands.Command command = ClimateCommands.press(ClimateFunction.TRUNK,
+                store.snapshot(0), CarModel.ATLAS, false).get(0);
+        assertEquals(Hvac.ZONE_TRUNK, command.area);
+        assertEquals(1, (int) command.value);
+    }
+
+    @Test public void headlightsStepUpwardsEvenFromMax() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.EXTERIOR_LIGHT, Gib.AREA_GLOBAL, 0, 0);
+        assertEquals(Hvac.EXTERIOR_LIGHT_LEVELS[1], (int) ClimateCommands.press(
+                ClimateFunction.HEADLIGHTS, store.snapshot(0), CarModel.ATLAS, true)
+                .get(0).value);
+    }
+
+    @Test public void bodyFunctionsAreNotSwitchedOffWithTheClimate() {
+        assertFalse(ClimateFunction.TRUNK.canSwitchOff());
+        assertFalse(ClimateFunction.HEADLIGHTS.canSwitchOff());
+        assertFalse(ClimateFunction.INTERIOR_LIGHT.canSwitchOff());
+        assertTrue(ClimateFunction.WHEEL_HEAT.canSwitchOff());
+    }
+
     @Test public void cyclesSeatHeatForwardAndFromMax() {
         ClimateStore store = store(0);
         store.putProperty(Hvac.SEAT_HEATING, Hvac.ZONE_DRIVER, Hvac.SEAT_HEAT_LEVELS[3], 0);

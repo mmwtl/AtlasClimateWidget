@@ -433,13 +433,20 @@ final class ClimateCommands {
                 return single(Command.carFunction(function.carFunction));
             case TOGGLE: {
                 boolean on = current == function.onValue;
-                return single(Command.setInt(id, function.area,
-                        on ? function.offValue : function.onValue));
+                int value = on ? function.offValue : function.onValue;
+                if (function.writeAreas == null) {
+                    return single(Command.setInt(id, function.area, value));
+                }
+                List<Command> commands = new ArrayList<>(function.writeAreas.length);
+                for (int area : function.writeAreas) {
+                    commands.add(Command.setInt(id, area, value));
+                }
+                return commands;
             }
             case LEVEL: {
                 int count = function.levels.length;
                 int index = raw == null ? 0 : levelIndex(function, current);
-                int next = levelsFromMax
+                int next = levelsFromMax && !function.body
                         ? (index == 0 ? count - 1 : index - 1)
                         : (index + 1) % count;
                 return single(Command.setInt(id, function.area, function.levels[next]));

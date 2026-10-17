@@ -8,7 +8,7 @@
 | `GET_INT_PROPERTY` / `GET_FLOAT_PROPERTY` | `id`, `area` | запросить значение |
 | `LISTEN_PROPERTY_CHANGES` | `id`, `area` | подписка на изменения `id_area` |
 | `GET_FLOAT_SENSOR`, `LISTEN_SENSOR_CHANGES` | `id` | датчики температуры, Fuel Percentage `4211968`, запас хода на топливе `1054720` |
-| `CAR_FUNCTION` | `function` | `ME_HOT`, `ME_COLD`, `CLIMATE_MENU` |
+| `CAR_FUNCTION` | `function` | `ME_HOT`, `ME_COLD`, `CLIMATE_MENU`, `SEAT_MEMORY` |
 
 Без `area` мост использует `Integer.MIN_VALUE` (глобальная зона).
 
@@ -72,3 +72,11 @@
 | Люк | `WINDOW_POS` 553845504, float 0–100 | 4 | FX11 (`SET_FLOAT_PROPERTY`); на ГУ не проверено |
 | Проветривание люка | `BCM_FUNC_SUNROOF_TILT` 553845760, 1 = вкл | 4 и глобальная | FX11 (напрямую в ECarX); через мост не проверено |
 | Шторка панорамной крыши | `WINDOW_POS` 553845504, float 0–100 | 65544 | FX11; на ГУ не проверено |
+| Свет в салоне | `BCM_FUNC_LIGHT_READING_LIGHT` 553980672, 1 = вкл | пишется в 1, 4, 16, 64, читается из 4 | FX11; на ГУ не проверено |
+| Фары | `SETTING_FUNC_LAMP_EXTERIOR_LIGHT_CONTROL` 537136640: 0, габариты 537136641, ближний 537136642, авто 537136643 | глобальная | GInputBridge (только Preface) |
+| Багажник | `BCM_FUNC_DOOR` 553779456, 1 = открыть, 0 = закрыть | 536870912 | GInputBridge, FX11 |
+| Зеркала | `BCM_FUNC_FOLD_REAR_MIRROR` 554041600, 1 = сложены | глобальная | GInputBridge, FX11 |
+| Сервисное положение дворников | `SETTING_FUNC_WINDSCREEN_SERVICE_POSITION` 537657600, 1 = вкл | 1 | GInputBridge, FX11 |
+| Антибукс | `SETTING_FUNC_ESC_SPORT_MODE` 537002752, 0 = антибукс включён | глобальная | GInputBridge |
+
+Функции кузова не входят в «Выключить всё», а их уровни (фары) всегда идут вверх.
