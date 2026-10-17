@@ -729,7 +729,8 @@ final class WidgetRenderer {
             float cx = (start + end) / 2f;
             if (bare) {
                 drawBarContent(canvas, button, bareContent(button.on, button.kept,
-                        button.dormant, button.known), cx, cy, icon, iconGap, false, glyph);
+                        button.dormant, button.known), cx, cy, bareIcon(end - start, height),
+                        iconGap, false, glyph);
                 continue;
             }
             int content = Ui.TEXT;
@@ -780,6 +781,11 @@ final class WidgetRenderer {
             drawIcon(canvas, button.icon, x + icon / 2f, cy, icon, content);
             drawCenteredLine(canvas, button.label, x + icon + iconGap + width / 2f, cy);
         }
+    }
+
+    /** Size of a bare direction icon, the same in every fan layout and style. */
+    private static float bareIcon(float width, float height) {
+        return Math.min(width * 0.8f, height * 0.72f);
     }
 
     /**
@@ -845,8 +851,7 @@ final class WidgetRenderer {
                     - (index == strip.zoneCount - 1 ? 0f : gap / 2f);
             if (direction && config.fanDirectionIcons) {
                 drawIcon(canvas, WidgetConfig.FAN_DIRECTIONS[index].icon(config.iconSet, 0),
-                        (left + right) / 2f, top + pillHeight / 2f,
-                        Math.min(right - left, pillHeight) * 0.92f,
+                        (left + right) / 2f, height / 2f, bareIcon(right - left, height),
                         bareContent(on, kept, dormant, known));
                 continue;
             }
@@ -992,7 +997,7 @@ final class WidgetRenderer {
             float right = left + cell;
             int content = Ui.TEXT;
             if (bare) {
-                content = bareContent(on, kept, dormant, true);
+                content = bareContent(on, kept, dormant, known);
             } else if (kept) {
                 content = withAlpha(Ui.TEXT, DORMANT_KEPT_ALPHA);
                 float innerRadius = Math.max(0f, radius - inset);
@@ -1017,7 +1022,7 @@ final class WidgetRenderer {
                         height * 0.72f, paint);
             }
             previousOn = on || kept;
-            if (!known) {
+            if (!known && !bare) {
                 content = withAlpha(content, Math.round(255 * UNKNOWN_ALPHA));
             }
             float cx = (left + right) / 2f;
@@ -1028,7 +1033,11 @@ final class WidgetRenderer {
                 continue;
             }
             int iconRes = WidgetConfig.FAN_DIRECTIONS[index].icon(config.iconSet, 0);
-            if (bare || !withNames) {
+            if (bare) {
+                drawIcon(canvas, iconRes, cx, cy, bareIcon(cell, height), content);
+                continue;
+            }
+            if (!withNames) {
                 drawIcon(canvas, iconRes, cx, cy, icon, content);
                 continue;
             }

@@ -47,6 +47,39 @@ public final class ClimateCommandsTest {
         }
     }
 
+    @Test public void interiorLightIsOnWhileAnyZoneIs() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.READING_LIGHT, Hvac.ZONE_PASSENGER, 0, 0);
+        store.putProperty(Hvac.READING_LIGHT, Hvac.ZONE_DRIVER, 1, 0);
+        ClimateState state = store.snapshot(0);
+        assertTrue(ClimateCommands.tileState(ClimateFunction.INTERIOR_LIGHT, state,
+                CarModel.ATLAS).active);
+        for (ClimateCommands.Command command : ClimateCommands.press(
+                ClimateFunction.INTERIOR_LIGHT, state, CarModel.ATLAS, false)) {
+            assertEquals(0d, command.value, 0d);
+        }
+    }
+
+    @Test public void unknownBodyTilesSendNothing() {
+        ClimateState state = store(0).snapshot(0);
+        assertTrue(ClimateCommands.press(ClimateFunction.TRUNK, state, CarModel.ATLAS,
+                false).isEmpty());
+        assertTrue(ClimateCommands.press(ClimateFunction.MIRRORS, state, CarModel.ATLAS,
+                false).isEmpty());
+        assertTrue(ClimateCommands.press(ClimateFunction.HEADLIGHTS, state, CarModel.PREFACE,
+                false).isEmpty());
+    }
+
+    @Test public void trunkIgnoresTheGlobalDoor() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.DOOR, Gib.AREA_GLOBAL, 1, 0);
+        ClimateState state = store.snapshot(0);
+        assertFalse(ClimateCommands.tileState(ClimateFunction.TRUNK, state,
+                CarModel.ATLAS).known);
+        assertTrue(ClimateCommands.press(ClimateFunction.TRUNK, state, CarModel.ATLAS,
+                false).isEmpty());
+    }
+
     @Test public void tractionControlIsOnWhileEscSportIsOff() {
         ClimateStore store = store(0);
         store.putProperty(Hvac.ESC_SPORT_MODE, Gib.AREA_GLOBAL, 0, 0);

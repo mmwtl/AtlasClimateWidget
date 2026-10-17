@@ -55,6 +55,23 @@ final class Hvac {
     static final int ESC_SPORT_MODE = 537002752;
     static final int EXTERIOR_LIGHT = 537136640;
 
+    /**
+     * Whether every zone of the property holds its own value, so a zoned read never falls back
+     * to the global one: that describes another glass, door or light.
+     */
+    static boolean hasZoneOnlyValue(int id) {
+        return id == WINDOW_POS || id == DOOR || id == READING_LIGHT
+                || id == WINDSCREEN_SERVICE_POSITION;
+    }
+
+    /**
+     * Whether the property moves a part for longer than a confirmation takes: the same target
+     * sent again while the part moves may stop or reverse it.
+     */
+    static boolean movesPart(int id) {
+        return id == WINDOW_POS || id == DOOR || id == FOLD_REAR_MIRROR;
+    }
+
     static final int WINDSHIELD_HEAT_ATLAS = 269027328;
     static final int WINDSHIELD_HEAT_PREFACE = 269753088;
     static final int WINDSHIELD_HEAT_CITYRAY = 269755136;

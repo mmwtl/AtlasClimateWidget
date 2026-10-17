@@ -937,8 +937,11 @@ public final class MainActivity extends ScaledActivity {
                         options.addView(configSwitch(R.string.fan_auto_button, config.fanAuto,
                                 value -> config.fanAuto = value));
                         options.addView(configSwitch(R.string.fan_part_directions,
-                                config.fanDirections, value -> config.fanDirections = value));
-                        options.addView(directionIconsSwitch());
+                                config.fanDirections, value -> {
+                                    config.fanDirections = value;
+                                    options.post(this::rebuildBlocks);
+                                }));
+                        addDirectionIconsSwitch(options);
                         options.addView(configSwitch(R.string.fan_buttons, config.fanButtons,
                                 value -> config.fanButtons = value));
                         options.addView(hint(R.string.fan_bar_hint));
@@ -953,7 +956,7 @@ public final class MainActivity extends ScaledActivity {
                     options.addView(partSwitch(R.string.fan_part_directions,
                             config.fanDirections, value -> config.fanDirections = value,
                             config::hasFanParts));
-                    options.addView(directionIconsSwitch());
+                    addDirectionIconsSwitch(options);
                     options.addView(partSwitch(R.string.fan_part_presets, config.fanPresets,
                             value -> config.fanPresets = value, config::hasFanParts));
                     options.addView(hint(R.string.fan_hint));
@@ -970,9 +973,12 @@ public final class MainActivity extends ScaledActivity {
         }
     }
 
-    private View directionIconsSwitch() {
-        return configSwitch(R.string.fan_direction_icons, config.fanDirectionIcons,
-                value -> config.fanDirectionIcons = value);
+    /** The bare icons switch, shown only while the fan block has its blowing directions. */
+    private void addDirectionIconsSwitch(LinearLayout options) {
+        if (config.fanDirections) {
+            options.addView(configSwitch(R.string.fan_direction_icons, config.fanDirectionIcons,
+                    value -> config.fanDirectionIcons = value));
+        }
     }
 
     private LinearLayout fanLayouts() {

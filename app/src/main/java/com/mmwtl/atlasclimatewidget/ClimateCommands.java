@@ -136,7 +136,7 @@ final class ClimateCommands {
             Integer index = sunroofIndex(state);
             return index == null ? TileState.UNKNOWN : new TileState(true, index > 0, index);
         }
-        Double raw = state.property(function.propertyId(model), function.area);
+        Double raw = value(function, state, function.propertyId(model));
         if (raw == null) {
             return TileState.UNKNOWN;
         }
@@ -167,6 +167,25 @@ final class ClimateCommands {
             default:
                 return TileState.UNKNOWN;
         }
+    }
+
+    /**
+     * The function's value. A toggle written to several zones, such as the interior light,
+     * counts as on while any of them is, so a tap switches them all off.
+     */
+    private static Double value(ClimateFunction function, ClimateState state, int id) {
+        Double value = state.property(id, function.area);
+        if (function.writeAreas == null
+                || value != null && Math.round(value) == function.onValue) {
+            return value;
+        }
+        for (int area : function.writeAreas) {
+            Double zone = state.property(id, area);
+            if (zone != null && (value == null || Math.round(zone) == function.onValue)) {
+                value = zone;
+            }
+        }
+        return value;
     }
 
     /**
@@ -432,7 +451,11 @@ final class ClimateCommands {
             return Collections.emptyList();
         }
         int id = function.propertyId(model);
-        Double raw = function.hasProperty() ? state.property(id, function.area) : null;
+        Double raw = function.hasProperty() ? value(function, state, id) : null;
+        if (raw == null && function.body) {
+            // A blind tap could open the tailgate or fold the mirrors unseen.
+            return Collections.emptyList();
+        }
         int current = raw == null ? Integer.MIN_VALUE : (int) Math.round(raw);
         switch (function.kind) {
             case ACTION:

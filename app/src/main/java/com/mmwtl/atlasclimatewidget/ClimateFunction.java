@@ -1,5 +1,7 @@
 package com.mmwtl.atlasclimatewidget;
 
+import java.util.Arrays;
+
 /** A climate function that can be placed on the widget as a tile. */
 enum ClimateFunction {
     POWER(R.string.fn_power, R.string.fn_power_short, Tone.NEUTRAL,
@@ -101,6 +103,7 @@ enum ClimateFunction {
                     .icon(R.drawable.ic_fn_interior_light)),
     HEADLIGHTS(R.string.fn_headlights, R.string.fn_headlights_short, Tone.NEUTRAL,
             Spec.level(Hvac.EXTERIOR_LIGHT, Gib.AREA_GLOBAL, Hvac.EXTERIOR_LIGHT_LEVELS).body()
+                    .models(CarModel.PREFACE)
                     .icons(R.drawable.ic_fn_light, R.drawable.ic_fn_light_pos,
                             R.drawable.ic_fn_light_low, R.drawable.ic_fn_light_auto)),
     TRUNK(R.string.fn_trunk, R.string.fn_trunk_short, Tone.NEUTRAL,
@@ -116,7 +119,8 @@ enum ClimateFunction {
             Spec.toggle(Hvac.ESC_SPORT_MODE, Gib.AREA_GLOBAL, 0, 1).body()
                     .icon(R.drawable.ic_fn_antibuks)),
     SEAT_MEMORY(R.string.fn_seat_memory, R.string.fn_seat_memory_short, Tone.NEUTRAL,
-            Spec.action("SEAT_MEMORY").icon(R.drawable.ic_fn_seat_memory)),
+            Spec.action("SEAT_MEMORY").models(CarModel.ATLAS, CarModel.CITYRAY)
+                    .icon(R.drawable.ic_fn_seat_memory)),
     /** Switches off the widget's chosen functions, see {@link WidgetConfig#offTargets}. */
     ALL_OFF(R.string.fn_all_off, R.string.fn_all_off_short, Tone.NEUTRAL,
             Spec.off().glyph("ALL\nOFF"));
@@ -158,6 +162,8 @@ enum ClimateFunction {
      * and its levels always step upwards.
      */
     final boolean body;
+    /** Car models that have the function; null for all of them. */
+    private final CarModel[] models;
     final String glyph;
     final int iconRes;
     final int[] levelIcons;
@@ -180,6 +186,7 @@ enum ClimateFunction {
         this.carFunction = spec.carFunction;
         this.writeAreas = spec.writeAreas;
         this.body = spec.body;
+        this.models = spec.models;
         this.glyph = spec.glyph;
         this.iconRes = spec.iconRes;
         this.levelIcons = spec.levelIcons;
@@ -212,16 +219,9 @@ enum ClimateFunction {
         return kind != Kind.ACTION && kind != Kind.OFF;
     }
 
-    /** Model restrictions used by GInputBridge's car functions. */
+    /** Whether the car model has this function, as GInputBridge restricts its car functions. */
     boolean isAvailableFor(CarModel model) {
-        switch (this) {
-            case HEADLIGHTS:
-                return model == CarModel.PREFACE;
-            case SEAT_MEMORY:
-                return model != CarModel.PREFACE;
-            default:
-                return true;
-        }
+        return models == null || Arrays.asList(models).contains(model);
     }
 
     /** Whether {@link #ALL_OFF} can switch this function off: climate toggles and levels. */
@@ -307,6 +307,7 @@ enum ClimateFunction {
         String carFunction;
         int[] writeAreas;
         boolean body;
+        CarModel[] models;
         String glyph;
         int iconRes;
         int[] levelIcons;
@@ -377,6 +378,11 @@ enum ClimateFunction {
 
         Spec body() {
             body = true;
+            return this;
+        }
+
+        Spec models(CarModel... supported) {
+            models = supported;
             return this;
         }
 

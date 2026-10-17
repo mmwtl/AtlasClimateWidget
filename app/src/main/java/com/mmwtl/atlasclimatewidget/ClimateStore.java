@@ -155,12 +155,11 @@ final class ClimateStore {
     }
 
     /**
-     * Whether a zoned read may use the global value. {@link Hvac#WINDOW_POS} describes another
-     * glass in each area, so its global value belongs to none of them: the sunroof would show
-     * the sunshade's position.
+     * Whether a zoned read may use the global value, see {@link Hvac#hasZoneOnlyValue}: the
+     * sunroof would show the sunshade's position, the tailgate another door.
      */
     static boolean hasGlobalFallback(int id, int area) {
-        return area != Gib.AREA_GLOBAL && id != Hvac.WINDOW_POS;
+        return area != Gib.AREA_GLOBAL && !Hvac.hasZoneOnlyValue(id);
     }
 
     static String propertyKey(int id, int area) {

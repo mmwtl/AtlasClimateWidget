@@ -85,6 +85,11 @@ final class WatchList {
                 if (function.hasProperty()) {
                     property(function.propertyId(model), function.area, function.isFloat());
                 }
+                if (function.writeAreas != null) {
+                    for (int area : function.writeAreas) {
+                        property(function.propertyId(model), area, function.isFloat());
+                    }
+                }
                 if (function == ClimateFunction.ALL_OFF) {
                     for (ClimateFunction target : config.offTargets) {
                         property(target.propertyId(model), target.area, false);

@@ -482,9 +482,9 @@ public final class ClimateService extends Service {
             boolean retry = previous != null && previous.command == command;
             Sent sent = new Sent(command, now);
             lastSets.put(key, sent);
-            // A moving roof reports positions short of its target, and the same target sent
-            // again while it moves may stop it.
-            if (!retry && command.id != Hvac.WINDOW_POS) {
+            // A moving roof, tailgate or mirror reports values short of its target, and the same
+            // target sent again while it moves may stop it.
+            if (!retry && !Hvac.movesPart(command.id)) {
                 worker.postDelayed(() -> retry(key, sent), SET_RETRY_MS);
             }
         }

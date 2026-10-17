@@ -141,9 +141,12 @@ line, read as in AtlasAppWidget (`Fuel`).
 - Body tiles from GInputBridge (`ClimateFunction.body`: interior light, headlights, trunk,
   mirrors, wiper service position, traction control) are never «switch off all» targets and
   their levels always step upwards. The interior light writes every `Hvac.READING_LIGHT_ZONES`
-  zone and reads the passenger one, as FX11 does; seat memory is the bridge's `SEAT_MEMORY`.
-  Headlights are available only for Preface, seat memory only for Atlas and Cityray. Saved
-  unsupported tiles stay in the layout but remain inactive and send no commands.
+  zone, as FX11 does, and is lit while any of them is; seat memory is the bridge's
+  `SEAT_MEMORY`. Headlights are available only for Preface, seat memory only for Atlas and
+  Cityray (`Spec.models`). Saved unsupported tiles stay in the layout but remain inactive and
+  send no commands. A body tile with an unknown state sends nothing, zoned body values never
+  fall back to the global one (`Hvac.hasZoneOnlyValue`), and the tailgate and mirrors, like
+  the roof glass, are not resent while they move (`Hvac.movesPart`).
 - The settings preview uses the same `RemoteViews` as the widget, inert; demo values are labelled.
 - Preserve per-widget layouts across upgrades; `WidgetConfig.fromJson` must tolerate unknown and
   missing fields.
