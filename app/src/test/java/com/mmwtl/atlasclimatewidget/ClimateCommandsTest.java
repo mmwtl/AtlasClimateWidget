@@ -354,11 +354,16 @@ public final class ClimateCommandsTest {
                 CarModel.ATLAS, 1, 3).get(0).value);
         assertEquals(Hvac.AUTO_FAN_HIGH, (int) ClimateCommands.stepFan(auto.snapshot(0),
                 CarModel.ATLAS, 1, 5).get(0).value);
-        assertEquals(ClimateCommands.FAN_BLOWER_UP, (int) ClimateCommands.stepFan(
-                auto.snapshot(0), CarModel.PREFACE, 1, 3).get(0).value);
-        assertNull("AUTO decides the nudge's outcome", ClimateCommands.nudgedFanSpeed(
-                auto.snapshot(0), ClimateCommands.stepFan(auto.snapshot(0), CarModel.PREFACE,
-                        1, 3).get(0)));
+        // Every model steps the presets in AUTO, as the bar shows them.
+        assertEquals(Hvac.AUTO_FAN_HIGHER, (int) ClimateCommands.stepFan(auto.snapshot(0),
+                CarModel.PREFACE, 1, 3).get(0).value);
+        assertEquals(Hvac.AUTO_FAN_HIGH, (int) ClimateCommands.stepFan(auto.snapshot(0),
+                CarModel.CITYRAY, 1, 5).get(0).value);
+        ClimateCommands.Command nudge = ClimateCommands.stepFan(store(0).snapshot(0),
+                CarModel.PREFACE, 1, 3).get(0);
+        assertEquals(ClimateCommands.FAN_BLOWER_UP, (int) nudge.value);
+        assertNull("AUTO decides the nudge's outcome",
+                ClimateCommands.nudgedFanSpeed(auto.snapshot(0), nudge));
 
         ClimateStore manual = store(0);
         manual.putProperty(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL, Hvac.FAN_SPEED_LEVEL_1 + 2, 0);

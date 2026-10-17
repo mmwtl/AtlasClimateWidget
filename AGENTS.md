@@ -117,8 +117,9 @@ line, read as in AtlasAppWidget (`Fuel`).
 - Never show stale values indefinitely: values expire when the bridge stops answering, and the
   widget shows an explicit "no bridge" state.
 - Optimistic values after a command are temporary and replaced by the bridge's confirmation.
-  Fan −/+ on models other than Atlas only nudge the blower (`FAN_BLOWER`); in manual mode with
-  a known speed the neighbouring speed is previewed the same way (`ClimateCommands.nudgedFanSpeed`).
+  In AUTO the fan −/+ step the auto-fan presets for every model. In manual mode, models other
+  than Atlas only nudge the blower (`FAN_BLOWER`); with a known speed the neighbouring speed is
+  previewed the same way (`ClimateCommands.nudgedFanSpeed`).
 - Controls the car ignores in the current mode rest (`TileState.dormant`): blowing directions
   in AUTO, auto-fan presets outside it, the speed bar in AUTO. They never light up; the choice
   the car keeps is outlined. A tap on a resting speed bar or preset switches AUTO first and

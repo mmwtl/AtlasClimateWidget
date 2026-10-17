@@ -668,11 +668,8 @@ final class ClimateCommands {
     static List<Command> stepFan(ClimateState state, CarModel model, int direction,
             int presetCount) {
         int[] cycle = fanPresets(presetCount);
-        if (model != CarModel.ATLAS) {
-            return single(Command.setInt(FAN_BLOWER, Hvac.ZONE_ROW_1_ALL,
-                    direction > 0 ? FAN_BLOWER_UP : FAN_BLOWER_DOWN));
-        }
         FanState fan = fanState(state);
+        // In AUTO the bar shows the presets for every model, so −/+ step them as a tap would.
         if (fan.auto) {
             Double raw = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL);
             int middle = cycle.length / 2;
@@ -688,6 +685,10 @@ final class ClimateCommands {
             // With the climate off the bar shows the kept AUTO, which the car reports off.
             return withAuto(state, Command.setInt(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL,
                     cycle[next]));
+        }
+        if (model != CarModel.ATLAS) {
+            return single(Command.setInt(FAN_BLOWER, Hvac.ZONE_ROW_1_ALL,
+                    direction > 0 ? FAN_BLOWER_UP : FAN_BLOWER_DOWN));
         }
         int next = Math.max(1, Math.min(Hvac.FAN_SPEED_LEVEL_COUNT, fan.level + direction));
         if (fan.known && next == fan.level) {
