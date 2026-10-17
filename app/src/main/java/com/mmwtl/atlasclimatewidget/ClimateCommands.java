@@ -368,7 +368,10 @@ final class ClimateCommands {
         }
         int value = (int) Math.round(speed);
         if (value == Hvac.FAN_SPEED_AUTO) {
-            return new FanState(true, true, 0);
+            // The mode switch comes first: switched off, AUTO still reads as the speed until
+            // the car reports a manual one, which is not known yet.
+            return Boolean.FALSE.equals(mode) ? new FanState(false, false, 0)
+                    : new FanState(true, true, 0);
         }
         return new FanState(true, auto, fanLevel(value));
     }

@@ -555,4 +555,15 @@ public final class ClimateCommandsTest {
                 Hvac.STEERING_HEAT_LEVELS[1], 0);
         assertTrue(ClimateCommands.offState(targets, store.snapshot(0), CarModel.ATLAS).active);
     }
+
+    @Test public void autoSwitchedOffWinsOverAutoSpeed() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.AUTO, ClimateFunction.AUTO.area, 1, 0);
+        store.putProperty(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL, Hvac.FAN_SPEED_AUTO, 0);
+        assertTrue(ClimateCommands.fanState(store.snapshot(0)).auto);
+        store.setPending(Hvac.AUTO, ClimateFunction.AUTO.area, 0, 0);
+        ClimateCommands.FanState fan = ClimateCommands.fanState(store.snapshot(0));
+        assertFalse("the AUTO tap shows manual mode at once", fan.auto);
+        assertFalse("the manual speed is not known yet", fan.known);
+    }
 }
