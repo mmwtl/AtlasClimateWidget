@@ -91,11 +91,17 @@ final class WidgetRenderer {
         if (card) {
             drawCard(canvas, strip);
         }
-        if (!content) {
-            return bitmap;
-        }
         canvas.save();
         canvas.translate(0f, strip.contentTop);
+        if (!content) {
+            // The AUTO column spans the fan block's rows, so it stays with the widget: drawn
+            // by the scrubber window, its slice would not line up with the row above.
+            if (isFanBar(strip)) {
+                drawFanAuto(canvas, strip);
+            }
+            canvas.restore();
+            return bitmap;
+        }
         switch (strip.row.kind) {
             case HEADER:
                 drawHeader(canvas, strip);
@@ -107,11 +113,11 @@ final class WidgetRenderer {
                 drawTemperature(canvas, strip);
                 break;
             case FAN_TOP:
-                drawFanBar(canvas, strip);
+                drawFanBar(canvas, strip, true);
                 break;
             case FAN:
-                if (config.fanLayout == WidgetConfig.FanLayout.BAR) {
-                    drawFanBar(canvas, strip);
+                if (isFanBar(strip)) {
+                    drawFanBar(canvas, strip, card);
                 } else {
                     drawFan(canvas, strip);
                 }
@@ -582,36 +588,18 @@ final class WidgetRenderer {
      * the directions above the speed bar; in AUTO the bar shows the preset levels and the top
      * row their names across its width, so directions the car ignores are not shown.
      */
-    private void drawFanBar(Canvas canvas, WidgetGeometry.Strip strip) {
-        float cell = (plan.width - 2f * plan.padding) / strip.zoneCount;
-        // The block's rows in this strip's coordinates.
-        float top = 0f;
-        float bottom = strip.contentHeight;
-        float origin = plan.stripTop(strip) + strip.contentTop;
-        for (WidgetGeometry.Strip other : plan.strips) {
-            if (other.block == strip.block) {
-                float offset = plan.stripTop(other) + other.contentTop - origin;
-                top = Math.min(top, offset);
-                bottom = Math.max(bottom, offset + other.contentHeight);
-            }
-        }
-        float textHeight = WidgetGeometry.FAN_ROW_DP * dp * plan.verticalScale;
-        ClimateCommands.FanState fan = ClimateCommands.fanState(state);
-        boolean off = ClimateCommands.powerOff(state);
-        boolean showKept = keptShown();
-        if (strip.autoCells > 0) {
-            List<BarButton> auto = new ArrayList<>();
-            auto.add(new BarButton(ClimateFunction.AUTO.icon(config.iconSet, 0),
-                    ClimateFunction.AUTO.glyph, fan.auto && showKept,
-                    ClimateCommands.shownAutoMode(state) != null, off));
-            drawBarButtons(canvas, new float[]{plan.padding,
-                    plan.padding + strip.autoCells * cell}, top, bottom, auto, true, textHeight,
-                    config.bareButtons());
+    private void drawFanBar(Canvas canvas, WidgetGeometry.Strip strip, boolean withAuto) {
+        if (withAuto) {
+            drawFanAuto(canvas, strip);
         }
         if (strip.row.kind == WidgetGeometry.RowKind.FAN) {
             drawFan(canvas, strip);
             return;
         }
+        float cell = (plan.width - 2f * plan.padding) / strip.zoneCount;
+        ClimateCommands.FanState fan = ClimateCommands.fanState(state);
+        boolean off = ClimateCommands.powerOff(state);
+        boolean showKept = keptShown();
         if (fan.auto) {
             int active = ClimateCommands.fanPreset(state, config.fanPresetCount);
             boolean known = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL) != null;
@@ -637,6 +625,39 @@ final class WidgetRenderer {
         }
         drawBarButtons(canvas, partEdges(strip, directions.size(), cell), 0f,
                 strip.contentHeight, directions, false, strip.contentHeight,
+                config.bareButtons());
+    }
+
+    private boolean isFanBar(WidgetGeometry.Strip strip) {
+        return strip.row.kind == WidgetGeometry.RowKind.FAN
+                && config.fanLayout == WidgetConfig.FanLayout.BAR;
+    }
+
+    /** This strip's slice of the bar layout's AUTO column, drawn the block's full height. */
+    private void drawFanAuto(Canvas canvas, WidgetGeometry.Strip strip) {
+        if (strip.autoCells == 0) {
+            return;
+        }
+        float cell = (plan.width - 2f * plan.padding) / strip.zoneCount;
+        // The block's rows in this strip's coordinates.
+        float top = 0f;
+        float bottom = strip.contentHeight;
+        float origin = plan.stripTop(strip) + strip.contentTop;
+        for (WidgetGeometry.Strip other : plan.strips) {
+            if (other.block == strip.block) {
+                float offset = plan.stripTop(other) + other.contentTop - origin;
+                top = Math.min(top, offset);
+                bottom = Math.max(bottom, offset + other.contentHeight);
+            }
+        }
+        float textHeight = WidgetGeometry.FAN_ROW_DP * dp * plan.verticalScale;
+        List<BarButton> auto = new ArrayList<>();
+        auto.add(new BarButton(ClimateFunction.AUTO.icon(config.iconSet, 0),
+                ClimateFunction.AUTO.glyph,
+                ClimateCommands.fanState(state).auto && keptShown(),
+                ClimateCommands.shownAutoMode(state) != null, ClimateCommands.powerOff(state)));
+        drawBarButtons(canvas, new float[]{plan.padding,
+                plan.padding + strip.autoCells * cell}, top, bottom, auto, true, textHeight,
                 config.bareButtons());
     }
 

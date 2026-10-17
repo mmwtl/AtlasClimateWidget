@@ -47,7 +47,8 @@ line, read as in AtlasAppWidget (`Fuel`).
   `tools/make_gstore_qr.py`; rerun it instead of editing the drawable.
 - `ScrubActivity` is a borderless window placed over a tapped bar (from the host's source
   bounds) that lets the finger drag the value; while it is open the widget draws that strip
-  card-only and the window draws content only. Commands are sent on release. A temperature
+  card-only and the window draws content only. The bar fan layout's AUTO column spans both
+  fan rows, so it stays with the widget and the window leaves it out. Commands are sent on release. A temperature
   drag shows its value in an untouchable bubble window above the bar, and the widget hides
   that zone's console value meanwhile. The strip is
   hidden only after the window's first frame and restored 300 ms before it closes; `finish()`
