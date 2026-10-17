@@ -442,5 +442,12 @@ public final class WidgetGeometryTest {
         assertTrue("drifts left of the even split", left < Math.round(24 * 897f / 48));
         assertEquals(897 - 19, WidgetGeometry.zoneLeft(897, 48, 47));
         assertEquals(897, WidgetGeometry.zoneLeft(897, 48, 48));
+        assertEquals(0, WidgetGeometry.zoneAt(897, 48, 0));
+        assertEquals(1, WidgetGeometry.zoneAt(897, 48, 18));
+        assertEquals(24, WidgetGeometry.zoneAt(897, 48, left));
+        assertEquals(23, WidgetGeometry.zoneAt(897, 48, left - 1));
+        assertEquals(47, WidgetGeometry.zoneAt(897, 48, 896));
+        assertEquals(-1, WidgetGeometry.zoneAt(897, 48, -1));
+        assertEquals(-1, WidgetGeometry.zoneAt(897, 48, 897));
     }
 }

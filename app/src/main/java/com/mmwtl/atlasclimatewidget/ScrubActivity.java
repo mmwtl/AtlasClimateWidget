@@ -57,6 +57,9 @@ public final class ScrubActivity extends Activity {
     private WidgetGeometry.Strip strip;
     private float scale;
     private float cell;
+    /** The host's touch row: its padding and width in window pixels. */
+    private int zonePadding;
+    private int zoneWidth;
     private ScrubView view;
     /** Screen position of the scrubber window. */
     private int windowLeft;
@@ -130,8 +133,9 @@ public final class ScrubActivity extends Activity {
         }
         int width = Math.round(plan.fullWidth * scale);
         // The host lays the cells out in whole pixels, as WidgetViews padded the row.
-        int padding = Math.round(strip.zonePadding + plan.offsetX());
-        int left = source.left - padding - WidgetGeometry.zoneLeft(width - 2 * padding,
+        zonePadding = Math.round(strip.zonePadding + plan.offsetX());
+        zoneWidth = width - 2 * zonePadding;
+        int left = source.left - zonePadding - WidgetGeometry.zoneLeft(zoneWidth,
                 strip.zoneCount, tappedCell);
         AppLog.debug("scrub source=" + source + " cells=" + strip.zoneCount + " cell=" + cell
                 + " scale=" + scale + " left=" + left + " width=" + width + " full="
@@ -284,12 +288,32 @@ public final class ScrubActivity extends Activity {
         return Math.max(0, Math.min(steps - 1, step));
     }
 
+    /**
+     * The widget's control under a touch that starts on one of the bar's buttons (−, +, AUTO)
+     * rather than on its scale, or {@code null}. The window covers those buttons too, so
+     * without this a tap on + while the window is open would drag the value to its end.
+     */
+    private String buttonAt(float x) {
+        int cellIndex = WidgetGeometry.zoneAt(zoneWidth, strip.zoneCount,
+                Math.round(x) - zonePadding);
+        if (cellIndex < 0) {
+            return null;
+        }
+        boolean auto = ClimateCommands.fanState(
+                ClimateService.STORE.snapshot(SystemClock.elapsedRealtime())).auto;
+        String control = WidgetViews.control(config, strip, cellIndex, auto);
+        return control == null || WidgetViews.isScrubbable(control) ? null : control;
+    }
+
     private void commit() {
         if (value == sentValue) {
             return;
         }
         sentValue = value;
-        String control = temperature ? "temp/" + zone + "/" + value : "fan/" + (value + 1);
+        send(temperature ? "temp/" + zone + "/" + value : "fan/" + (value + 1));
+    }
+
+    private void send(String control) {
         startForegroundService(new Intent(this, ClimateService.class)
                 .setAction(ClimateService.ACTION_CONTROL)
                 .setData(Uri.parse(WidgetViews.CONTROL_SCHEME + "://control/" + control)));
@@ -377,6 +401,13 @@ public final class ScrubActivity extends Activity {
             }
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
+                    String button = buttonAt(event.getX());
+                    if (button != null) {
+                        send(button);
+                        close();
+                        return true;
+                    }
+                    // fall through
                 case MotionEvent.ACTION_MOVE:
                     main.removeCallbacks(idleFinish);
                     int next = valueAt(event.getX());

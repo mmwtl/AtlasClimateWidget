@@ -376,6 +376,19 @@ final class WidgetGeometry {
         return left;
     }
 
+    /** Touch cell at {@code x} pixels into such a row, or -1 outside it. */
+    static int zoneAt(int width, int count, int x) {
+        if (x < 0 || x >= width) {
+            return -1;
+        }
+        for (int cell = count - 1; cell > 0; cell--) {
+            if (x >= zoneLeft(width, count, cell)) {
+                return cell;
+            }
+        }
+        return 0;
+    }
+
     private static Plan build(WidgetConfig config, float fullWidth, float width, float density,
             float scale, int temperatureSteps, float tileExtra, float cardExtra) {
         float padding = config.cardPaddingDp * density;
