@@ -9,7 +9,7 @@
         android:layout_height="wrap_content"
         android:adjustViewBounds="true"
         android:importantForAccessibility="no"
-        android:scaleType="fitCenter" />
+        android:scaleType="fitXY" />
 
     <LinearLayout
         android:id="@+id/strip_zones"

@@ -422,9 +422,11 @@ final class WidgetRenderer {
         float cy = height / 2f;
         float thickness = Math.max(3f * dp * plan.verticalScale, height * 0.2f);
         float knob = Math.min(height * 0.8f, thickness * 3f);
-        // The knob stays inside the content edges at both ends of the range.
-        float x0 = plan.padding + knob / 2f;
-        float x1 = plan.width - plan.padding - knob / 2f;
+        // Each step sits at the centre of its touch cell, where a tap sets it and the drag
+        // bubble points; the knob still stays inside the content edges.
+        float edge = Math.max(knob, (plan.width - 2f * plan.padding) / strip.zoneCount) / 2f;
+        float x0 = plan.padding + edge;
+        float x1 = plan.width - plan.padding - edge;
         paint.setShader(null);
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(Ui.SURFACE_RAISED);
@@ -718,8 +720,12 @@ final class WidgetRenderer {
         // Edge buttons lose half a gap to the neighbouring part, inner pills half a gap a side.
         float room = narrowest - (console ? 2f * inset + half : 2f * half)
                 - textHeight * 0.1f;
+        if (glyph && !bare) {
+            // A word such as AUTO needs air on both sides of its pill.
+            room *= 0.78f;
+        }
         // A glyph icon such as the stock AUTO is a word, so it takes the button's width.
-        float icon = glyph ? Math.min(textHeight, narrowest * 0.85f)
+        float icon = glyph ? Math.min(textHeight, room)
                 : Math.min(textHeight * (console ? 0.62f : 0.72f), narrowest * 0.8f);
         float iconGap = textHeight * 0.12f;
         // Labels share one size, fitted to the widest of them; icons get names on all buttons

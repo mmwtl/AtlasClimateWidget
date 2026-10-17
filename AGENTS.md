@@ -19,7 +19,7 @@ line, read as in AtlasAppWidget (`Fuel`).
   `LISTEN_*`/`GET_*` refresh, widget controls and widget redraws. The bridge answers with implicit
   broadcasts, so the service must stay running while widgets exist.
 - `WidgetGeometry` splits the widget into full-width strips; `WidgetRenderer` draws each strip as a
-  bitmap; `WidgetViews` stacks the strips with an overlay row of equal-weight touch cells. Android 11
+  bitmap, stretched (`fitXY`) to the full width even when the host rounds its height; `WidgetViews` stacks the strips with an overlay row of equal-weight touch cells. Android 11
   `RemoteViews` cannot set weights, margins or positions dynamically, so every touch target must sit
   on the equal-cell grid computed by `WidgetGeometry`.
 - `MainActivity` is the full settings editor with Blocks, Tiles, Look and System tabs pinned under
