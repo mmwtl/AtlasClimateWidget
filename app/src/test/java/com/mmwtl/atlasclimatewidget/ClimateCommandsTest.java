@@ -2,6 +2,7 @@ package com.mmwtl.atlasclimatewidget;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -355,6 +356,26 @@ public final class ClimateCommandsTest {
                 CarModel.ATLAS, 1, 5).get(0).value);
         assertEquals(ClimateCommands.FAN_BLOWER_UP, (int) ClimateCommands.stepFan(
                 auto.snapshot(0), CarModel.PREFACE, 1, 3).get(0).value);
+        assertNull("AUTO decides the nudge's outcome", ClimateCommands.nudgedFanSpeed(
+                auto.snapshot(0), ClimateCommands.stepFan(auto.snapshot(0), CarModel.PREFACE,
+                        1, 3).get(0)));
+
+        ClimateStore manual = store(0);
+        manual.putProperty(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL, Hvac.FAN_SPEED_LEVEL_1 + 2, 0);
+        manual.putProperty(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL, 0, 0);
+        ClimateCommands.Command up = ClimateCommands.stepFan(manual.snapshot(0),
+                CarModel.CITYRAY, 1, 3).get(0);
+        ClimateCommands.Command down = ClimateCommands.stepFan(manual.snapshot(0),
+                CarModel.CITYRAY, -1, 3).get(0);
+        assertFalse(up.isOptimistic());
+        assertEquals(Hvac.FAN_SPEED_LEVEL_1 + 3,
+                (int) ClimateCommands.nudgedFanSpeed(manual.snapshot(0), up));
+        assertEquals(Hvac.FAN_SPEED_LEVEL_1 + 1,
+                (int) ClimateCommands.nudgedFanSpeed(manual.snapshot(0), down));
+        manual.putProperty(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL, Hvac.FAN_SPEED_LEVEL_1 + 8, 0);
+        assertNull("nothing above the top speed", ClimateCommands.nudgedFanSpeed(
+                manual.snapshot(0), up));
+        assertNull(ClimateCommands.nudgedFanSpeed(store(0).snapshot(0), up));
     }
 
     @Test public void fanPresetsMapToAutoFanProfiles() {

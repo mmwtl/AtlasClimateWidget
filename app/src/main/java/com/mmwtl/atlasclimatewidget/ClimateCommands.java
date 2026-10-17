@@ -696,6 +696,24 @@ final class ClimateCommands {
         return setFan(next);
     }
 
+    /**
+     * Manual speed a blower nudge is expected to reach, previewed until the car confirms like
+     * any other command; {@code null} for other commands, in AUTO and while the speed is
+     * unknown, where the outcome cannot be told.
+     */
+    static Integer nudgedFanSpeed(ClimateState state, Command command) {
+        if (command.id != FAN_BLOWER) {
+            return null;
+        }
+        FanState fan = fanState(state);
+        if (fan.auto || fan.level == 0) {
+            return null;
+        }
+        int direction = (int) Math.round(command.value) == FAN_BLOWER_UP ? 1 : -1;
+        int level = Math.max(1, Math.min(Hvac.FAN_SPEED_LEVEL_COUNT, fan.level + direction));
+        return level == fan.level ? null : Hvac.FAN_SPEED_LEVEL_1 + level - 1;
+    }
+
     static float roundToStep(float value) {
         return Math.round(value / Hvac.TEMP_STEP) * Hvac.TEMP_STEP;
     }

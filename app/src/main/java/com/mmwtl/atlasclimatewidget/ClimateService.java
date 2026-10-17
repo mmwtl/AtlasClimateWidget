@@ -454,6 +454,11 @@ public final class ClimateService extends Service {
             return;
         }
         if (!command.isOptimistic()) {
+            Integer speed = ClimateCommands.nudgedFanSpeed(STORE.snapshot(now), command);
+            if (speed != null) {
+                // The preview counts from the shown speed, so quick nudges add up on screen too.
+                STORE.setPending(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL, speed, now);
+            }
             // Blower nudges add up, so none of them may be replaced by a later one.
             send(command, now);
             return;
