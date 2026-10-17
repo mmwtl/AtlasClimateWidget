@@ -92,8 +92,7 @@ final class WidgetViews {
             views.setViewPadding(R.id.strip_zones, padding, 0, padding, 0);
             for (int cell = 0; cell < strip.zoneCount; cell++) {
                 String control = interactive ? control(config, strip, cell, auto) : null;
-                RemoteViews zone = new RemoteViews(packageName,
-                        control == null ? R.layout.widget_zone_blank : R.layout.widget_zone);
+                RemoteViews zone = new RemoteViews(packageName, zoneLayout(strip, control));
                 if (control != null) {
                     zone.setOnClickPendingIntent(R.id.zone,
                             widgetId != AppWidgetManager.INVALID_APPWIDGET_ID
@@ -106,6 +105,18 @@ final class WidgetViews {
             root.addView(R.id.widget_root, views);
         }
         return root;
+    }
+
+    /**
+     * Only a tile's cell is its whole button. A bar button spans several cells, so a pressed
+     * cell would light up a narrow stripe of it; bars rely on the redrawn value instead.
+     */
+    private static int zoneLayout(WidgetGeometry.Strip strip, String control) {
+        if (control == null) {
+            return R.layout.widget_zone_blank;
+        }
+        return strip.row.kind == WidgetGeometry.RowKind.TILES
+                ? R.layout.widget_zone : R.layout.widget_zone_plain;
     }
 
     /** A filled layout matches the cell; a content-sized one sits where the user chose. */
