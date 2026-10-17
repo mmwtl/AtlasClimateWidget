@@ -557,6 +557,7 @@ public final class MainActivity extends ScaledActivity {
             button.setOnCheckedChangeListener((view, checked) -> {
                 if (checked) {
                     prefs.setCarModel(model);
+                    rebuildFunctions();
                     globalChanged();
                 }
             });
@@ -1064,7 +1065,7 @@ public final class MainActivity extends ScaledActivity {
                     index < enabled.size() - 1));
         }
         for (ClimateFunction function : ClimateFunction.values()) {
-            if (!enabled.contains(function)) {
+            if (!enabled.contains(function) && function.isAvailableFor(prefs.carModel())) {
                 availableHost.addView(functionRow(function, false, false, false));
             }
         }
@@ -1100,7 +1101,11 @@ public final class MainActivity extends ScaledActivity {
 
     private View functionRow(ClimateFunction function, boolean enabled, boolean canUp,
             boolean canDown) {
-        LinearLayout row = orderRow(getString(function.titleRes), enabled, canUp, canDown,
+        String title = getString(function.titleRes);
+        if (!function.isAvailableFor(prefs.carModel())) {
+            title = getString(R.string.function_unavailable, title);
+        }
+        LinearLayout row = orderRow(title, enabled, canUp, canDown,
                 checked -> {
                     config.setFunctionEnabled(function, checked);
                     changed();

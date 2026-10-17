@@ -729,7 +729,7 @@ final class WidgetRenderer {
             float cx = (start + end) / 2f;
             if (bare) {
                 drawBarContent(canvas, button, bareContent(button.on, button.kept,
-                        button.dormant, button.known), cx, cy, icon, iconGap, named, glyph);
+                        button.dormant, button.known), cx, cy, icon, iconGap, false, glyph);
                 continue;
             }
             int content = Ui.TEXT;
@@ -1028,7 +1028,7 @@ final class WidgetRenderer {
                 continue;
             }
             int iconRes = WidgetConfig.FAN_DIRECTIONS[index].icon(config.iconSet, 0);
-            if (!withNames) {
+            if (bare || !withNames) {
                 drawIcon(canvas, iconRes, cx, cy, icon, content);
                 continue;
             }

@@ -16,6 +16,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
 import org.robolectric.Shadows;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
@@ -89,6 +90,45 @@ public final class MainActivityTest {
             assertFalse(shown(find(root, "Ионизатор")));
             available.performClick();
             assertTrue(shown(find(root, "Ионизатор")));
+        } finally {
+            close(controller);
+        }
+    }
+
+    @Test
+    public void bodyFunctionChoicesFollowModelChanges() {
+        ActivityController<MainActivity> controller = open();
+        try {
+            View root = root(controller);
+            for (String model : new String[]{"Geely Atlas", "Geely Preface", "Geely Cityray"}) {
+                find(root, model).performClick();
+                boolean preface = model.equals("Geely Preface");
+                assertEquals(preface, find(root, "Фары") != null);
+                assertEquals(!preface, find(root, "Память сидений (GInputBridge)") != null);
+            }
+        } finally {
+            close(controller);
+        }
+    }
+
+    @Test
+    public void changingModelKeepsSavedUnsupportedTilesRemovable() {
+        Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
+        WidgetConfig config = new WidgetConfig();
+        config.setFunctionEnabled(ClimateFunction.HEADLIGHTS, true);
+        prefs.setCarModel(CarModel.PREFACE);
+        prefs.setTemplate(config);
+        ActivityController<MainActivity> controller = open();
+        try {
+            View root = root(controller);
+            find(root, "Geely Atlas").performClick();
+            String title = "Фары (недоступно для выбранной модели)";
+            assertNotNull(find(root, title));
+            assertTrue(prefs.template().functions.contains(ClimateFunction.HEADLIGHTS));
+            find(root, title).performClick();
+            ShadowLooper.runUiThreadTasks();
+            assertFalse(prefs.template().functions.contains(ClimateFunction.HEADLIGHTS));
+            assertTrue(find(root, title) == null);
         } finally {
             close(controller);
         }

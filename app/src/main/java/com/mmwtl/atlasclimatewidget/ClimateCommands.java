@@ -125,6 +125,9 @@ final class ClimateCommands {
     }
 
     static TileState tileState(ClimateFunction function, ClimateState state, CarModel model) {
+        if (!function.isAvailableFor(model)) {
+            return TileState.UNKNOWN;
+        }
         if (function.kind == ClimateFunction.Kind.ACTION
                 || function.kind == ClimateFunction.Kind.OFF) {
             return TileState.ACTION;
@@ -425,6 +428,9 @@ final class ClimateCommands {
             CarModel model,
             boolean levelsFromMax
     ) {
+        if (!function.isAvailableFor(model)) {
+            return Collections.emptyList();
+        }
         int id = function.propertyId(model);
         Double raw = function.hasProperty() ? state.property(id, function.area) : null;
         int current = raw == null ? Integer.MIN_VALUE : (int) Math.round(raw);

@@ -70,8 +70,26 @@ public final class ClimateCommandsTest {
         ClimateStore store = store(0);
         store.putProperty(Hvac.EXTERIOR_LIGHT, Gib.AREA_GLOBAL, 0, 0);
         assertEquals(Hvac.EXTERIOR_LIGHT_LEVELS[1], (int) ClimateCommands.press(
-                ClimateFunction.HEADLIGHTS, store.snapshot(0), CarModel.ATLAS, true)
+                ClimateFunction.HEADLIGHTS, store.snapshot(0), CarModel.PREFACE, true)
                 .get(0).value);
+    }
+
+    @Test public void unsupportedBodyTilesCannotSendCommandsOrAppearActive() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.EXTERIOR_LIGHT, Gib.AREA_GLOBAL,
+                Hvac.EXTERIOR_LIGHT_LEVELS[3], 0);
+        ClimateState state = store.snapshot(0);
+        for (CarModel model : CarModel.values()) {
+            boolean preface = model == CarModel.PREFACE;
+            assertEquals(preface, !ClimateCommands.press(ClimateFunction.HEADLIGHTS,
+                    state, model, false).isEmpty());
+            assertEquals(preface, ClimateCommands.tileState(ClimateFunction.HEADLIGHTS,
+                    state, model).active);
+            assertEquals(!preface, !ClimateCommands.press(ClimateFunction.SEAT_MEMORY,
+                    state, model, false).isEmpty());
+            assertEquals(!preface, ClimateCommands.tileState(ClimateFunction.SEAT_MEMORY,
+                    state, model).known);
+        }
     }
 
     @Test public void bodyFunctionsAreNotSwitchedOffWithTheClimate() {

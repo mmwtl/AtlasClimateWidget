@@ -212,6 +212,18 @@ enum ClimateFunction {
         return kind != Kind.ACTION && kind != Kind.OFF;
     }
 
+    /** Model restrictions used by GInputBridge's car functions. */
+    boolean isAvailableFor(CarModel model) {
+        switch (this) {
+            case HEADLIGHTS:
+                return model == CarModel.PREFACE;
+            case SEAT_MEMORY:
+                return model != CarModel.PREFACE;
+            default:
+                return true;
+        }
+    }
+
     /** Whether {@link #ALL_OFF} can switch this function off: climate toggles and levels. */
     boolean canSwitchOff() {
         return !body && (kind == Kind.TOGGLE || kind == Kind.LEVEL);

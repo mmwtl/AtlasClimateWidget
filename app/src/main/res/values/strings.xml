@@ -185,7 +185,7 @@
     <string name="fuel_offset_range">Допустимый диапазон: от −1000 до 1000</string>
     <string name="behaviour_title">Управление</string>
     <string name="car_model_title">Автомобиль</string>
-    <string name="car_model_hint">Влияет на обогрев лобового стекла и управление обдувом кнопками − и +.</string>
+    <string name="car_model_hint">Влияет на обогрев лобового стекла, управление обдувом кнопками − и + и доступность функций: фары — только Preface, память сидений — Atlas и Cityray.</string>
     <string name="car_model_atlas">Geely Atlas</string>
     <string name="car_model_preface">Geely Preface</string>
     <string name="car_model_cityray">Geely Cityray</string>
@@ -315,6 +315,7 @@
     <string name="fn_traction_short">Антибукс</string>
     <string name="fn_seat_memory">Память сидений (GInputBridge)</string>
     <string name="fn_seat_memory_short">Память</string>
+    <string name="function_unavailable">%1$s (недоступно для выбранной модели)</string>
     <string name="fn_all_off">Выключить всё</string>
     <string name="fn_all_off_short">Выкл. всё</string>
 </resources>

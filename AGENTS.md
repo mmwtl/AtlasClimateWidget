@@ -76,7 +76,7 @@ line, read as in AtlasAppWidget (`Fuel`).
   may span several cells, so the scrubber gets the tapped cell in its URI. `FanLayout.ROWS` is
   the FX11-style stack (speed bar, directions, presets); layouts saved before the bar keep it.
   `fanDirectionIcons` (per widget, off by default) draws the blowing directions as bare icons
-  in every layout and style, lit like `TileStyle.ICON` tiles; other fan buttons keep pills.
+  without names in every layout and style, lit like `TileStyle.ICON` tiles; other fan buttons keep pills.
 - Cards: `CardLayout.SEPARATE` gives every block its own card; `SINGLE` puts all rows in one card,
   blocks a card padding apart without dividers. Fill shares extra height per block in both
   modes.
@@ -142,6 +142,8 @@ line, read as in AtlasAppWidget (`Fuel`).
   mirrors, wiper service position, traction control) are never «switch off all» targets and
   their levels always step upwards. The interior light writes every `Hvac.READING_LIGHT_ZONES`
   zone and reads the passenger one, as FX11 does; seat memory is the bridge's `SEAT_MEMORY`.
+  Headlights are available only for Preface, seat memory only for Atlas and Cityray. Saved
+  unsupported tiles stay in the layout but remain inactive and send no commands.
 - The settings preview uses the same `RemoteViews` as the widget, inert; demo values are labelled.
 - Preserve per-widget layouts across upgrades; `WidgetConfig.fromJson` must tolerate unknown and
   missing fields.

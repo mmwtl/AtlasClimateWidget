@@ -79,6 +79,9 @@ final class WatchList {
         }
         if (config.isEnabled(WidgetConfig.Block.TILES)) {
             for (ClimateFunction function : config.functions) {
+                if (!function.isAvailableFor(model)) {
+                    continue;
+                }
                 if (function.hasProperty()) {
                     property(function.propertyId(model), function.area, function.isFloat());
                 }
