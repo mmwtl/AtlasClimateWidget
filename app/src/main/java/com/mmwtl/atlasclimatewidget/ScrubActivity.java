@@ -121,12 +121,21 @@ public final class ScrubActivity extends Activity {
         if (strip == null) {
             return false;
         }
-        // The tapped cell anchors the whole bar: its width gives the host's scale.
+        // The tapped cell anchors the whole bar. Cells are whole pixels, a pixel apart in width,
+        // so the host's scale comes from the strip's height instead, exact at the reported size.
         cell = (plan.width - 2f * strip.zonePadding) / strip.zoneCount;
-        scale = source.width() / cell;
-        int left = Math.round(source.left
-                - (plan.offsetX() + strip.zonePadding + tappedCell * cell) * scale);
+        scale = source.height() / (float) plan.pixelHeight(strip);
+        if (Math.abs(source.height() - plan.pixelHeight(strip)) <= 1) {
+            scale = 1f;
+        }
         int width = Math.round(plan.fullWidth * scale);
+        // The host lays the cells out in whole pixels, as WidgetViews padded the row.
+        int padding = Math.round(strip.zonePadding + plan.offsetX());
+        int left = source.left - padding - WidgetGeometry.zoneLeft(width - 2 * padding,
+                strip.zoneCount, tappedCell);
+        AppLog.debug("scrub source=" + source + " cells=" + strip.zoneCount + " cell=" + cell
+                + " scale=" + scale + " left=" + left + " width=" + width + " full="
+                + plan.fullWidth + " strip=" + plan.pixelHeight(strip));
 
         view = new ScrubView(this);
         setContentView(view);

@@ -433,4 +433,14 @@ public final class WidgetGeometryTest {
         assertTrue(squeezed.verticalScale < 1f);
         assertEquals(48f, squeezed.cardRadius, 0f);
     }
+
+    @Test public void zoneLeftFollowsLinearLayoutShares() {
+        // 897 px in 48 cells: 18 px cells first, the remainder pushed to the end.
+        assertEquals(0, WidgetGeometry.zoneLeft(897, 48, 0));
+        assertEquals(18, WidgetGeometry.zoneLeft(897, 48, 1));
+        int left = WidgetGeometry.zoneLeft(897, 48, 24);
+        assertTrue("drifts left of the even split", left < Math.round(24 * 897f / 48));
+        assertEquals(897 - 19, WidgetGeometry.zoneLeft(897, 48, 47));
+        assertEquals(897, WidgetGeometry.zoneLeft(897, 48, 48));
+    }
 }

@@ -360,6 +360,22 @@ final class WidgetGeometry {
                 .totalHeight();
     }
 
+    /**
+     * Left edge of a touch cell inside a row {@code width} pixels wide, as {@code LinearLayout}
+     * splits equal weights: each cell takes the whole pixels of its share of what is left, so
+     * the early cells are narrower and the positions drift from {@code index × width / count}.
+     */
+    static int zoneLeft(int width, int count, int index) {
+        int remaining = width;
+        int left = 0;
+        for (int cell = 0; cell < index && cell < count; cell++) {
+            int share = (int) (1f * remaining / (count - cell));
+            remaining -= share;
+            left += share;
+        }
+        return left;
+    }
+
     private static Plan build(WidgetConfig config, float fullWidth, float width, float density,
             float scale, int temperatureSteps, float tileExtra, float cardExtra) {
         float padding = config.cardPaddingDp * density;
