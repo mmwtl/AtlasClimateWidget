@@ -133,7 +133,7 @@ final class WidgetConfig {
      * screen dp instead of being multiplied by the widget scale.
      */
     static final int VERSION = 4;
-    static final int COLUMNS_MIN = 2;
+    static final int COLUMNS_MIN = 1;
     static final int COLUMNS_MAX = 8;
     static final int CARD_RADIUS_MAX_DP = 40;
     /** Radius of the stock OneOS cards, shared by all Atlas widgets. */

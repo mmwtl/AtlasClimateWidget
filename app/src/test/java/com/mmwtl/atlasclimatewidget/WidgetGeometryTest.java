@@ -36,6 +36,23 @@ public final class WidgetGeometryTest {
         assertEquals(0, plan.strips.get(0).zoneCount);
     }
 
+    @Test public void singleTileMakesAWidgetOfItsOwn() {
+        WidgetConfig config = new WidgetConfig();
+        config.infoEnabled = false;
+        config.temperatureEnabled = false;
+        config.fanEnabled = false;
+        config.functions.clear();
+        config.functions.add(ClimateFunction.AUTO);
+        config.columns = 1;
+        config = WidgetConfig.fromJson(config.toJson());
+        assertEquals(1, config.columns);
+        WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 120f, 0f, 1f, 25);
+        assertEquals(1, plan.strips.size());
+        assertEquals(WidgetGeometry.RowKind.TILES, plan.strips.get(0).row.kind);
+        assertEquals(1, plan.strips.get(0).zoneCount);
+        assertTrue(plan.totalHeight() > 0f);
+    }
+
     @Test public void tileCellsCentreOnTiles() {
         WidgetConfig config = new WidgetConfig();
         WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
