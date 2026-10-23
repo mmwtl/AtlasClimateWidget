@@ -10,7 +10,8 @@ AtlasClimateWidget is a real Android `AppWidget` (not an overlay) for portrait G
 units on Android 11. It is a user-built climate widget: a temperature bar, a fan bar and tiles of
 climate functions. Package name: `com.mmwtl.atlasclimatewidget`; do not change it without an
 explicit migration request. All car access goes through the GInputBridge broadcast API
-(`com.salat.gbinder`); do not bind ECarX services directly. Fuel is shown only in the sensor
+(`com.salat.gbinder`), except the experimental direct mode below; do not bind ECarX services
+any other way. Fuel is shown only in the sensor
 line, read as in AtlasAppWidget (`Fuel`).
 
 ## Architecture
@@ -22,6 +23,13 @@ line, read as in AtlasAppWidget (`Fuel`).
   bitmap, stretched (`fitXY`) to the full width even when the host rounds its height; `WidgetViews` stacks the strips with an overlay row of equal-weight touch cells. Android 11
   `RemoteViews` cannot set weights, margins or positions dynamically, so every touch target must sit
   on the equal-cell grid computed by `WidgetGeometry`.
+- Direct mode (experimental, off by default, global, not in the backup): the System tab's
+  «Работать без GInputBridge» switch (`Prefs.directCar`) makes the service read and write
+  properties and sensors through `Ecarx`, the head unit's `com.ecarx.xui.adaptapi` reached by
+  reflection as FX11 calls it, behind the same `CarLink` as the bridge. The bridge's own car
+  functions still go through the bridge; without the API the service falls back to the bridge
+  and the status card says so. Switching links clears the store, and bridge broadcasts are
+  ignored while the direct link is active. Test doubles of the API live in the test sources.
 - `MainActivity` is the full settings editor with Blocks, Tiles, Look and System tabs pinned under
   the title, as in the widgetkit branches of AtlasAppWidget and AtlasMediaWidget. The widget
   selector and live preview are pinned under the tabs on the three layout tabs and hidden on

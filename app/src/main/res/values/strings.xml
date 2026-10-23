@@ -14,17 +14,25 @@
     <string name="notification_channel">Связь с GInputBridge</string>
     <string name="notification_connected">Виджеты климата получают данные</string>
     <string name="notification_waiting">Ожидание ответа GInputBridge</string>
+    <string name="notification_waiting_direct">Ожидание ответа автомобиля</string>
 
     <string name="status_title">Связь с автомобилем</string>
     <string name="status_bridge_installed">GInputBridge: установлен</string>
     <string name="status_bridge_missing">GInputBridge: не найден — виджет не сможет управлять климатом</string>
     <string name="status_no_answer">Ответ GInputBridge: ещё не получен</string>
     <string name="status_answer">Ответ GInputBridge: %1$d с назад</string>
+    <string name="status_link_direct">Подключение: напрямую к автомобилю</string>
+    <string name="status_link_direct_missing">Подключение: прямое недоступно, используется GInputBridge</string>
+    <string name="status_no_answer_direct">Ответ автомобиля: ещё не получен</string>
+    <string name="status_answer_direct">Ответ автомобиля: %1$d с назад</string>
+    <string name="direct_car">Работать без GInputBridge (эксперимент)</string>
+    <string name="direct_car_hint">Виджет обращается к автомобилю сам, как FX11, и не ждёт запуска GInputBridge, поэтому после включения ГУ должен оживать быстрее. Режим пробный: если что-то показывается неверно или не переключается, напишите, что именно, и выключите его. «Мне жарко», «Я замёрз», меню климата и память сидений по-прежнему работают через GInputBridge.</string>
     <string name="status_widgets">Виджетов на экране: %1$d</string>
     <string name="status_service_running">Служба синхронизации: работает</string>
     <string name="status_service_stopped">Служба синхронизации: остановлена</string>
     <string name="status_refresh">Запросить данные заново</string>
     <string name="status_refresh_sent">Запрос отправлен в GInputBridge</string>
+    <string name="status_refresh_sent_direct">Запрос отправлен автомобилю</string>
     <string name="pin_widget">Добавить виджет на главный экран</string>
     <string name="pin_widget_manual">Добавьте виджет «Atlas Climate» через меню виджетов лаунчера.</string>
 
@@ -240,6 +248,7 @@
     <string name="header_range">Запас</string>
     <string name="header_kilometers">%1$d км</string>
     <string name="header_no_bridge">нет связи с GInputBridge</string>
+    <string name="header_no_car">нет связи с автомобилем</string>
     <string name="zone_driver">Водитель</string>
     <string name="zone_passenger">Пассажир</string>
 

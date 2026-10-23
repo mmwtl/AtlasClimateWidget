@@ -391,9 +391,18 @@ public final class MainActivity extends ScaledActivity {
         Ui.topMargin(refresh, 12);
         refresh.setOnClickListener(view -> {
             ClimateService.start(this, ClimateService.ACTION_REFRESH);
-            Toast.makeText(this, R.string.status_refresh_sent, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, ClimateService.isDirect() ? R.string.status_refresh_sent_direct
+                    : R.string.status_refresh_sent, Toast.LENGTH_SHORT).show();
         });
         card.addView(refresh);
+
+        Switch direct = switchRow(R.string.direct_car, prefs.directCar());
+        direct.setOnCheckedChangeListener((view, checked) -> {
+            prefs.setDirectCar(checked);
+            ClimateService.start(this, ClimateService.ACTION_REFRESH);
+        });
+        card.addView(direct);
+        card.addView(hint(R.string.direct_car_hint));
 
         AppWidgetManager manager = AppWidgetManager.getInstance(this);
         if (manager.isRequestPinAppWidgetSupported()) {
@@ -1288,14 +1297,22 @@ public final class MainActivity extends ScaledActivity {
         }
         long now = SystemClock.elapsedRealtime();
         StringBuilder text = new StringBuilder();
+        boolean direct = ClimateService.isRunning() && ClimateService.isDirect();
+        if (prefs.directCar()) {
+            text.append(getString(direct ? R.string.status_link_direct
+                    : R.string.status_link_direct_missing));
+            text.append('\n');
+        }
         text.append(getString(Gib.isInstalled(this)
                 ? R.string.status_bridge_installed : R.string.status_bridge_missing));
         text.append('\n');
         long last = ClimateService.STORE.lastResultAt();
         if (last <= 0L) {
-            text.append(getString(R.string.status_no_answer));
+            text.append(getString(direct ? R.string.status_no_answer_direct
+                    : R.string.status_no_answer));
         } else {
-            text.append(getString(R.string.status_answer, Math.max(0, (now - last) / 1000L)));
+            text.append(getString(direct ? R.string.status_answer_direct
+                    : R.string.status_answer, Math.max(0, (now - last) / 1000L)));
         }
         text.append('\n');
         text.append(getString(R.string.status_widgets, ClimateService.widgetIds(this).length));

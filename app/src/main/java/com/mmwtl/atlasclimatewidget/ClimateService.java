@@ -33,7 +33,8 @@ import java.util.Objects;
 /**
  * Keeps the GInputBridge subscription alive while widgets exist, executes widget controls and
  * redraws the widgets. The bridge answers with implicit broadcasts, which only a registered
- * receiver in a running process can get.
+ * receiver in a running process can get. With the experimental direct mode the car is read
+ * through {@link Ecarx} instead, the bridge's own functions still going through the bridge.
  */
 public final class ClimateService extends Service {
     static final String ACTION_START = "com.mmwtl.atlasclimatewidget.START";
@@ -80,6 +81,7 @@ public final class ClimateService extends Service {
     /** Widget id and strip key of the bar under an open scrubber. */
     private static volatile int scrubbedWidget = AppWidgetManager.INVALID_APPWIDGET_ID;
     private static volatile String scrubbedStrip;
+    private static volatile boolean directActive;
 
     private HandlerThread workerThread;
     private Handler worker;
@@ -89,6 +91,9 @@ public final class ClimateService extends Service {
     private boolean polling;
     private boolean receiverRegistered;
     private boolean lastConnected;
+    /** Worker-thread only: the current link and whether it was chosen for the direct mode. */
+    private CarLink link;
+    private boolean linkForDirect;
     /** Worker-thread only: the last set, sent or retried, and the set waiting for it. */
     private final Map<String, Sent> lastSets = new HashMap<>();
     private final Map<String, ClimateCommands.Command> queued = new HashMap<>();
@@ -97,7 +102,10 @@ public final class ClimateService extends Service {
         @Override
         public void run() {
             poll();
-            worker.postDelayed(this, nextPollDelay());
+            // A direct read answers during the poll and may already have rescheduled it.
+            if (!worker.hasCallbacks(this)) {
+                worker.postDelayed(this, nextPollDelay());
+            }
         }
     };
 
@@ -128,6 +136,11 @@ public final class ClimateService extends Service {
 
     static boolean isRunning() {
         return running;
+    }
+
+    /** Whether the car is read through the ECarX API rather than GInputBridge. */
+    static boolean isDirect() {
+        return directActive;
     }
 
     /** Called on the main thread after every state change while the listener is set. */
@@ -211,6 +224,11 @@ public final class ClimateService extends Service {
         }
         if (worker != null) {
             worker.removeCallbacksAndMessages(null);
+            worker.post(() -> {
+                if (link != null) {
+                    link.close();
+                }
+            });
         }
         if (workerThread != null) {
             workerThread.quitSafely();
@@ -261,43 +279,71 @@ public final class ClimateService extends Service {
             AppLog.debug("<- " + action.substring(action.lastIndexOf('.') + 1) + " id=" + id
                     + " area=" + Gib.extra(intent, Gib.EXTRA_AREA) + " value=" + rawValue);
         }
+        if (link != null && link.isDirect()) {
+            // The bridge may still serve subscriptions made before the switch.
+            return;
+        }
+        Float value = Gib.parseFloat(rawValue);
+        if (value == null) {
+            return;
+        }
+        if (action.equals(Gib.SENSOR_FLOAT_RESULT) || action.equals(Gib.SENSOR_FLOAT_CHANGED)) {
+            onSensor(id, value);
+            return;
+        }
+        Integer area = Gib.parseInt(Gib.extra(intent, Gib.EXTRA_AREA));
+        boolean floatAction = action.equals(Gib.PROPERTY_FLOAT_RESULT)
+                || action.equals(Gib.PROPERTY_FLOAT_CHANGED);
+        // Integer ids exceed float precision, so parse them as integers.
+        double parsed = floatAction ? value : integerValue(rawValue, value);
+        onProperty(id, area == null ? Gib.AREA_GLOBAL : area, parsed);
+    }
+
+    private final CarLink.Sink sink = new CarLink.Sink() {
+        @Override
+        public void onProperty(int id, int area, double value) {
+            ClimateService.this.onProperty(id, area, value);
+        }
+
+        @Override
+        public void onSensor(int id, float value) {
+            ClimateService.this.onSensor(id, value);
+        }
+    };
+
+    private void onSensor(int id, float value) {
+        if (id != Hvac.SENSOR_TEMPERATURE_INDOOR && id != Hvac.SENSOR_TEMPERATURE_AMBIENT
+                && id != Hvac.SENSOR_FUEL_PERCENTAGE && id != Hvac.SENSOR_RANGE_FUEL) {
+            return;
+        }
         long now = SystemClock.elapsedRealtime();
+        onAnswer(now);
+        Double before = shownSensor(id, STORE.snapshot(now).sensor(id));
+        STORE.putSensor(id, value, now);
+        rendered(!Objects.equals(before, shownSensor(id, STORE.snapshot(now).sensor(id))));
+    }
+
+    private void onProperty(int id, int zone, double value) {
+        long now = SystemClock.elapsedRealtime();
+        onAnswer(now);
+        Double before = STORE.snapshot(now).property(id, zone);
+        STORE.putProperty(id, zone, value, now);
+        boolean changed = !Objects.equals(before, STORE.snapshot(now).property(id, zone));
+        Sent sent = lastSets.get(ClimateStore.propertyKey(id, zone));
+        if (sent != null && sent.command.value == value) {
+            sent.confirmed = true;
+        }
+        rendered(changed);
+    }
+
+    private void onAnswer(long now) {
         if (!STORE.snapshot(now).isConnected()) {
             worker.removeCallbacks(pollTask);
             worker.postDelayed(pollTask, REPOLL_AFTER_CONNECT_MS);
         }
-        boolean changed;
-        if (action.equals(Gib.SENSOR_FLOAT_RESULT) || action.equals(Gib.SENSOR_FLOAT_CHANGED)) {
-            if (id != Hvac.SENSOR_TEMPERATURE_INDOOR && id != Hvac.SENSOR_TEMPERATURE_AMBIENT
-                    && id != Hvac.SENSOR_FUEL_PERCENTAGE && id != Hvac.SENSOR_RANGE_FUEL) {
-                return;
-            }
-            Float value = Gib.parseFloat(rawValue);
-            if (value == null) {
-                return;
-            }
-            Double before = shownSensor(id, STORE.snapshot(now).sensor(id));
-            STORE.putSensor(id, value, now);
-            changed = !Objects.equals(before, shownSensor(id, STORE.snapshot(now).sensor(id)));
-        } else {
-            Integer area = Gib.parseInt(Gib.extra(intent, Gib.EXTRA_AREA));
-            Float value = Gib.parseFloat(rawValue);
-            if (value == null) {
-                return;
-            }
-            boolean floatAction = action.equals(Gib.PROPERTY_FLOAT_RESULT)
-                    || action.equals(Gib.PROPERTY_FLOAT_CHANGED);
-            // Integer ids exceed float precision, so parse them as integers.
-            double parsed = floatAction ? value : integerValue(rawValue, value);
-            int zone = area == null ? Gib.AREA_GLOBAL : area;
-            Double before = STORE.snapshot(now).property(id, zone);
-            STORE.putProperty(id, zone, parsed, now);
-            changed = !Objects.equals(before, STORE.snapshot(now).property(id, zone));
-            Sent sent = lastSets.get(ClimateStore.propertyKey(id, zone));
-            if (sent != null && sent.command.value == parsed) {
-                sent.confirmed = true;
-            }
-        }
+    }
+
+    private void rendered(boolean changed) {
         // The bridge repeats unchanged values and the cabin sensor reports tenths several times
         // a second; drawing every strip for each of them costs a steady few percent of CPU.
         if (changed || !lastConnected) {
@@ -326,16 +372,41 @@ public final class ClimateService extends Service {
             stopSelf();
             return;
         }
+        CarLink link = link();
         WatchList watch = WatchList.of(configs(), prefs.carModel());
         for (WatchList.Key key : watch.properties) {
-            Gib.listenProperty(this, key.id, key.area);
+            link.listenProperty(key.id, key.area);
             request(key.id, key.area, key.isFloat);
         }
         for (Integer sensor : watch.sensors) {
-            Gib.listenSensor(this, sensor);
-            Gib.getFloatSensor(this, sensor);
+            link.listenSensor(sensor);
+            link.requestSensor(sensor);
         }
         scheduleRender();
+    }
+
+    /** The link the settings ask for; without the ECarX API the direct mode uses the bridge. */
+    private CarLink link() {
+        boolean direct = prefs.directCar();
+        if (link != null && linkForDirect == direct) {
+            return link;
+        }
+        if (link != null) {
+            link.close();
+            // Values of the other link must not pass for this one's answers.
+            STORE.clear();
+            lastSets.clear();
+            queued.clear();
+        }
+        CarLink next = direct ? Ecarx.connect(this, worker, sink) : null;
+        if (direct && next == null) {
+            AppLog.warn("Direct mode without the ECarX API, using GInputBridge", null);
+        }
+        AppLog.info("Car link: " + (next != null ? "ECarX" : "GInputBridge"));
+        link = next != null ? next : CarLink.bridge(this);
+        linkForDirect = direct;
+        directActive = link.isDirect();
+        return link;
     }
 
     private long nextPollDelay() {
@@ -346,11 +417,7 @@ public final class ClimateService extends Service {
     }
 
     private void request(int id, int area, boolean isFloat) {
-        if (isFloat) {
-            Gib.getFloat(this, id, area);
-        } else {
-            Gib.getInt(this, id, area);
-        }
+        link().requestProperty(id, area, isFloat);
     }
 
     private boolean shouldStop() {
@@ -475,9 +542,9 @@ public final class ClimateService extends Service {
 
     private void send(ClimateCommands.Command command, long now) {
         if (command.type == ClimateCommands.Command.Type.FLOAT) {
-            Gib.setFloat(this, command.id, command.area, (float) command.value);
+            link().setFloat(command.id, command.area, (float) command.value);
         } else {
-            Gib.setInt(this, command.id, command.area, (int) command.value);
+            link().setInt(command.id, command.area, (int) command.value);
         }
         if (command.isOptimistic()) {
             // Restart the optimistic window: a queued value leaves later than it was chosen.
@@ -654,8 +721,8 @@ public final class ClimateService extends Service {
         Notification notification = new Notification.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(getString(R.string.app_name))
-                .setContentText(getString(connected
-                        ? R.string.notification_connected
+                .setContentText(getString(connected ? R.string.notification_connected
+                        : directActive ? R.string.notification_waiting_direct
                         : R.string.notification_waiting))
                 .setContentIntent(open)
                 .setOngoing(true)

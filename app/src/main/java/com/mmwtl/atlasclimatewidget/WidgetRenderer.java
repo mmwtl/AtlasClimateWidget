@@ -202,7 +202,8 @@ final class WidgetRenderer {
                     kilometers(state.sensor(Hvac.SENSOR_RANGE_FUEL))});
         }
         String status = state.isConnected() ? null
-                : context.getString(R.string.header_no_bridge);
+                : context.getString(ClimateService.isDirect() ? R.string.header_no_car
+                        : R.string.header_no_bridge);
         float available = plan.width - 2f * plan.padding;
         float width = headerWidth(parts, separator, status, size);
         if (width > available && width > 0f) {

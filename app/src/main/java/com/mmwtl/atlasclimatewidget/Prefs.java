@@ -12,6 +12,7 @@ final class Prefs {
     static final String KEY_TEMP_STEP_TENTHS = "temp_step_tenths";
     static final String KEY_LEVELS_FROM_MAX = "levels_from_max";
     static final String KEY_KEPT_WHEN_OFF = "kept_when_off";
+    static final String KEY_DIRECT_CAR = "direct_car";
     static final String KEY_UI_SCALE_TENTHS = "ui_scale_tenths";
     static final String KEY_TEMPLATE = "widget_template";
     static final String KEY_FAN_PRESETS = "fan_presets";
@@ -61,6 +62,15 @@ final class Prefs {
 
     void setKeptWhenOff(boolean value) {
         preferences.edit().putBoolean(KEY_KEPT_WHEN_OFF, value).apply();
+    }
+
+    /** Experimental: read the car through the ECarX API instead of GInputBridge. */
+    boolean directCar() {
+        return preferences.getBoolean(KEY_DIRECT_CAR, false);
+    }
+
+    void setDirectCar(boolean value) {
+        preferences.edit().putBoolean(KEY_DIRECT_CAR, value).apply();
     }
 
     int uiScaleTenths(int fallback) {
