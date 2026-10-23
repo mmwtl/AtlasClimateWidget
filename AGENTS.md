@@ -161,7 +161,8 @@ line, read as in AtlasAppWidget (`Fuel`).
   Cityray (`Spec.models`). Saved unsupported tiles stay in the layout but remain inactive and
   send no commands. A body tile with an unknown state sends nothing, zoned body values never
   fall back to the global one (`Hvac.hasZoneOnlyValue`), and the tailgate and mirrors, like
-  the roof glass, are not resent while they move (`Hvac.movesPart`).
+  the roof glass, are not resent while they move (`Hvac.movesPart`); they are read once more
+  `ClimateService.MOVE_SETTLE_MS` after their last reported change.
 - The settings preview uses the same `RemoteViews` as the widget, inert; demo values are labelled.
 - Preserve per-widget layouts across upgrades; `WidgetConfig.fromJson` must tolerate unknown and
   missing fields.

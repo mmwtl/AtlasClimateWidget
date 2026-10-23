@@ -52,6 +52,12 @@ final class ClimateStore {
         track(id, area, value, now);
     }
 
+    /** The last value the car reported, however old and whatever is pending, or null. */
+    synchronized Double reported(int id, int area) {
+        Reading reading = values.get(propertyKey(id, area));
+        return reading == null ? null : reading.value;
+    }
+
     synchronized long lastResultAt() {
         return lastResultAt;
     }

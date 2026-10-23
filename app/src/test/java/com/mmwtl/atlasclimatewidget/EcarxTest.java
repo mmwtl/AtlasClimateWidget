@@ -120,7 +120,7 @@ public final class EcarxTest {
     }
 
     @Test
-    public void changeDeliversItsZoneAndRereadsTheOtherWatchedAreas() {
+    public void changeRereadsEveryWatchedArea() {
         car.values.put(SEAT + "@1", 0);
         car.values.put(SEAT + "@g", 0);
         Ecarx link = connect();
@@ -130,8 +130,10 @@ public final class EcarxTest {
         link.requestProperty(SEAT, Gib.AREA_GLOBAL, false);
         answers.clear();
 
+        car.values.put(SEAT + "@1", 3);
         car.values.put(SEAT + "@g", 3);
-        car.watchers.get(SEAT).onFunctionValueChanged(SEAT, 1, 3);
+        // A late callback of an earlier change must not win over the car's current value.
+        car.watchers.get(SEAT).onFunctionValueChanged(SEAT, 1, 1);
         ShadowLooper.idleMainLooper();
         assertTrue(answers.toString(), answers.contains(SEAT + "@1=3.0"));
         assertTrue(answers.toString(), answers.contains(SEAT + "@" + Gib.AREA_GLOBAL + "=3.0"));

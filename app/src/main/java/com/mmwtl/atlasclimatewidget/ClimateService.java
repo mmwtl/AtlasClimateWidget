@@ -68,6 +68,11 @@ public final class ClimateService extends Service {
      * and only the last value is sent.
      */
     private static final long SET_SPACING_MS = 700L;
+    /**
+     * A moving roof glass, tailgate or mirror is read once more this long after its last
+     * reported change: a quick run of changes may end with an earlier value, the final one lost.
+     */
+    private static final long MOVE_SETTLE_MS = 1_500L;
     /** An unconfirmed set is sent once more after this delay. */
     private static final long SET_RETRY_MS = 1_000L;
     /** The settings screen keeps the service alive for its preview without widgets. */
@@ -97,6 +102,9 @@ public final class ClimateService extends Service {
     /** Worker-thread only: the last set, sent or retried, and the set waiting for it. */
     private final Map<String, Sent> lastSets = new HashMap<>();
     private final Map<String, ClimateCommands.Command> queued = new HashMap<>();
+    /** Worker-thread only: the last poll's watch list and the pending rereads of moving parts. */
+    private WatchList watching;
+    private final Map<String, Runnable> settles = new HashMap<>();
 
     private final Runnable pollTask = new Runnable() {
         @Override
@@ -327,13 +335,37 @@ public final class ClimateService extends Service {
         long now = SystemClock.elapsedRealtime();
         onAnswer(now);
         Double before = STORE.snapshot(now).property(id, zone);
+        Double reported = STORE.reported(id, zone);
         STORE.putProperty(id, zone, value, now);
         boolean changed = !Objects.equals(before, STORE.snapshot(now).property(id, zone));
         Sent sent = lastSets.get(ClimateStore.propertyKey(id, zone));
         if (sent != null && sent.command.value == value) {
             sent.confirmed = true;
         }
+        // The shown value may be a pending one, so the car's own values decide.
+        if (Hvac.movesPart(id) && !Objects.equals(reported, STORE.reported(id, zone))) {
+            settle(id, zone);
+        }
         rendered(changed);
+    }
+
+    /** Rereads a moving part once its changes stop; an unchanged answer ends the rereads. */
+    private void settle(int id, int zone) {
+        WatchList.Key key = watching == null ? null : watching.find(id, zone);
+        if (key == null) {
+            return;
+        }
+        String name = ClimateStore.propertyKey(id, zone);
+        Runnable previous = settles.remove(name);
+        if (previous != null) {
+            worker.removeCallbacks(previous);
+        }
+        Runnable reread = () -> {
+            settles.remove(name);
+            request(id, zone, key.isFloat);
+        };
+        settles.put(name, reread);
+        worker.postDelayed(reread, MOVE_SETTLE_MS);
     }
 
     private void onAnswer(long now) {
@@ -374,6 +406,7 @@ public final class ClimateService extends Service {
         }
         CarLink link = link();
         WatchList watch = WatchList.of(configs(), prefs.carModel());
+        watching = watch;
         for (WatchList.Key key : watch.properties) {
             link.listenProperty(key.id, key.area);
             request(key.id, key.area, key.isFloat);

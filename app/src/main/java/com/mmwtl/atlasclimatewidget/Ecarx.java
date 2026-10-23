@@ -20,8 +20,9 @@ import java.util.Set;
  * returns null.
  *
  * <p>The global area means the API's zoneless calls, as the bridge does without {@code area}.
- * A watcher reports a function's changes in whatever zone the car uses, so a change also rereads
- * the function's other watched areas. A watcher registered before the car service answers may
+ * A watcher reports a function's changes in whatever zone the car uses, and its callbacks come
+ * on several binder threads, so a quick run of them may arrive out of order: a change only
+ * rereads every watched area of the function instead of trusting the reported value. A watcher registered before the car service answers may
  * stay silent, so a watcher is registered only after a read succeeds, and again after a read
  * fails.
  */
@@ -310,10 +311,10 @@ final class Ecarx implements CarLink {
                 case "toString":
                     return "AtlasClimate " + type.getSimpleName();
                 case "onFunctionValueChanged":
-                    changed((Integer) args[0], (Integer) args[1], (Integer) args[2], false);
+                    changed((Integer) args[0], (Integer) args[1], (Integer) args[2]);
                     return null;
                 case "onCustomizeFunctionValueChanged":
-                    changed((Integer) args[0], (Integer) args[1], (Float) args[2], true);
+                    changed((Integer) args[0], (Integer) args[1], (Float) args[2]);
                     return null;
                 case "onSensorValueChanged":
                     int sensor = (Integer) args[0];
@@ -329,7 +330,7 @@ final class Ecarx implements CarLink {
         return Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] {type}, handler);
     }
 
-    private void changed(int id, int zone, Number value, boolean isFloat) {
+    private void changed(int id, int zone, Number value) {
         if (AppLog.debugEnabled()) {
             AppLog.debug("<- ECarX id=" + id + " zone=" + zone + " value=" + value);
         }
@@ -338,12 +339,8 @@ final class Ecarx implements CarLink {
             if (areas == null) {
                 return;
             }
-            for (Map.Entry<Integer, Boolean> area : areas.entrySet()) {
-                if (area.getKey() == zone && area.getValue() == isFloat) {
-                    sink.onProperty(id, zone, value.doubleValue());
-                } else {
-                    requestProperty(id, area.getKey(), area.getValue());
-                }
+            for (Map.Entry<Integer, Boolean> area : new HashMap<>(areas).entrySet()) {
+                requestProperty(id, area.getKey(), area.getValue());
             }
         });
     }

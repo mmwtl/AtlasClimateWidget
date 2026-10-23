@@ -36,6 +36,16 @@ final class WatchList {
     final Set<Key> properties = new LinkedHashSet<>();
     final Set<Integer> sensors = new LinkedHashSet<>();
 
+    /** The watched key of a property and area, or null. */
+    Key find(int id, int area) {
+        for (Key key : properties) {
+            if (key.id == id && key.area == area) {
+                return key;
+            }
+        }
+        return null;
+    }
+
     static WatchList of(Collection<WidgetConfig> configs, CarModel model) {
         WatchList list = new WatchList();
         for (WidgetConfig config : configs) {

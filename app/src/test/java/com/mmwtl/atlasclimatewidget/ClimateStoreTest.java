@@ -89,4 +89,15 @@ public final class ClimateStoreTest {
         late.putProperty(Hvac.POWER, Gib.AREA_GLOBAL, 0, 0L);
         assertNull(late.snapshot(0L).autoBeforePowerOff());
     }
+
+    @Test public void reportedValueIgnoresPendingOnes() {
+        ClimateStore store = new ClimateStore();
+        assertNull(store.reported(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE));
+        store.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 20, 0L);
+        store.setPending(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 0, 100L);
+        store.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 12, 200L);
+        assertEquals(0d, store.snapshot(300L).property(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE),
+                0d);
+        assertEquals(12d, store.reported(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE), 0d);
+    }
 }
