@@ -98,24 +98,28 @@ public final class EcarxTest {
     }
 
     @Test
-    public void watcherWaitsForTheFirstAnswerAndReregistersAfterAFailure() {
+    public void watcherWaitsForAnAnswerAndReregistersAfterAFailure() {
         car.down = true;
         Ecarx link = connect();
-        link.listenProperty(SEAT, 1);
+        link.listenProperty(SEAT, 1, false);
         link.requestProperty(SEAT, 1, false);
         assertTrue(car.watchers.isEmpty());
 
         car.down = false;
         car.values.put(SEAT + "@1", 1);
-        link.listenProperty(SEAT, 1);
         link.requestProperty(SEAT, 1, false);
+        assertTrue(car.watchers.isEmpty());
+        link.listenProperty(SEAT, 1, false);
         assertTrue(car.watchers.containsKey(SEAT));
 
         car.watchers.clear();
+        link.listenProperty(SEAT, 1, false);
+        assertTrue(car.watchers.isEmpty());
         car.down = true;
         link.requestProperty(SEAT, 1, false);
         car.down = false;
         link.requestProperty(SEAT, 1, false);
+        link.listenProperty(SEAT, 1, false);
         assertTrue(car.watchers.containsKey(SEAT));
     }
 
@@ -124,10 +128,10 @@ public final class EcarxTest {
         car.values.put(SEAT + "@1", 0);
         car.values.put(SEAT + "@g", 0);
         Ecarx link = connect();
-        link.listenProperty(SEAT, 1);
         link.requestProperty(SEAT, 1, false);
-        link.listenProperty(SEAT, Gib.AREA_GLOBAL);
         link.requestProperty(SEAT, Gib.AREA_GLOBAL, false);
+        link.listenProperty(SEAT, 1, false);
+        link.listenProperty(SEAT, Gib.AREA_GLOBAL, false);
         answers.clear();
 
         car.values.put(SEAT + "@1", 3);
@@ -144,8 +148,8 @@ public final class EcarxTest {
     public void sensorsAreReadAndWatched() {
         car.sensors.put(Hvac.SENSOR_TEMPERATURE_INDOOR, 21.4f);
         Ecarx link = connect();
-        link.listenSensor(Hvac.SENSOR_TEMPERATURE_INDOOR);
         link.requestSensor(Hvac.SENSOR_TEMPERATURE_INDOOR);
+        link.listenSensor(Hvac.SENSOR_TEMPERATURE_INDOOR);
         assertEquals(List.of("s" + Hvac.SENSOR_TEMPERATURE_INDOOR + "=21.4"), answers);
         assertTrue(car.listeners.containsKey(Hvac.SENSOR_TEMPERATURE_INDOOR));
 

@@ -10,6 +10,7 @@ import android.os.SystemClock;
 public final class ClimateWidgetProvider extends AppWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] widgetIds) {
+        AppLog.startup("APPWIDGET_UPDATE");
         draw(context, manager, widgetIds);
         ClimateService.start(context, ClimateService.ACTION_REFRESH);
     }

@@ -1,5 +1,7 @@
 package com.mmwtl.atlasclimatewidget;
 
+import android.os.Process;
+import android.os.SystemClock;
 import android.util.Log;
 
 final class AppLog {
@@ -14,6 +16,12 @@ final class AppLog {
 
     static void info(String message) {
         Log.i(TAG, message);
+    }
+
+    /** A startup step with the time since the process started, to see where a slow start goes. */
+    static void startup(String message) {
+        Log.i(TAG, "Startup +" + (SystemClock.elapsedRealtime() - Process.getStartElapsedRealtime())
+                + " ms: " + message);
     }
 
     /** Bridge traffic; enable with {@code adb shell setprop log.tag.AtlasClimateWidget DEBUG}. */

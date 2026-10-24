@@ -32,6 +32,7 @@ public final class BootReceiver extends BroadcastReceiver {
         if (widgetIds.length == 0) {
             return;
         }
+        AppLog.startup(action);
         ClimateWidgetProvider.draw(context, AppWidgetManager.getInstance(context), widgetIds);
         ClimateService.start(context, ClimateService.ACTION_REFRESH);
     }

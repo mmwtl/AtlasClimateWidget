@@ -23,8 +23,8 @@ import java.util.Set;
  * A watcher reports a function's changes in whatever zone the car uses, and its callbacks come
  * on several binder threads, so a quick run of them may arrive out of order: a change only
  * rereads every watched area of the function instead of trusting the reported value. A watcher registered before the car service answers may
- * stay silent, so a watcher is registered only after a read succeeds, and again after a read
- * fails.
+ * stay silent, so a watcher is registered only once a read has succeeded, and again after a
+ * read fails. The service reads everything first and registers the watchers afterwards.
  */
 final class Ecarx implements CarLink {
     private static final String PACKAGE = "com.ecarx.xui.adaptapi";
@@ -120,17 +120,13 @@ final class Ecarx implements CarLink {
     }
 
     @Override
-    public void listenProperty(int id, int area) {
-        watched.computeIfAbsent(id, key -> new HashMap<>()).putIfAbsent(area, false);
+    public void listenProperty(int id, int area, boolean isFloat) {
+        watched.computeIfAbsent(id, key -> new HashMap<>()).put(area, isFloat);
         watch(id);
     }
 
     @Override
     public void requestProperty(int id, int area, boolean isFloat) {
-        Map<Integer, Boolean> areas = watched.get(id);
-        if (areas != null && areas.containsKey(area)) {
-            areas.put(area, isFloat);
-        }
         if (!ensure()) {
             return;
         }
@@ -156,7 +152,6 @@ final class Ecarx implements CarLink {
         if (value instanceof Number) {
             answer();
             sink.onProperty(id, area, ((Number) value).doubleValue());
-            watch(id);
         }
     }
 
@@ -184,7 +179,6 @@ final class Ecarx implements CarLink {
         if (value instanceof Float && Float.isFinite((Float) value)) {
             answer();
             sink.onSensor(id, (Float) value);
-            watchSensor(id);
         }
     }
 

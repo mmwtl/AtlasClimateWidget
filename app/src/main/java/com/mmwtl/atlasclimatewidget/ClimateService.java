@@ -87,6 +87,7 @@ public final class ClimateService extends Service {
     private static volatile int scrubbedWidget = AppWidgetManager.INVALID_APPWIDGET_ID;
     private static volatile String scrubbedStrip;
     private static volatile boolean directActive;
+    private static volatile boolean firstPushLogged;
 
     private HandlerThread workerThread;
     private Handler worker;
@@ -191,6 +192,7 @@ public final class ClimateService extends Service {
         workerThread.start();
         worker = new Handler(workerThread.getLooper());
         registerBridgeReceiver();
+        AppLog.startup("service created");
     }
 
     @Override
@@ -200,7 +202,8 @@ public final class ClimateService extends Service {
         if (ACTION_START.equals(action)) {
             keepAliveUntil = SystemClock.elapsedRealtime() + PREVIEW_KEEP_ALIVE_MS;
         }
-        if (!polling) {
+        boolean firstPoll = !polling;
+        if (firstPoll) {
             // The first poll decides whether to stop, so it runs after keepAliveUntil is set.
             polling = true;
             worker.post(pollTask);
@@ -212,7 +215,10 @@ public final class ClimateService extends Service {
             worker.post(renderTask);
         } else if (ACTION_REFRESH.equals(action) || ACTION_START.equals(action)) {
             worker.post(() -> {
-                poll();
+                // The poll just posted already asks for everything.
+                if (!firstPoll) {
+                    poll();
+                }
                 renderWidgets(true);
             });
         }
@@ -369,7 +375,8 @@ public final class ClimateService extends Service {
     }
 
     private void onAnswer(long now) {
-        if (!STORE.snapshot(now).isConnected()) {
+        // The bridge drops requests until it reaches the car; direct reads are not dropped.
+        if (!link().isDirect() && !STORE.snapshot(now).isConnected()) {
             worker.removeCallbacks(pollTask);
             worker.postDelayed(pollTask, REPOLL_AFTER_CONNECT_MS);
         }
@@ -407,8 +414,12 @@ public final class ClimateService extends Service {
         CarLink link = link();
         WatchList watch = WatchList.of(configs(), prefs.carModel());
         watching = watch;
+        if (link.isDirect()) {
+            pollDirect(link, watch);
+            return;
+        }
         for (WatchList.Key key : watch.properties) {
-            link.listenProperty(key.id, key.area);
+            link.listenProperty(key.id, key.area, key.isFloat);
             request(key.id, key.area, key.isFloat);
         }
         for (Integer sensor : watch.sensors) {
@@ -416,6 +427,43 @@ public final class ClimateService extends Service {
             link.requestSensor(sensor);
         }
         scheduleRender();
+    }
+
+    /**
+     * Direct reads answer at once on this thread, so the widget is drawn right after them;
+     * the watchers follow one per message, letting renders and controls in between.
+     */
+    private void pollDirect(CarLink link, WatchList watch) {
+        long started = SystemClock.elapsedRealtime();
+        boolean first = !firstPushLogged;
+        for (WatchList.Key key : watch.properties) {
+            link.requestProperty(key.id, key.area, key.isFloat);
+        }
+        for (Integer sensor : watch.sensors) {
+            link.requestSensor(sensor);
+        }
+        if (first) {
+            AppLog.startup(watch.properties.size() + watch.sensors.size() + " direct reads in "
+                    + (SystemClock.elapsedRealtime() - started) + " ms");
+        }
+        renderWidgets(false);
+        for (WatchList.Key key : watch.properties) {
+            worker.post(() -> {
+                if (this.link == link) {
+                    link.listenProperty(key.id, key.area, key.isFloat);
+                }
+            });
+        }
+        for (Integer sensor : watch.sensors) {
+            worker.post(() -> {
+                if (this.link == link) {
+                    link.listenSensor(sensor);
+                }
+            });
+        }
+        if (first) {
+            worker.post(() -> AppLog.startup("direct watchers registered"));
+        }
     }
 
     /** The link the settings ask for; without the ECarX API the direct mode uses the bridge. */
@@ -431,7 +479,11 @@ public final class ClimateService extends Service {
             lastSets.clear();
             queued.clear();
         }
+        long started = SystemClock.elapsedRealtime();
         CarLink next = direct ? Ecarx.connect(this, worker, sink) : null;
+        if (next != null) {
+            AppLog.startup("ECarX link in " + (SystemClock.elapsedRealtime() - started) + " ms");
+        }
         if (direct && next == null) {
             AppLog.warn("Direct mode without the ECarX API, using GInputBridge", null);
         }
@@ -686,6 +738,11 @@ public final class ClimateService extends Service {
                     AppLog.debug("push widget " + widgetId + (force ? " (forced)" : ""));
                 }
                 manager.updateAppWidget(widgetId, views);
+                if (!firstPushLogged) {
+                    firstPushLogged = true;
+                    AppLog.startup("first widget push, " + (state.isConnected()
+                            ? "with car values" : "without car values"));
+                }
                 synchronized (FRAMES) {
                     FRAMES.put(widgetId, frame);
                 }

@@ -17,7 +17,7 @@ interface CarLink {
 
     boolean isDirect();
 
-    void listenProperty(int id, int area);
+    void listenProperty(int id, int area, boolean isFloat);
 
     void requestProperty(int id, int area, boolean isFloat);
 
@@ -40,7 +40,7 @@ interface CarLink {
             }
 
             @Override
-            public void listenProperty(int id, int area) {
+            public void listenProperty(int id, int area, boolean isFloat) {
                 Gib.listenProperty(context, id, area);
             }
 
