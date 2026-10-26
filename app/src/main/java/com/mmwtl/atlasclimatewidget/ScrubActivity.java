@@ -484,7 +484,7 @@ public final class ScrubActivity extends Activity {
         protected void onDraw(Canvas canvas) {
             float top = below ? pointerSize : 0f;
             pill.set(0f, top, getWidth(), top + pillHeight);
-            paint.setColor(Ui.TEXT);
+            paint.setColor(WidgetTheme.of(getContext()).text);
             canvas.drawRoundRect(pill, pillHeight / 2f, pillHeight / 2f, paint);
             float x = Math.max(pillHeight / 2f, Math.min(getWidth() - pillHeight / 2f, pointerX));
             pointer.reset();
@@ -495,7 +495,7 @@ public final class ScrubActivity extends Activity {
             pointer.lineTo(x + pointerSize, base);
             pointer.close();
             canvas.drawPath(pointer, paint);
-            paint.setColor(Ui.BACKGROUND);
+            paint.setColor(WidgetTheme.of(getContext()).onText);
             paint.getTextBounds(label, 0, label.length(), bounds);
             canvas.drawText(label, pill.centerX() - paint.measureText(label) / 2f,
                     pill.centerY() - bounds.exactCenterY(), paint);

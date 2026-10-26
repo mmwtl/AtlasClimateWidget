@@ -94,7 +94,18 @@ line, read as in AtlasAppWidget (`Fuel`).
   modes.
 - Card colour (`cardColor`, per widget, opaque RGB; `cardOpacityPercent` is separate) is picked on
   the Look tab with `ColorPickerDialog`, the RGB dialog of AtlasAppWidget; the button shows the
-  colour and its hex code.
+  colour and its hex code, or «по теме». `WidgetConfig.THEME_CARD_COLOR` (`#262626`, the old
+  default every earlier layout holds) means the card follows the theme; «По теме» in the dialog
+  sets it back. Any other colour stays in both themes and picks the theme whose text reads on it.
+- Day and night: the widget follows the head unit's night mode (OneOS switches it with the
+  headlights) in the AtlasLauncher palette, `WidgetTheme` (day card `#EDEEF0`, tiles `#FFFFFF`,
+  text `#202124`/`#5F6368`; night `#232528`, `#404347`, `#F1F2F4`/`#C4C7CA`). The strips are
+  bitmaps, so the renderer reads the theme from the process configuration and
+  `ClimateService.onConfigurationChanged` redraws all widgets when the night mode changes; the
+  inflated views (`widget_card`, empty and loading layouts, the pressed cell) use `values-night`
+  colours. Palette accents, the temperature gradient and white content on a filled tile stay
+  fixed; day soft tiles and lit bare icons are derived from the accent for contrast
+  (`WidgetThemeTest`). There is no theme switch of its own. The settings app stays graphite.
 - Card radius (`cardRadiusDp`, 0–40, default 24 like the stock OneOS cards) is screen dp, the
   same contract as the other Atlas widgets: `WidgetGeometry.plan` sets `Plan.cardRadius` from
   the display density, outside `scalePercent`, the vertical squeeze and the card size. Layouts
@@ -169,7 +180,8 @@ line, read as in AtlasAppWidget (`Fuel`).
 
 ## UI guidelines
 
-Maintain the Atlas graphite palette shared with AtlasAppWidget and AtlasMediaWidget: `#171717`
+The settings app keeps the Atlas graphite palette shared with AtlasAppWidget and AtlasMediaWidget
+(the widget itself follows `WidgetTheme`): `#171717`
 background, `#262626` cards, `#333333` nested surfaces, `#F5F5F5` primary text, `#D4D4D4` secondary
 text and `#7893A0` accent. Tiles follow the GInputBridge launcher tile proportions.
 

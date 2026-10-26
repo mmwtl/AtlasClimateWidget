@@ -774,8 +774,16 @@ public final class MainActivity extends ScaledActivity {
     }
 
     /** The button shows the colour itself, as in AtlasAppWidget. */
-    private void colorButton(Button button, String label, int color) {
-        button.setText(String.format("%s  #%06X", label, color & 0xFFFFFF));
+    private void cardColorButton(Button button) {
+        colorButton(button, getString(R.string.card_color),
+                WidgetTheme.forCard(config, this).cardColor(config),
+                config.themedCard() ? getString(R.string.card_color_theme) : null);
+    }
+
+    /** @param value shown instead of the hex code */
+    private void colorButton(Button button, String label, int color, String value) {
+        button.setText(value != null ? label + "  " + value
+                : String.format("%s  #%06X", label, color & 0xFFFFFF));
         button.setBackground(Ui.rounded(color, Ui.dp(this, 8)));
         double luminance = (0.2126 * Color.red(color)
                 + 0.7152 * Color.green(color)
@@ -1176,13 +1184,19 @@ public final class MainActivity extends ScaledActivity {
                 }, null);
         Button cardColorButton = Ui.button(this, "");
         Ui.topMargin(cardColorButton, 12);
-        colorButton(cardColorButton, getString(R.string.card_color), config.cardColor);
-        cardColorButton.setOnClickListener(view -> sized(ColorPickerDialog.show(this,
-                getString(R.string.card_color), config.cardColor, color -> {
-                    config.cardColor = color;
-                    colorButton(cardColorButton, getString(R.string.card_color), color);
-                    changed();
-                })));
+        cardColorButton(cardColorButton);
+        cardColorButton.setOnClickListener(view -> {
+            int shown = WidgetTheme.forCard(config, this).cardColor(config);
+            sized(ColorPickerDialog.show(this, getString(R.string.card_color), shown,
+                    WidgetConfig.THEME_CARD_COLOR, color -> {
+                        // Applying the theme's colour unchanged keeps the card themed.
+                        if (!config.themedCard() || color != shown) {
+                            config.cardColor = color;
+                        }
+                        cardColorButton(cardColorButton);
+                        changed();
+                    }));
+        });
         cardsHost.addView(cardColorButton);
         addSlider(cardsHost, getString(R.string.card_radius), 0,
                 WidgetConfig.CARD_RADIUS_MAX_DP, config.cardRadiusDp,

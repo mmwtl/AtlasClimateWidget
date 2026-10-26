@@ -13,6 +13,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
@@ -97,6 +98,8 @@ public final class ClimateService extends Service {
     private boolean polling;
     private boolean receiverRegistered;
     private boolean lastConnected;
+    /** Night mode the widgets were last drawn in, see onConfigurationChanged. */
+    private boolean lastNight;
     /** Worker-thread only: the current link and whether it was chosen for the direct mode. */
     private CarLink link;
     private boolean linkForDirect;
@@ -187,6 +190,7 @@ public final class ClimateService extends Service {
         running = true;
         startedAt = SystemClock.elapsedRealtime();
         prefs = new Prefs(this);
+        lastNight = WidgetTheme.of(this).night;
         startInForeground();
         workerThread = new HandlerThread("climate-bridge");
         workerThread.start();
@@ -223,6 +227,21 @@ public final class ClimateService extends Service {
             });
         }
         return START_STICKY;
+    }
+
+    /**
+     * OneOS switches the night mode with the headlights. The host recreates the widget views
+     * then, but the strips are bitmaps drawn here, so they are drawn again in the new theme.
+     */
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        boolean night = WidgetTheme.of(newConfig).night;
+        if (night != lastNight && worker != null) {
+            lastNight = night;
+            AppLog.info("Night mode " + (night ? "on" : "off"));
+            worker.post(() -> renderWidgets(true));
+        }
     }
 
     @Override
@@ -721,7 +740,7 @@ public final class ClimateService extends Service {
         WidgetConfig config = prefs.widget(widgetId);
         WidgetViews.Size size = widgetSize(context, widgetId);
         String scrubbed = widgetId == scrubbedWidget ? scrubbedStrip : null;
-        String key = config.toJson() + "|" + size.widthPx + "x" + size.heightPx + "|" + scrubbed;
+        String key = config.toJson() + "|" + WidgetTheme.of(context).night + "|" + size.widthPx + "x" + size.heightPx + "|" + scrubbed;
         float quality = 1f;
         for (int attempt = 0; attempt < 3; attempt++) {
             try {

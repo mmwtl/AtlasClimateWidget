@@ -138,6 +138,11 @@ final class WidgetConfig {
     static final int CARD_RADIUS_MAX_DP = 40;
     /** Radius of the stock OneOS cards, shared by all Atlas widgets. */
     static final int CARD_RADIUS_DEFAULT_DP = 24;
+    /**
+     * Card colour that follows the head unit's day and night theme. It is the graphite default
+     * every layout saved before the themes holds, so those cards follow the theme as well.
+     */
+    static final int THEME_CARD_COLOR = 0xFF262626;
     /** Default before version 4, scaled by the widget scale. */
     static final int CARD_RADIUS_LEGACY_DP = 18;
     static final int TILE_RADIUS_MAX_PERCENT = 50;
@@ -229,6 +234,11 @@ final class WidgetConfig {
         return tileStyle == TileStyle.ICON;
     }
 
+    /** Whether the card takes the theme's colour, see {@link WidgetTheme}. */
+    boolean themedCard() {
+        return cardColor == THEME_CARD_COLOR;
+    }
+
     boolean headerShowsFuel() {
         return headerFuel || headerFuelPercent || headerFuelFree;
     }
@@ -246,7 +256,8 @@ final class WidgetConfig {
     Palette palette = Palette.ATLAS;
     boolean filledActive = true;
     IconSet iconSet = IconSet.ATLAS;
-    int cardColor = Ui.SURFACE;
+    /** {@link #THEME_CARD_COLOR} follows the day and night theme; any other stays as is. */
+    int cardColor = THEME_CARD_COLOR;
     int cardOpacityPercent = 100;
     /** Screen dp, independent of {@link #scalePercent} and of the card size. */
     int cardRadiusDp = CARD_RADIUS_DEFAULT_DP;

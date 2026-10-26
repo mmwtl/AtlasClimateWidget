@@ -185,7 +185,7 @@ final class TileDragLayer extends FrameLayout {
 
     /** The card behind the tiles as seen in the preview, so the empty slot looks vacated. */
     private int cardColor() {
-        int card = config.cardColor;
+        int card = WidgetTheme.forCard(config, getContext()).cardColor(config);
         float alpha = config.cardOpacityPercent / 100f;
         int back = Ui.BACKGROUND;
         return Color.rgb(

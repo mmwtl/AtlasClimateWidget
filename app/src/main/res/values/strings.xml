@@ -164,6 +164,8 @@
     <string name="card_opacity">Непрозрачность карточек</string>
     <string name="card_color">Цвет фона</string>
     <string name="color_apply">Применить</string>
+    <string name="color_theme">По теме</string>
+    <string name="card_color_theme">по теме</string>
     <string name="color_red">Красный</string>
     <string name="color_green">Зелёный</string>
     <string name="color_blue">Синий</string>

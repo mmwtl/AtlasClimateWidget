@@ -9,6 +9,6 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:text="@string/app_name"
-        android:textColor="@color/atlas_text_secondary"
+        android:textColor="@color/widget_text_secondary"
         android:textSize="15sp" />
 </FrameLayout>

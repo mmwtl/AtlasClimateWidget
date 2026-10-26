@@ -42,6 +42,7 @@ final class WidgetRenderer {
     private final ClimateState state;
     private final CarModel model;
     private final WidgetGeometry.Plan plan;
+    private final WidgetTheme theme;
     private final ClimateCommands.TempRange range;
     private final float dp;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -58,6 +59,7 @@ final class WidgetRenderer {
         this.state = state;
         this.model = model;
         this.plan = plan;
+        this.theme = WidgetTheme.forCard(config, context);
         this.range = ClimateCommands.tempRange(state);
         this.dp = plan.density;
     }
@@ -144,7 +146,7 @@ final class WidgetRenderer {
         }
         paint.setShader(null);
         paint.setStyle(Paint.Style.FILL);
-        paint.setColor(withAlpha(config.cardColor, alpha));
+        paint.setColor(withAlpha(theme.cardColor(config), alpha));
         float radius = plan.cardRadius;
         rect.set(0f, -strip.cardOffset, plan.width, strip.cardHeight - strip.cardOffset);
         canvas.save();
@@ -277,7 +279,7 @@ final class WidgetRenderer {
     private float drawSeparator(Canvas canvas, String separator, float x, float baseline,
             float size) {
         float width = separatorWidth(separator, size);
-        textPaint.setColor(withAlpha(Ui.TEXT_SECONDARY, 150));
+        textPaint.setColor(withAlpha(theme.textSecondary, 150));
         canvas.drawText(separator, x + SEPARATOR_GAP * size, baseline, textPaint);
         return x + width;
     }
@@ -286,7 +288,7 @@ final class WidgetRenderer {
     private float statusWidth(String status, float size) {
         textPaint.setTypeface(Typeface.DEFAULT);
         textPaint.setTextSize(size * 0.9f);
-        textPaint.setColor(Ui.TEXT_SECONDARY);
+        textPaint.setColor(theme.textSecondary);
         return textPaint.measureText(status);
     }
 
@@ -294,12 +296,12 @@ final class WidgetRenderer {
             float baseline, float size) {
         textPaint.setTextSize(size);
         textPaint.setTypeface(Typeface.DEFAULT);
-        textPaint.setColor(Ui.TEXT_SECONDARY);
+        textPaint.setColor(theme.textSecondary);
         String prefix = label + " ";
         canvas.drawText(prefix, x, baseline, textPaint);
         x += textPaint.measureText(prefix);
         textPaint.setTypeface(Typeface.DEFAULT_BOLD);
-        textPaint.setColor(Ui.TEXT);
+        textPaint.setColor(theme.text);
         canvas.drawText(value, x, baseline, textPaint);
         return x + textPaint.measureText(value);
     }
@@ -317,7 +319,7 @@ final class WidgetRenderer {
                     / WidgetGeometry.temperatureRowDp(config);
             textPaint.setTypeface(Typeface.DEFAULT);
             textPaint.setTextSize(Math.min(12f * dp, labelHeight * 0.75f));
-            textPaint.setColor(Ui.TEXT_SECONDARY);
+            textPaint.setColor(theme.textSecondary);
             canvas.drawText(context.getString(strip.row.index == 0
                             ? R.string.zone_driver : R.string.zone_passenger),
                     plan.padding, labelHeight * 0.72f, textPaint);
@@ -338,7 +340,7 @@ final class WidgetRenderer {
         float x1 = plan.width - plan.padding - cell * strip.buttonCells - cell / 2f;
         float thickness = Math.max(4f * dp, barHeight * 0.2f);
         paint.setShader(null);
-        paint.setColor(Ui.SURFACE_RAISED);
+        paint.setColor(theme.track);
         rect.set(x0 - thickness / 2f, centerY - thickness / 2f,
                 x1 + thickness / 2f, centerY + thickness / 2f);
         canvas.drawRoundRect(rect, thickness / 2f, thickness / 2f, paint);
@@ -346,8 +348,8 @@ final class WidgetRenderer {
         Float value = ClimateCommands.temperature(state, zone);
         float knobX = (x0 + x1) / 2f;
         String label = "--°";
-        int knobColor = Ui.SURFACE_RAISED;
-        int knobText = Ui.TEXT_SECONDARY;
+        int knobColor = theme.track;
+        int knobText = theme.textSecondary;
         if (value != null) {
             float fraction = range.fraction(value);
             knobX = x0 + fraction * (x1 - x0);
@@ -358,8 +360,8 @@ final class WidgetRenderer {
             canvas.drawRoundRect(rect, thickness / 2f, thickness / 2f, paint);
             paint.setShader(null);
             label = formatTemperature(value);
-            knobColor = Ui.TEXT;
-            knobText = Ui.BACKGROUND;
+            knobColor = theme.text;
+            knobText = theme.onText;
         }
         float knobHeight = Math.min(barHeight * 0.78f, 40f * dp * plan.verticalScale + 8f);
         textPaint.setTypeface(Typeface.DEFAULT_BOLD);
@@ -389,7 +391,7 @@ final class WidgetRenderer {
             float labelHeight = height - valueHeight;
             textPaint.setTypeface(MEDIUM);
             textPaint.setTextSize(Math.min(11f * dp, labelHeight * 0.8f));
-            textPaint.setColor(Ui.TEXT_SECONDARY);
+            textPaint.setColor(theme.textSecondary);
             drawCenteredLine(canvas, context.getString(strip.row.index == 0
                     ? R.string.zone_driver : R.string.zone_passenger), cx, labelHeight / 2f);
             top = labelHeight;
@@ -407,7 +409,7 @@ final class WidgetRenderer {
         Float value = ClimateCommands.temperature(state, zone);
         textPaint.setTypeface(MEDIUM);
         textPaint.setTextSize(valueHeight * 0.74f);
-        textPaint.setColor(value == null ? Ui.TEXT_SECONDARY : Ui.TEXT);
+        textPaint.setColor(value == null ? theme.textSecondary : theme.text);
         String label = value == null ? "--°" : formatTemperature(value);
         // Centre the digits; the degree sign hangs to the right so the number stays put.
         String digits = label.endsWith("°") ? label.substring(0, label.length() - 1) : label;
@@ -430,7 +432,7 @@ final class WidgetRenderer {
         float x1 = plan.width - plan.padding - edge;
         paint.setShader(null);
         paint.setStyle(Paint.Style.FILL);
-        paint.setColor(Ui.SURFACE_RAISED);
+        paint.setColor(theme.track);
         rect.set(plan.padding, cy - thickness / 2f, plan.width - plan.padding,
                 cy + thickness / 2f);
         canvas.drawRoundRect(rect, thickness / 2f, thickness / 2f, paint);
@@ -444,7 +446,7 @@ final class WidgetRenderer {
         rect.set(plan.padding, cy - thickness / 2f, knobX, cy + thickness / 2f);
         canvas.drawRoundRect(rect, thickness / 2f, thickness / 2f, paint);
         paint.setShader(null);
-        paint.setColor(Ui.TEXT);
+        paint.setColor(theme.text);
         canvas.drawCircle(knobX, cy, knob / 2f, paint);
     }
 
@@ -478,9 +480,9 @@ final class WidgetRenderer {
         float radius = diameter / 2f;
         paint.setShader(null);
         paint.setStyle(Paint.Style.FILL);
-        paint.setColor(Ui.SURFACE_RAISED);
+        paint.setColor(theme.raised);
         canvas.drawCircle(cx, cy, radius, paint);
-        paint.setColor(Ui.TEXT);
+        paint.setColor(theme.text);
         float arm = radius * 0.42f;
         float stroke = Math.max(2f, radius * 0.13f);
         rect.set(cx - arm, cy - stroke / 2f, cx + arm, cy + stroke / 2f);
@@ -538,7 +540,7 @@ final class WidgetRenderer {
                     + (level == 1 && strip.buttonCells == 0 ? lead : segmentGap / 2f);
             float right = start + level * step - segmentGap / 2f;
             boolean on = known && !off && level <= litLevels;
-            int color = on ? lit : Ui.SURFACE_RAISED;
+            int color = on ? lit : theme.track;
             if (fan.auto && !presets) {
                 color = withAlpha(lit, 90);
             }
@@ -714,7 +716,7 @@ final class WidgetRenderer {
         paint.setShader(null);
         paint.setStyle(Paint.Style.FILL);
         if (console && !bare) {
-            paint.setColor(Ui.SURFACE_RAISED);
+            paint.setColor(theme.raised);
             rect.set(groupLeft, top, groupRight, bottom);
             canvas.drawRoundRect(rect, radius, radius, paint);
         }
@@ -763,15 +765,15 @@ final class WidgetRenderer {
                         glyph ? icon : bareIcon(end - start, height), iconGap, false, glyph);
                 continue;
             }
-            int content = Ui.TEXT;
+            int content = theme.text;
             if (button.on) {
                 paint.setColor(config.filledActive
                         ? config.palette.tile(ClimateFunction.Tone.NEUTRAL)
-                        : config.palette.softTile(ClimateFunction.Tone.NEUTRAL));
+                        : theme.softTile(config.palette, ClimateFunction.Tone.NEUTRAL));
                 content = config.filledActive ? Color.WHITE
-                        : config.palette.softContent(ClimateFunction.Tone.NEUTRAL);
+                        : theme.softContent(config.palette, ClimateFunction.Tone.NEUTRAL);
             } else {
-                paint.setColor(Ui.SURFACE_RAISED);
+                paint.setColor(theme.raised);
             }
             rect.set(start + inset, top + inset, end - inset, bottom - inset);
             float r = console ? innerRadius : radius;
@@ -780,12 +782,12 @@ final class WidgetRenderer {
             }
             if (button.kept) {
                 drawKeptOutline(canvas, rect, r, ClimateFunction.Tone.NEUTRAL);
-                content = withAlpha(Ui.TEXT, DORMANT_KEPT_ALPHA);
+                content = withAlpha(theme.text, DORMANT_KEPT_ALPHA);
             } else if (button.dormant) {
-                content = withAlpha(Ui.TEXT, DORMANT_ALPHA);
+                content = withAlpha(theme.text, DORMANT_ALPHA);
             }
             if (console && !button.on && !button.kept && index > 0 && !previousOn) {
-                paint.setColor(withAlpha(Ui.TEXT, 22));
+                paint.setColor(withAlpha(theme.text, 22));
                 float thickness = Math.max(1f, dp);
                 canvas.drawRect(start - thickness / 2f, top + height * 0.28f,
                         start + thickness / 2f, bottom - height * 0.28f, paint);
@@ -823,12 +825,12 @@ final class WidgetRenderer {
      * the accent when on, a faded accent for the kept choice of a resting row.
      */
     private int bareContent(boolean on, boolean kept, boolean dormant, boolean known) {
-        int lit = config.palette.tile(ClimateFunction.Tone.NEUTRAL);
-        int content = on ? lit : Ui.TEXT;
+        int lit = theme.litIcon(config.palette, ClimateFunction.Tone.NEUTRAL);
+        int content = on ? lit : theme.text;
         if (kept) {
             content = withAlpha(lit, DORMANT_KEPT_ALPHA);
         } else if (dormant) {
-            content = withAlpha(Ui.TEXT, DORMANT_ALPHA);
+            content = withAlpha(theme.text, DORMANT_ALPHA);
         }
         return known ? content : withAlpha(content, Math.round(255 * UNKNOWN_ALPHA));
     }
@@ -892,14 +894,14 @@ final class WidgetRenderer {
                 background = config.palette.tile(ClimateFunction.Tone.NEUTRAL);
                 content = Color.WHITE;
             } else if (on) {
-                background = config.palette.softTile(ClimateFunction.Tone.NEUTRAL);
-                content = config.palette.softContent(ClimateFunction.Tone.NEUTRAL);
+                background = theme.softTile(config.palette, ClimateFunction.Tone.NEUTRAL);
+                content = theme.softContent(config.palette, ClimateFunction.Tone.NEUTRAL);
             } else {
-                background = Ui.SURFACE_RAISED;
-                content = Ui.TEXT;
+                background = theme.raised;
+                content = theme.text;
             }
             if (dormant) {
-                content = withAlpha(Ui.TEXT, kept ? DORMANT_KEPT_ALPHA : DORMANT_ALPHA);
+                content = withAlpha(theme.text, kept ? DORMANT_KEPT_ALPHA : DORMANT_ALPHA);
             }
             if (!known) {
                 content = withAlpha(content, Math.round(255 * UNKNOWN_ALPHA));
@@ -981,7 +983,7 @@ final class WidgetRenderer {
         paint.setShader(null);
         paint.setStyle(Paint.Style.FILL);
         if (!bare) {
-            paint.setColor(Ui.SURFACE_RAISED);
+            paint.setColor(theme.raised);
             rect.set(plan.padding, 0f, plan.width - plan.padding, height);
             canvas.drawRoundRect(rect, radius, radius, paint);
         }
@@ -1030,28 +1032,28 @@ final class WidgetRenderer {
             on &= !dormant;
             float left = plan.padding + index * cell;
             float right = left + cell;
-            int content = Ui.TEXT;
+            int content = theme.text;
             if (bare) {
                 content = bareContent(on, kept, dormant, known);
             } else if (kept) {
-                content = withAlpha(Ui.TEXT, DORMANT_KEPT_ALPHA);
+                content = withAlpha(theme.text, DORMANT_KEPT_ALPHA);
                 float innerRadius = Math.max(0f, radius - inset);
                 rect.set(left + inset, inset, right - inset, height - inset);
                 drawKeptOutline(canvas, rect, innerRadius, ClimateFunction.Tone.NEUTRAL);
             } else if (dormant) {
-                content = withAlpha(Ui.TEXT, DORMANT_ALPHA);
+                content = withAlpha(theme.text, DORMANT_ALPHA);
             }
             if (on && !bare) {
                 paint.setColor(config.filledActive
                         ? config.palette.tile(ClimateFunction.Tone.NEUTRAL)
-                        : config.palette.softTile(ClimateFunction.Tone.NEUTRAL));
+                        : theme.softTile(config.palette, ClimateFunction.Tone.NEUTRAL));
                 content = config.filledActive ? Color.WHITE
-                        : config.palette.softContent(ClimateFunction.Tone.NEUTRAL);
+                        : theme.softContent(config.palette, ClimateFunction.Tone.NEUTRAL);
                 float innerRadius = Math.max(0f, radius - inset);
                 rect.set(left + inset, inset, right - inset, height - inset);
                 canvas.drawRoundRect(rect, innerRadius, innerRadius, paint);
             } else if (index > 0 && !previousOn && !kept && !bare) {
-                paint.setColor(withAlpha(Ui.TEXT, 22));
+                paint.setColor(withAlpha(theme.text, 22));
                 float thickness = Math.max(1f, dp);
                 canvas.drawRect(left - thickness / 2f, height * 0.28f, left + thickness / 2f,
                         height * 0.72f, paint);
@@ -1091,10 +1093,10 @@ final class WidgetRenderer {
     private void drawFanButton(Canvas canvas, float cx, float cy, float size, float iconRatio) {
         if (!config.bareButtons()) {
             paint.setShader(null);
-            paint.setColor(Ui.SURFACE_RAISED);
+            paint.setColor(theme.raised);
             canvas.drawCircle(cx, cy, size * 0.4f, paint);
         }
-        drawIcon(canvas, fanIcon(), cx, cy, size * iconRatio, Ui.TEXT);
+        drawIcon(canvas, fanIcon(), cx, cy, size * iconRatio, theme.text);
     }
 
     // ---- tiles -------------------------------------------------------------------------------
@@ -1140,8 +1142,8 @@ final class WidgetRenderer {
         int content;
         int unlit;
         if (iconStyle) {
-            content = active ? config.palette.tile(function.tone) : Ui.TEXT;
-            unlit = withAlpha(Ui.TEXT, 56);
+            content = active ? theme.litIcon(config.palette, function.tone) : theme.text;
+            unlit = withAlpha(theme.text, 56);
         } else {
             int background;
             if (active && config.filledActive) {
@@ -1149,13 +1151,13 @@ final class WidgetRenderer {
                 content = Color.WHITE;
                 unlit = withAlpha(Color.WHITE, 90);
             } else if (active) {
-                background = config.palette.softTile(function.tone);
-                content = config.palette.softContent(function.tone);
-                unlit = withAlpha(Color.WHITE, 56);
+                background = theme.softTile(config.palette, function.tone);
+                content = theme.softContent(config.palette, function.tone);
+                unlit = withAlpha(theme.text, 56);
             } else {
-                background = Ui.SURFACE_RAISED;
-                content = Ui.TEXT;
-                unlit = withAlpha(Color.WHITE, 56);
+                background = theme.raised;
+                content = theme.text;
+                unlit = withAlpha(theme.text, 56);
             }
             float radius = size * config.tileRadiusPercent / 100f;
             paint.setShader(null);
@@ -1166,9 +1168,9 @@ final class WidgetRenderer {
             }
         }
         if (kept && iconStyle) {
-            content = withAlpha(config.palette.tile(function.tone), DORMANT_KEPT_ALPHA);
+            content = withAlpha(theme.litIcon(config.palette, function.tone), DORMANT_KEPT_ALPHA);
         } else if (kept) {
-            content = withAlpha(Ui.TEXT, DORMANT_KEPT_ALPHA);
+            content = withAlpha(theme.text, DORMANT_KEPT_ALPHA);
         } else if (dormant) {
             content = withAlpha(content, DORMANT_ALPHA);
         }
@@ -1231,7 +1233,7 @@ final class WidgetRenderer {
             textPaint.setTypeface(Typeface.DEFAULT);
             textPaint.setTextSize(labelSize);
             textPaint.setColor(active && !iconStyle ? content
-                    : withAlpha(Ui.TEXT_SECONDARY, tileState.known ? 255 : 110));
+                    : withAlpha(theme.textSecondary, tileState.known ? 255 : 110));
             String label = TextUtils.ellipsize(context.getString(function.shortRes), textPaint,
                     tile.width() * 0.92f, TextUtils.TruncateAt.END).toString();
             float width = textPaint.measureText(label);

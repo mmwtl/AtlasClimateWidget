@@ -9,7 +9,10 @@ import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
-/** RGB picker with a live swatch, as in AtlasAppWidget; the result is opaque. */
+/**
+ * RGB picker with a live swatch, as in AtlasAppWidget; the result is opaque. «По теме» returns
+ * the colour that follows the day and night theme.
+ */
 final class ColorPickerDialog {
     interface Listener {
         void onColorSelected(int color);
@@ -18,7 +21,7 @@ final class ColorPickerDialog {
     private ColorPickerDialog() {
     }
 
-    static AlertDialog show(Context context, String title, int initialColor,
+    static AlertDialog show(Context context, String title, int initialColor, int themeColor,
             Listener listener) {
         LinearLayout content = new LinearLayout(context);
         content.setOrientation(LinearLayout.VERTICAL);
@@ -81,6 +84,8 @@ final class ColorPickerDialog {
                 .setTitle(title)
                 .setView(content)
                 .setNegativeButton(R.string.setup_cancel, null)
+                .setNeutralButton(R.string.color_theme, (dialog, which) ->
+                        listener.onColorSelected(themeColor))
                 .setPositiveButton(R.string.color_apply, (dialog, which) ->
                         listener.onColorSelected(Color.rgb(channels[0], channels[1], channels[2])))
                 .show();

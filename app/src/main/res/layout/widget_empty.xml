@@ -12,6 +12,6 @@
         android:layout_gravity="center"
         android:gravity="center"
         android:text="@string/widget_empty"
-        android:textColor="@color/atlas_text_secondary"
+        android:textColor="@color/widget_text_secondary"
         android:textSize="14sp" />
 </FrameLayout>
