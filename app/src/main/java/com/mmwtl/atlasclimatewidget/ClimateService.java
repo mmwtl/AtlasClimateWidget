@@ -61,6 +61,14 @@ public final class ClimateService extends Service {
      */
     private static final long REPOLL_AFTER_CONNECT_MS = 1_500L;
     private static final long RENDER_DELAY_MS = 120L;
+    /**
+     * Every push replaces the touch cells in the host and cancels a tap in progress. The first
+     * answers after connecting trickle in for a few seconds, so meanwhile the widget waits for a
+     * longer pause before it is drawn, and never longer than RENDER_MAX_DELAY_MS overall.
+     */
+    private static final long LOAD_WINDOW_MS = 4_000L;
+    private static final long LOAD_RENDER_DELAY_MS = 400L;
+    private static final long RENDER_MAX_DELAY_MS = 1_000L;
     private static final long CONFIRM_FIRST_MS = 800L;
     private static final long CONFIRM_SECOND_MS = 2_500L;
     /**
@@ -98,6 +106,9 @@ public final class ClimateService extends Service {
     private boolean polling;
     private boolean receiverRegistered;
     private boolean lastConnected;
+    /** Worker-thread only: the end of the load window and when the pending render was asked. */
+    private long loadingUntil;
+    private long renderAskedAt;
     /** Night mode the widgets were last drawn in, see onConfigurationChanged. */
     private boolean lastNight;
     /** Worker-thread only: the current link and whether it was chosen for the direct mode. */
@@ -394,8 +405,12 @@ public final class ClimateService extends Service {
     }
 
     private void onAnswer(long now) {
+        if (STORE.snapshot(now).isConnected()) {
+            return;
+        }
+        loadingUntil = now + LOAD_WINDOW_MS;
         // The bridge drops requests until it reaches the car; direct reads are not dropped.
-        if (!link().isDirect() && !STORE.snapshot(now).isConnected()) {
+        if (!link().isDirect()) {
             worker.removeCallbacks(pollTask);
             worker.postDelayed(pollTask, REPOLL_AFTER_CONNECT_MS);
         }
@@ -703,8 +718,14 @@ public final class ClimateService extends Service {
     // ---- rendering ---------------------------------------------------------------------------
 
     private void scheduleRender() {
+        long now = SystemClock.elapsedRealtime();
+        if (!worker.hasCallbacks(renderTask)) {
+            renderAskedAt = now;
+        }
+        long quiet = now < loadingUntil ? LOAD_RENDER_DELAY_MS : RENDER_DELAY_MS;
+        long delay = Math.min(quiet, renderAskedAt + RENDER_MAX_DELAY_MS - now);
         worker.removeCallbacks(renderTask);
-        worker.postDelayed(renderTask, RENDER_DELAY_MS);
+        worker.postDelayed(renderTask, Math.max(0L, delay));
     }
 
     /** @param force push even unchanged content, as after a settings change */
