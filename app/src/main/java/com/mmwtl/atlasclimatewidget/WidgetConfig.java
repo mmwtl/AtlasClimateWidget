@@ -234,9 +234,19 @@ final class WidgetConfig {
         return tileStyle == TileStyle.ICON;
     }
 
-    /** Whether the card takes the theme's colour, see {@link WidgetTheme}. */
-    boolean themedCard() {
-        return cardColor == THEME_CARD_COLOR;
+    /** Palette of the widget in the given theme. */
+    Palette palette(boolean night) {
+        return dayColors && !night ? dayPalette : palette;
+    }
+
+    /** Card colour of the widget in the given theme, {@link #THEME_CARD_COLOR} included. */
+    int cardColor(boolean night) {
+        return dayColors && !night ? dayCardColor : cardColor;
+    }
+
+    /** Whether the card takes the theme's colour in the given theme, see {@link WidgetTheme}. */
+    boolean themedCard(boolean night) {
+        return cardColor(night) == THEME_CARD_COLOR;
     }
 
     boolean headerShowsFuel() {
@@ -258,6 +268,13 @@ final class WidgetConfig {
     IconSet iconSet = IconSet.ATLAS;
     /** {@link #THEME_CARD_COLOR} follows the day and night theme; any other stays as is. */
     int cardColor = THEME_CARD_COLOR;
+    /**
+     * Whether the day theme takes {@link #dayPalette} and {@link #dayCardColor}; off, both
+     * themes share {@link #palette} and {@link #cardColor}.
+     */
+    boolean dayColors;
+    Palette dayPalette = Palette.ATLAS;
+    int dayCardColor = THEME_CARD_COLOR;
     int cardOpacityPercent = 100;
     /** Screen dp, independent of {@link #scalePercent} and of the card size. */
     int cardRadiusDp = CARD_RADIUS_DEFAULT_DP;
@@ -525,6 +542,9 @@ final class WidgetConfig {
             json.put("filledActive", filledActive);
             json.put("iconSet", iconSet.name());
             json.put("cardColor", cardColor);
+            json.put("dayColors", dayColors);
+            json.put("dayPalette", dayPalette.name());
+            json.put("dayCardColor", dayCardColor);
             json.put("cardOpacityPercent", cardOpacityPercent);
             json.put("cardRadiusDp", cardRadiusDp);
             json.put("cardPaddingDp", cardPaddingDp);
@@ -656,6 +676,10 @@ final class WidgetConfig {
         config.filledActive = json.optBoolean("filledActive", config.filledActive);
         config.iconSet = enumValue(IconSet.class, json.optString("iconSet"), config.iconSet);
         config.cardColor = json.optInt("cardColor", config.cardColor) | 0xFF000000;
+        config.dayColors = json.optBoolean("dayColors", config.dayColors);
+        config.dayPalette = enumValue(Palette.class, json.optString("dayPalette"),
+                config.dayPalette);
+        config.dayCardColor = json.optInt("dayCardColor", config.dayCardColor) | 0xFF000000;
         config.cardOpacityPercent = clamp(json.optInt("cardOpacityPercent",
                 config.cardOpacityPercent), 0, 100);
         config.cardPaddingDp = clamp(json.optInt("cardPaddingDp", config.cardPaddingDp),

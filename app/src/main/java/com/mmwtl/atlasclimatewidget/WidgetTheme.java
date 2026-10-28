@@ -59,7 +59,12 @@ final class WidgetTheme {
      * that keeps content readable on the chosen colour.
      */
     static WidgetTheme forCard(WidgetConfig config, Context context) {
-        return config.themedCard() ? of(context) : forColor(config.cardColor);
+        return forCard(config, of(context));
+    }
+
+    /** @param mode the head unit's theme, {@link #DAY} or {@link #NIGHT} */
+    static WidgetTheme forCard(WidgetConfig config, WidgetTheme mode) {
+        return config.themedCard(mode.night) ? mode : forColor(config.cardColor(mode.night));
     }
 
     static WidgetTheme forColor(int color) {
@@ -67,9 +72,13 @@ final class WidgetTheme {
         return luminance(color) > 0.2 ? DAY : NIGHT;
     }
 
-    /** Opaque card colour the widget draws, before its opacity. */
-    int cardColor(WidgetConfig config) {
-        return config.themedCard() ? card : config.cardColor;
+    /** Opaque card colour the widget draws in the head unit's theme, before its opacity. */
+    static int cardColor(WidgetConfig config, WidgetTheme mode) {
+        return config.themedCard(mode.night) ? mode.card : config.cardColor(mode.night);
+    }
+
+    static int cardColor(WidgetConfig config, Context context) {
+        return cardColor(config, of(context));
     }
 
     int softTile(Palette palette, ClimateFunction.Tone tone) {

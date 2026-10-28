@@ -42,7 +42,10 @@ final class WidgetRenderer {
     private final ClimateState state;
     private final CarModel model;
     private final WidgetGeometry.Plan plan;
+    /** Theme of the content on the card, which a custom card colour may override. */
     private final WidgetTheme theme;
+    private final int cardColor;
+    private final Palette palette;
     private final ClimateCommands.TempRange range;
     private final float dp;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -59,7 +62,10 @@ final class WidgetRenderer {
         this.state = state;
         this.model = model;
         this.plan = plan;
-        this.theme = WidgetTheme.forCard(config, context);
+        WidgetTheme mode = WidgetTheme.of(context);
+        this.theme = WidgetTheme.forCard(config, mode);
+        this.cardColor = WidgetTheme.cardColor(config, mode);
+        this.palette = config.palette(mode.night);
         this.range = ClimateCommands.tempRange(state);
         this.dp = plan.density;
     }
@@ -146,7 +152,7 @@ final class WidgetRenderer {
         }
         paint.setShader(null);
         paint.setStyle(Paint.Style.FILL);
-        paint.setColor(withAlpha(theme.cardColor(config), alpha));
+        paint.setColor(withAlpha(cardColor, alpha));
         float radius = plan.cardRadius;
         rect.set(0f, -strip.cardOffset, plan.width, strip.cardHeight - strip.cardOffset);
         canvas.save();
@@ -521,7 +527,7 @@ final class WidgetRenderer {
         ClimateCommands.FanState fan = ClimateCommands.fanState(state);
         // The fan does not blow while the climate is off.
         boolean off = ClimateCommands.powerOff(state);
-        int lit = config.palette.tile(ClimateFunction.Tone.NEUTRAL);
+        int lit = palette.tile(ClimateFunction.Tone.NEUTRAL);
         float segmentHeight = Math.max(4f * dp, height * 0.26f);
         float segmentGap = Math.max(2f, 3f * dp);
         float start = plan.padding + cell * strip.stepStart;
@@ -768,10 +774,10 @@ final class WidgetRenderer {
             int content = theme.text;
             if (button.on) {
                 paint.setColor(config.filledActive
-                        ? config.palette.tile(ClimateFunction.Tone.NEUTRAL)
-                        : theme.softTile(config.palette, ClimateFunction.Tone.NEUTRAL));
+                        ? palette.tile(ClimateFunction.Tone.NEUTRAL)
+                        : theme.softTile(palette, ClimateFunction.Tone.NEUTRAL));
                 content = config.filledActive ? Color.WHITE
-                        : theme.softContent(config.palette, ClimateFunction.Tone.NEUTRAL);
+                        : theme.softContent(palette, ClimateFunction.Tone.NEUTRAL);
             } else {
                 paint.setColor(theme.raised);
             }
@@ -825,7 +831,7 @@ final class WidgetRenderer {
      * the accent when on, a faded accent for the kept choice of a resting row.
      */
     private int bareContent(boolean on, boolean kept, boolean dormant, boolean known) {
-        int lit = theme.litIcon(config.palette, ClimateFunction.Tone.NEUTRAL);
+        int lit = theme.litIcon(palette, ClimateFunction.Tone.NEUTRAL);
         int content = on ? lit : theme.text;
         if (kept) {
             content = withAlpha(lit, DORMANT_KEPT_ALPHA);
@@ -891,11 +897,11 @@ final class WidgetRenderer {
             int background;
             int content;
             if (on && config.filledActive) {
-                background = config.palette.tile(ClimateFunction.Tone.NEUTRAL);
+                background = palette.tile(ClimateFunction.Tone.NEUTRAL);
                 content = Color.WHITE;
             } else if (on) {
-                background = theme.softTile(config.palette, ClimateFunction.Tone.NEUTRAL);
-                content = theme.softContent(config.palette, ClimateFunction.Tone.NEUTRAL);
+                background = theme.softTile(palette, ClimateFunction.Tone.NEUTRAL);
+                content = theme.softContent(palette, ClimateFunction.Tone.NEUTRAL);
             } else {
                 background = theme.raised;
                 content = theme.text;
@@ -1045,10 +1051,10 @@ final class WidgetRenderer {
             }
             if (on && !bare) {
                 paint.setColor(config.filledActive
-                        ? config.palette.tile(ClimateFunction.Tone.NEUTRAL)
-                        : theme.softTile(config.palette, ClimateFunction.Tone.NEUTRAL));
+                        ? palette.tile(ClimateFunction.Tone.NEUTRAL)
+                        : theme.softTile(palette, ClimateFunction.Tone.NEUTRAL));
                 content = config.filledActive ? Color.WHITE
-                        : theme.softContent(config.palette, ClimateFunction.Tone.NEUTRAL);
+                        : theme.softContent(palette, ClimateFunction.Tone.NEUTRAL);
                 float innerRadius = Math.max(0f, radius - inset);
                 rect.set(left + inset, inset, right - inset, height - inset);
                 canvas.drawRoundRect(rect, innerRadius, innerRadius, paint);
@@ -1142,17 +1148,17 @@ final class WidgetRenderer {
         int content;
         int unlit;
         if (iconStyle) {
-            content = active ? theme.litIcon(config.palette, function.tone) : theme.text;
+            content = active ? theme.litIcon(palette, function.tone) : theme.text;
             unlit = withAlpha(theme.text, 56);
         } else {
             int background;
             if (active && config.filledActive) {
-                background = config.palette.tile(function.tone);
+                background = palette.tile(function.tone);
                 content = Color.WHITE;
                 unlit = withAlpha(Color.WHITE, 90);
             } else if (active) {
-                background = theme.softTile(config.palette, function.tone);
-                content = theme.softContent(config.palette, function.tone);
+                background = theme.softTile(palette, function.tone);
+                content = theme.softContent(palette, function.tone);
                 unlit = withAlpha(theme.text, 56);
             } else {
                 background = theme.raised;
@@ -1168,7 +1174,7 @@ final class WidgetRenderer {
             }
         }
         if (kept && iconStyle) {
-            content = withAlpha(theme.litIcon(config.palette, function.tone), DORMANT_KEPT_ALPHA);
+            content = withAlpha(theme.litIcon(palette, function.tone), DORMANT_KEPT_ALPHA);
         } else if (kept) {
             content = withAlpha(theme.text, DORMANT_KEPT_ALPHA);
         } else if (dormant) {
@@ -1282,7 +1288,7 @@ final class WidgetRenderer {
         paint.setShader(null);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeWidth(stroke);
-        paint.setColor(withAlpha(config.palette.tile(tone), 170));
+        paint.setColor(withAlpha(palette.tile(tone), 170));
         RectF inset = new RectF(shape);
         inset.inset(stroke / 2f, stroke / 2f);
         float r = Math.max(0f, radius - stroke / 2f);

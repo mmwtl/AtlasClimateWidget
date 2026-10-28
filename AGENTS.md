@@ -97,6 +97,10 @@ line, read as in AtlasAppWidget (`Fuel`).
   colour and its hex code, or «по теме». `WidgetConfig.THEME_CARD_COLOR` (`#262626`, the old
   default every earlier layout holds) means the card follows the theme; «По теме» in the dialog
   sets it back. Any other colour stays in both themes and picks the theme whose text reads on it.
+  Day colours (`dayColors`, per widget, off by default): the Look tab's collapsed «Цвета днём»
+  section gives the day theme its own `dayPalette` and `dayCardColor`; the main ones are then
+  the night ones. Turning it on copies the current colours. The renderer resolves both through
+  `WidgetConfig.palette(night)`/`cardColor(night)` with the head unit's mode.
 - Day and night: the widget follows the head unit's night mode (OneOS switches it with the
   headlights) in the AtlasLauncher palette, `WidgetTheme` (day card `#EDEEF0`, tiles `#FFFFFF`,
   text `#202124`/`#5F6368`; night `#232528`, `#404347`, `#F1F2F4`/`#C4C7CA`). The strips are

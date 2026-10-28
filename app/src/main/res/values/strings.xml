@@ -150,6 +150,8 @@
 
     <string name="appearance_title">Оформление</string>
     <string name="palette_title">Цвет активной плитки</string>
+    <string name="palette_title_night">Цвет активной плитки ночью</string>
+    <string name="palette_title_day">Цвет активной плитки днём</string>
     <string name="palette_atlas">Atlas</string>
     <string name="palette_blue">Синий</string>
     <string name="palette_teal">Бирюзовый</string>
@@ -163,6 +165,12 @@
     <string name="icons_hint">Штатные — иконки климата головного устройства. Где штатной иконки нет (питание, синхронизация, ионизатор, «мне жарко/холодно», меню), остаётся иконка Atlas.</string>
     <string name="card_opacity">Непрозрачность карточек</string>
     <string name="card_color">Цвет фона</string>
+    <string name="card_color_night">Цвет фона ночью</string>
+    <string name="card_color_day">Цвет фона днём</string>
+    <string name="day_colors_title">Цвета днём</string>
+    <string name="day_colors_summary">Отдельные цвет активной плитки и фон для дневного режима</string>
+    <string name="day_colors">Свои цвета для дневного режима</string>
+    <string name="day_colors_hint">Выключено — днём те же цвета, что ночью. Включено — цвет плитки в «Оформлении» и фон в «Карточках и отступах» остаются для ночи, а в светлом режиме головного устройства виджет берёт цвета отсюда. Предпросмотр показывает цвета текущего режима.</string>
     <string name="color_apply">Применить</string>
     <string name="color_theme">По теме</string>
     <string name="card_color_theme">по теме</string>

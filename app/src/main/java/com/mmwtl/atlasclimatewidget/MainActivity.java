@@ -44,6 +44,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 
 /**
  * Settings editor with Blocks, Tiles, Look and System tabs pinned under the title, like the
@@ -99,6 +100,7 @@ public final class MainActivity extends ScaledActivity {
     private LinearLayout offHost;
     private LinearLayout appearanceHost;
     private LinearLayout cardsHost;
+    private LinearLayout dayColorsHost;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -366,6 +368,8 @@ public final class MainActivity extends ScaledActivity {
         appearance.addView(appearanceHost);
         page.addView(appearance);
 
+        dayColorsHost = collapsibleCard(page, R.string.day_colors_title,
+                R.string.day_colors_summary);
         cardsHost = collapsibleCard(page, R.string.cards_title, R.string.cards_summary);
     }
 
@@ -773,11 +777,78 @@ public final class MainActivity extends ScaledActivity {
         confirmImport(text);
     }
 
+    private void rebuildDayColors() {
+        dayColorsHost.removeAllViews();
+        dayColorsHost.addView(configSwitch(R.string.day_colors, config.dayColors, value -> {
+            if (value) {
+                // Start from the colours the widget has by day now.
+                config.dayPalette = config.palette;
+                config.dayCardColor = config.cardColor;
+            }
+            config.dayColors = value;
+            dayColorsHost.post(this::rebuildAppearance);
+        }));
+        dayColorsHost.addView(hint(R.string.day_colors_hint));
+        if (!config.dayColors) {
+            return;
+        }
+        dayColorsHost.addView(label(R.string.palette_title_day));
+        dayColorsHost.addView(paletteGroup(config.dayPalette,
+                palette -> config.dayPalette = palette));
+        dayColorsHost.addView(cardColorButton(WidgetTheme.DAY));
+    }
+
+    private RadioGroup paletteGroup(Palette checked, Consumer<Palette> listener) {
+        RadioGroup palettes = radioGroup();
+        for (Palette palette : Palette.values()) {
+            RadioButton button = radio(palette.titleRes);
+            button.setChecked(checked == palette);
+            button.setOnCheckedChangeListener((view, on) -> {
+                if (on) {
+                    listener.accept(palette);
+                    changed();
+                }
+            });
+            palettes.addView(button);
+        }
+        return palettes;
+    }
+
+    /** @param mode the theme whose card colour the button edits */
+    private Button cardColorButton(WidgetTheme mode) {
+        Button button = Ui.button(this, "");
+        Ui.topMargin(button, 12);
+        showCardColor(button, mode);
+        button.setOnClickListener(view -> {
+            int shown = WidgetTheme.cardColor(config, mode);
+            boolean themed = config.themedCard(mode.night);
+            sized(ColorPickerDialog.show(this, getString(cardColorLabel(mode)), shown,
+                    WidgetConfig.THEME_CARD_COLOR, color -> {
+                        // Applying the theme's colour unchanged keeps the card themed.
+                        if (!themed || color != shown) {
+                            if (config.dayColors && !mode.night) {
+                                config.dayCardColor = color;
+                            } else {
+                                config.cardColor = color;
+                            }
+                        }
+                        showCardColor(button, mode);
+                        changed();
+                    }));
+        });
+        return button;
+    }
+
+    private int cardColorLabel(WidgetTheme mode) {
+        return !config.dayColors ? R.string.card_color
+                : mode.night ? R.string.card_color_night : R.string.card_color_day;
+    }
+
     /** The button shows the colour itself, as in AtlasAppWidget. */
-    private void cardColorButton(Button button) {
-        colorButton(button, getString(R.string.card_color),
-                WidgetTheme.forCard(config, this).cardColor(config),
-                config.themedCard() ? getString(R.string.card_color_theme) : null);
+    private void showCardColor(Button button, WidgetTheme mode) {
+        colorButton(button, getString(cardColorLabel(mode)),
+                WidgetTheme.cardColor(config, mode),
+                config.themedCard(mode.night) ? getString(R.string.card_color_theme) : null);
     }
 
     /** @param value shown instead of the hex code */
@@ -1121,20 +1192,9 @@ public final class MainActivity extends ScaledActivity {
 
     private void rebuildAppearance() {
         appearanceHost.removeAllViews();
-        appearanceHost.addView(label(R.string.palette_title));
-        RadioGroup palettes = radioGroup();
-        for (Palette palette : Palette.values()) {
-            RadioButton button = radio(palette.titleRes);
-            button.setChecked(config.palette == palette);
-            button.setOnCheckedChangeListener((view, checked) -> {
-                if (checked) {
-                    config.palette = palette;
-                    changed();
-                }
-            });
-            palettes.addView(button);
-        }
-        appearanceHost.addView(palettes);
+        appearanceHost.addView(label(config.dayColors
+                ? R.string.palette_title_night : R.string.palette_title));
+        appearanceHost.addView(paletteGroup(config.palette, palette -> config.palette = palette));
         appearanceHost.addView(configSwitch(R.string.filled_active, config.filledActive,
                 value -> config.filledActive = value));
         appearanceHost.addView(label(R.string.icons_title));
@@ -1182,22 +1242,9 @@ public final class MainActivity extends ScaledActivity {
                     config.cardOpacityPercent = value;
                     changed();
                 }, null);
-        Button cardColorButton = Ui.button(this, "");
-        Ui.topMargin(cardColorButton, 12);
-        cardColorButton(cardColorButton);
-        cardColorButton.setOnClickListener(view -> {
-            int shown = WidgetTheme.forCard(config, this).cardColor(config);
-            sized(ColorPickerDialog.show(this, getString(R.string.card_color), shown,
-                    WidgetConfig.THEME_CARD_COLOR, color -> {
-                        // Applying the theme's colour unchanged keeps the card themed.
-                        if (!config.themedCard() || color != shown) {
-                            config.cardColor = color;
-                        }
-                        cardColorButton(cardColorButton);
-                        changed();
-                    }));
-        });
-        cardsHost.addView(cardColorButton);
+        // With day colours apart these are the night ones.
+        cardsHost.addView(cardColorButton(config.dayColors
+                ? WidgetTheme.NIGHT : WidgetTheme.of(this)));
         addSlider(cardsHost, getString(R.string.card_radius), 0,
                 WidgetConfig.CARD_RADIUS_MAX_DP, config.cardRadiusDp,
                 value -> getString(R.string.dp_value, value), value -> {
@@ -1222,6 +1269,7 @@ public final class MainActivity extends ScaledActivity {
                     config.tileRadiusPercent = value;
                     changed();
                 }, null);
+        rebuildDayColors();
     }
 
     // ---- state -------------------------------------------------------------------------------
