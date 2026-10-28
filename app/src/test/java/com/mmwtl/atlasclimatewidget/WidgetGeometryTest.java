@@ -64,11 +64,9 @@ public final class WidgetGeometryTest {
 
     @Test public void fitsAvailableHeight() {
         WidgetConfig config = new WidgetConfig();
-        config.heightMode = WidgetConfig.HeightMode.CONTENT;
         float natural = WidgetGeometry.plan(config, 640f, 0f, 1f, 25).totalHeight();
         WidgetGeometry.Plan fitted = WidgetGeometry.plan(config, 640f, natural * 0.8f, 1f, 25);
-        assertEquals(natural * 0.8f * WidgetGeometry.FIT_MARGIN, fitted.totalHeight(),
-                natural * 0.02f);
+        assertEquals(natural * 0.8f, fitted.totalHeight(), 0.5f);
     }
 
     @Test public void narrowsContentWhenSquashingIsNotEnough() {
@@ -309,15 +307,6 @@ public final class WidgetGeometryTest {
             WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, cell, 1f, 25);
             assertEquals(cell, plan.totalHeight(), 0.5f);
         }
-    }
-
-    @Test public void contentModeLeavesFreeSpace() {
-        WidgetConfig config = new WidgetConfig();
-        config.heightMode = WidgetConfig.HeightMode.CONTENT;
-        float natural = WidgetGeometry.plan(config, 640f, 0f, 1f, 25).totalHeight();
-        WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, natural + 100f, 1f, 25);
-        assertEquals(natural, plan.totalHeight(), 0.01f);
-        assertEquals(natural, plan.naturalHeight, 0.01f);
     }
 
     @Test public void scaleEnlargesBarsButKeepsTileColumns() {

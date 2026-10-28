@@ -38,31 +38,6 @@ final class WidgetConfig {
         }
     }
 
-    /** How the layout uses the launcher cell's height. */
-    enum HeightMode {
-        FILL(R.string.height_fill),
-        CONTENT(R.string.height_content);
-
-        final int titleRes;
-
-        HeightMode(int titleRes) {
-            this.titleRes = titleRes;
-        }
-    }
-
-    /** Position of a shorter-than-cell layout in {@link HeightMode#CONTENT}. */
-    enum VerticalAlign {
-        TOP(R.string.align_top),
-        CENTER(R.string.align_center),
-        BOTTOM(R.string.align_bottom);
-
-        final int titleRes;
-
-        VerticalAlign(int titleRes) {
-            this.titleRes = titleRes;
-        }
-    }
-
     /** Position of the cabin/outside sensor line across the widget. */
     enum HeaderAlign {
         LEFT(R.string.align_left),
@@ -214,7 +189,6 @@ final class WidgetConfig {
     FanLayout fanLayout = FanLayout.BAR;
     /** The bar layout's AUTO button, fixed at the bar's start in both modes. */
     boolean fanAuto = true;
-    HeightMode heightMode = HeightMode.FILL;
     /** Resolved from the global car setting by {@link Prefs}; not part of the saved layout. */
     int fanPresetCount = 3;
     /** Whether the kept choice is outlined with the climate off; global, not saved either. */
@@ -222,7 +196,6 @@ final class WidgetConfig {
     /** Fuel formula, resolved from the global setting by {@link Prefs}; not saved either. */
     float fuelMultiplier = Fuel.MULTIPLIER;
     float fuelOffset = Fuel.OFFSET;
-    VerticalAlign verticalAlign = VerticalAlign.TOP;
     CardLayout cardLayout = CardLayout.SEPARATE;
     Style style = Style.CLASSIC;
 
@@ -522,8 +495,6 @@ final class WidgetConfig {
             json.put("fanPresets", fanPresets);
             json.put("fanLayout", fanLayout.name());
             json.put("fanAuto", fanAuto);
-            json.put("heightMode", heightMode.name());
-            json.put("verticalAlign", verticalAlign.name());
             json.put("cardLayout", cardLayout.name());
             json.put("style", style.name());
             JSONArray tiles = new JSONArray();
@@ -634,10 +605,6 @@ final class WidgetConfig {
         config.fanLayout = enumValue(FanLayout.class, json.optString("fanLayout"),
                 FanLayout.ROWS);
         config.fanAuto = json.optBoolean("fanAuto", config.fanAuto);
-        config.heightMode = enumValue(HeightMode.class, json.optString("heightMode"),
-                config.heightMode);
-        config.verticalAlign = enumValue(VerticalAlign.class, json.optString("verticalAlign"),
-                config.verticalAlign);
         config.cardLayout = enumValue(CardLayout.class, json.optString("cardLayout"),
                 config.cardLayout);
         config.style = enumValue(Style.class, json.optString("style"), config.style);

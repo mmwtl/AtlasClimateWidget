@@ -63,9 +63,9 @@ line, read as in AtlasAppWidget (`Fuel`).
   that zone's console value meanwhile. The strip is
   hidden only after the window's first frame and restored 300 ms before it closes; `finish()`
   skips the task transition, otherwise the window slides down over HOME.
-- Height: `HeightMode.FILL` grows tile rows up to `MAX_TILE_ASPECT`, then card padding, so the
-  last card ends at the cell bottom; bars keep their size. `CONTENT` keeps square tiles and uses
-  the root gravity for alignment. Shrinking below the cell never depends on the mode.
+- Height: the widget always fills its cell (there is no height setting; saved `heightMode` and
+  `verticalAlign` fields are ignored). Tile rows grow up to `MAX_TILE_ASPECT`, then card padding,
+  so the last card ends at the cell bottom; bars keep their size.
 - The sensor line is its own block (`Block.INFO`), the temperature block is only the
   set-temperature bar. The line sits left, centred or right (`HeaderAlign`, centred by default)
   and shows any of its parts, at least one: cabin temperature, outside temperature, the liters in the tank,

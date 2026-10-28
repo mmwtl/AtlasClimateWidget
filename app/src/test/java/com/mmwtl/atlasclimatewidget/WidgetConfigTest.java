@@ -20,8 +20,6 @@ public final class WidgetConfigTest {
         config.cardOpacityPercent = 40;
         config.fanBar = false;
         config.fanDirections = false;
-        config.heightMode = WidgetConfig.HeightMode.CONTENT;
-        config.verticalAlign = WidgetConfig.VerticalAlign.BOTTOM;
         config.cardLayout = WidgetConfig.CardLayout.SINGLE;
         config.headerAlign = WidgetConfig.HeaderAlign.RIGHT;
         config.headerFuelFree = true;
@@ -63,9 +61,6 @@ public final class WidgetConfigTest {
         WidgetConfig legacyLevels = WidgetConfig.fromJson("{\"fanStyle\":\"LEVELS\"}");
         assertTrue(legacyLevels.fanBar);
         assertFalse(legacyLevels.fanPresets || legacyLevels.fanDirections);
-        assertEquals(WidgetConfig.HeightMode.CONTENT, copy.heightMode);
-        assertEquals(WidgetConfig.VerticalAlign.BOTTOM, copy.verticalAlign);
-        assertEquals(WidgetConfig.HeightMode.FILL, WidgetConfig.fromJson("{}").heightMode);
         assertEquals(WidgetConfig.CardLayout.SINGLE, copy.cardLayout);
         assertEquals(WidgetConfig.CardLayout.SEPARATE, WidgetConfig.fromJson("{}").cardLayout);
         assertEquals(WidgetConfig.HeaderAlign.RIGHT, copy.headerAlign);

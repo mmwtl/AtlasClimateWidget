@@ -169,20 +169,6 @@ public final class WidgetSetupActivity extends ScaledActivity {
         }
         card.addView(layouts, fullWrap(8));
 
-        addTitle(card, R.string.height_title);
-        LinearLayout heights = segmentRow();
-        for (WidgetConfig.HeightMode mode : WidgetConfig.HeightMode.values()) {
-            TextView segment = Ui.segment(this, mode == WidgetConfig.HeightMode.FILL
-                    ? R.string.setup_height_fill : R.string.setup_height_content);
-            segment.setOnClickListener(view -> {
-                config.heightMode = mode;
-                refresh();
-            });
-            refreshers.add(() -> Ui.setSegmentSelected(this, segment, config.heightMode == mode));
-            Ui.addSegment(heights, segment);
-        }
-        card.addView(heights, fullWrap(8));
-
         addTitle(card, R.string.setup_fan_parts);
         LinearLayout fanLayouts = segmentRow();
         for (WidgetConfig.FanLayout layout : WidgetConfig.FanLayout.values()) {
@@ -367,7 +353,7 @@ public final class WidgetSetupActivity extends ScaledActivity {
             previewHost.removeAllViews();
             previewHost.addView(HeightReport.framePreview(this, preview, size,
                     Math.min(width, fitWidth)));
-            heightReport.setText(HeightReport.describe(this, config, plan));
+            heightReport.setText(HeightReport.describe(this, plan));
         } catch (RuntimeException error) {
             AppLog.warn("Setup preview failed", error);
         }

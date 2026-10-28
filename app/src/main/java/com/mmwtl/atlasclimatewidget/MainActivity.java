@@ -92,7 +92,6 @@ public final class MainActivity extends ScaledActivity {
     private TileDragLayer previewHost;
     private TextView previewCaption;
     private TextView heightReport;
-    private LinearLayout heightHost;
     private LinearLayout blocksHost;
     private LinearLayout tilesHost;
     private LinearLayout functionsHost;
@@ -325,8 +324,7 @@ public final class MainActivity extends ScaledActivity {
     private void buildBlocksTab(LinearLayout page) {
         LinearLayout height = Ui.card(this);
         height.addView(Ui.heading(this, R.string.height_title, 20));
-        heightHost = vertical();
-        height.addView(heightHost);
+        height.addView(hint(R.string.height_fill_hint));
         heightReport = hint(R.string.height_report_unknown);
         height.addView(heightReport);
         page.addView(height);
@@ -897,47 +895,10 @@ public final class MainActivity extends ScaledActivity {
         if (blocksHost == null) {
             return;
         }
-        rebuildHeight();
         rebuildBlocks();
         rebuildTiles();
         rebuildFunctions();
         rebuildAppearance();
-    }
-
-    private void rebuildHeight() {
-        heightHost.removeAllViews();
-        RadioGroup heights = radioGroup();
-        for (WidgetConfig.HeightMode mode : WidgetConfig.HeightMode.values()) {
-            RadioButton button = radio(mode.titleRes);
-            button.setChecked(config.heightMode == mode);
-            button.setOnCheckedChangeListener((view, checked) -> {
-                if (checked && config.heightMode != mode) {
-                    config.heightMode = mode;
-                    changed();
-                    view.post(this::rebuildHeight);
-                }
-            });
-            heights.addView(button);
-        }
-        heightHost.addView(heights);
-        if (config.heightMode == WidgetConfig.HeightMode.FILL) {
-            heightHost.addView(hint(R.string.height_fill_hint));
-            return;
-        }
-        LinearLayout aligns = new LinearLayout(this);
-        aligns.setOrientation(LinearLayout.HORIZONTAL);
-        Ui.topMargin(aligns, 8);
-        for (WidgetConfig.VerticalAlign align : WidgetConfig.VerticalAlign.values()) {
-            TextView segment = Ui.segment(this, align.titleRes);
-            Ui.setSegmentSelected(this, segment, config.verticalAlign == align);
-            segment.setOnClickListener(view -> {
-                config.verticalAlign = align;
-                changed();
-                rebuildHeight();
-            });
-            Ui.addSegment(aligns, segment);
-        }
-        heightHost.addView(aligns);
     }
 
     private void rebuildBlocks() {
@@ -1420,7 +1381,7 @@ public final class MainActivity extends ScaledActivity {
                     getApplicationContext().getResources().getDisplayMetrics().density,
                     ClimateCommands.tempRange(demo ? DemoState.INSTANCE : live).steps());
             previewHost.setLayout(config, plan);
-            heightReport.setText(HeightReport.describe(this, config, plan));
+            heightReport.setText(HeightReport.describe(this, plan));
         } catch (RuntimeException error) {
             AppLog.warn("Preview failed", error);
         }

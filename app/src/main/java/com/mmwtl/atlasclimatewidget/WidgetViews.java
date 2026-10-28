@@ -68,7 +68,7 @@ final class WidgetViews {
         String packageName = context.getPackageName();
         RemoteViews root = new RemoteViews(packageName, R.layout.widget_root);
         root.removeAllViews(R.id.widget_root);
-        root.setInt(R.id.widget_root, "setGravity", gravity(config));
+        root.setInt(R.id.widget_root, "setGravity", Gravity.TOP);
         if (plan.strips.isEmpty()) {
             RemoteViews empty = new RemoteViews(packageName, R.layout.widget_empty);
             if (interactive) {
@@ -117,21 +117,6 @@ final class WidgetViews {
         }
         return strip.row.kind == WidgetGeometry.RowKind.TILES
                 ? R.layout.widget_zone : R.layout.widget_zone_plain;
-    }
-
-    /** A filled layout matches the cell; a content-sized one sits where the user chose. */
-    static int gravity(WidgetConfig config) {
-        if (config.heightMode == WidgetConfig.HeightMode.FILL) {
-            return Gravity.TOP;
-        }
-        switch (config.verticalAlign) {
-            case CENTER:
-                return Gravity.CENTER_VERTICAL;
-            case BOTTOM:
-                return Gravity.BOTTOM;
-            default:
-                return Gravity.TOP;
-        }
     }
 
     static String control(WidgetConfig config, WidgetGeometry.Strip strip, int cell) {

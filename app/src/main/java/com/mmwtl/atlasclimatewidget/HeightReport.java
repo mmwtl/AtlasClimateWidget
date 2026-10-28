@@ -12,25 +12,20 @@ final class HeightReport {
     private HeightReport() {
     }
 
-    static String describe(Context context, WidgetConfig config, WidgetGeometry.Plan plan) {
+    static String describe(Context context, WidgetGeometry.Plan plan) {
         float density = context.getApplicationContext().getResources().getDisplayMetrics().density;
         if (plan.availableHeight <= 0f) {
             return context.getString(R.string.height_report_unknown);
         }
         int available = Math.round(plan.availableHeight / density);
         int natural = Math.round(plan.naturalHeight / density);
-        int used = Math.round(plan.totalHeight() / density);
         if (plan.verticalScale < 1f) {
             int percent = Math.round(plan.verticalScale * 100f);
             return context.getString(plan.width < plan.fullWidth
                     ? R.string.height_report_squeezed_narrow : R.string.height_report_squeezed,
                     natural, available, percent);
         }
-        if (config.heightMode == WidgetConfig.HeightMode.FILL) {
-            return context.getString(R.string.height_report_filled, available);
-        }
-        return context.getString(R.string.height_report_content, used, available,
-                Math.max(0, available - used));
+        return context.getString(R.string.height_report_filled, available);
     }
 
     /**

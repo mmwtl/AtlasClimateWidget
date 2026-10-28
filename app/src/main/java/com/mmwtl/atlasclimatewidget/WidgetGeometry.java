@@ -43,7 +43,6 @@ final class WidgetGeometry {
     static final float CONSOLE_MIN_TILE_ASPECT = 0.6f;
     static final float CONSOLE_MAX_TILE_ASPECT = 1f;
     static final float MIN_VERTICAL_SCALE = 0.55f;
-    static final float FIT_MARGIN = 0.98f;
     static final float MIN_CONTENT_WIDTH = 0.3f;
     /** Tallest tile relative to its width when tiles stretch to fill the widget. */
     static final float MAX_TILE_ASPECT = 1.6f;
@@ -256,12 +255,10 @@ final class WidgetGeometry {
             return build(config, widthPx, widthPx, density, 1f, temperatureSteps, 0f, 0f)
                     .measured(natural, heightPx);
         }
-        // A filled layout must end at the cell bottom whether it grows or shrinks; a content-sized
-        // one fits a little inside the reported height because hosts round cell sizes.
-        boolean filled = config.heightMode == WidgetConfig.HeightMode.FILL;
-        float target = filled ? heightPx : heightPx * FIT_MARGIN;
+        // The layout ends at the cell bottom whether it grows or shrinks.
+        float target = heightPx;
         if (natural <= target) {
-            if (!filled || natural >= target) {
+            if (natural >= target) {
                 return build(config, widthPx, widthPx, density, 1f, temperatureSteps, 0f, 0f)
                         .measured(natural, heightPx);
             }
