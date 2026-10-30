@@ -5,7 +5,9 @@ import android.appwidget.AppWidgetManager;
 import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -99,7 +101,9 @@ public final class MainActivity extends ScaledActivity {
     private LinearLayout offHost;
     private LinearLayout appearanceHost;
     private LinearLayout cardsHost;
-    private LinearLayout dayColorsHost;
+    private LinearLayout colorsHost;
+    /** The theme whose colours the Look tab edits and the preview shows; not stored. */
+    private boolean editNight;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -366,9 +370,9 @@ public final class MainActivity extends ScaledActivity {
         appearance.addView(appearanceHost);
         page.addView(appearance);
 
-        dayColorsHost = collapsibleCard(page, R.string.day_colors_title,
-                R.string.day_colors_summary);
         cardsHost = collapsibleCard(page, R.string.cards_title, R.string.cards_summary);
+        editNight = WidgetTheme.of(this).night;
+        colorsHost = collapsibleCard(page, R.string.colors_title, R.string.colors_summary);
     }
 
     private void buildSystemTab(LinearLayout page) {
@@ -775,25 +779,32 @@ public final class MainActivity extends ScaledActivity {
         confirmImport(text);
     }
 
-    private void rebuildDayColors() {
-        dayColorsHost.removeAllViews();
-        dayColorsHost.addView(configSwitch(R.string.day_colors, config.dayColors, value -> {
-            if (value) {
-                // Start from the colours the widget has by day now.
-                config.dayPalette = config.palette;
-                config.dayCardColor = config.cardColor;
-            }
-            config.dayColors = value;
-            dayColorsHost.post(this::rebuildAppearance);
-        }));
-        dayColorsHost.addView(hint(R.string.day_colors_hint));
-        if (!config.dayColors) {
-            return;
+    private void rebuildColors() {
+        colorsHost.removeAllViews();
+        LinearLayout modes = new LinearLayout(this);
+        modes.setOrientation(LinearLayout.HORIZONTAL);
+        Ui.topMargin(modes, 8);
+        for (boolean night : new boolean[] {false, true}) {
+            TextView segment = Ui.segment(this, night ? R.string.colors_night : R.string.colors_day);
+            Ui.setSegmentSelected(this, segment, editNight == night);
+            segment.setOnClickListener(view -> {
+                editNight = night;
+                rebuildColors();
+                refreshPreview();
+            });
+            Ui.addSegment(modes, segment);
         }
-        dayColorsHost.addView(label(R.string.palette_title_day));
-        dayColorsHost.addView(paletteGroup(config.dayPalette,
-                palette -> config.dayPalette = palette));
-        dayColorsHost.addView(cardColorButton(WidgetTheme.DAY));
+        colorsHost.addView(modes);
+        colorsHost.addView(hint(R.string.colors_hint));
+        colorsHost.addView(label(R.string.palette_title));
+        colorsHost.addView(paletteGroup(config.palette(editNight), palette -> {
+            if (editNight) {
+                config.palette = palette;
+            } else {
+                config.dayPalette = palette;
+            }
+        }));
+        colorsHost.addView(cardColorButton(editNight ? WidgetTheme.NIGHT : WidgetTheme.DAY));
     }
 
     private RadioGroup paletteGroup(Palette checked, Consumer<Palette> listener) {
@@ -820,14 +831,14 @@ public final class MainActivity extends ScaledActivity {
         button.setOnClickListener(view -> {
             int shown = WidgetTheme.cardColor(config, mode);
             boolean themed = config.themedCard(mode.night);
-            sized(ColorPickerDialog.show(this, getString(cardColorLabel(mode)), shown,
+            sized(ColorPickerDialog.show(this, getString(R.string.card_color), shown,
                     WidgetConfig.THEME_CARD_COLOR, color -> {
                         // Applying the theme's colour unchanged keeps the card themed.
                         if (!themed || color != shown) {
-                            if (config.dayColors && !mode.night) {
-                                config.dayCardColor = color;
-                            } else {
+                            if (mode.night) {
                                 config.cardColor = color;
+                            } else {
+                                config.dayCardColor = color;
                             }
                         }
                         showCardColor(button, mode);
@@ -837,14 +848,9 @@ public final class MainActivity extends ScaledActivity {
         return button;
     }
 
-    private int cardColorLabel(WidgetTheme mode) {
-        return !config.dayColors ? R.string.card_color
-                : mode.night ? R.string.card_color_night : R.string.card_color_day;
-    }
-
     /** The button shows the colour itself, as in AtlasAppWidget. */
     private void showCardColor(Button button, WidgetTheme mode) {
-        colorButton(button, getString(cardColorLabel(mode)),
+        colorButton(button, getString(R.string.card_color),
                 WidgetTheme.cardColor(config, mode),
                 config.themedCard(mode.night) ? getString(R.string.card_color_theme) : null);
     }
@@ -1153,9 +1159,6 @@ public final class MainActivity extends ScaledActivity {
 
     private void rebuildAppearance() {
         appearanceHost.removeAllViews();
-        appearanceHost.addView(label(config.dayColors
-                ? R.string.palette_title_night : R.string.palette_title));
-        appearanceHost.addView(paletteGroup(config.palette, palette -> config.palette = palette));
         appearanceHost.addView(configSwitch(R.string.filled_active, config.filledActive,
                 value -> config.filledActive = value));
         appearanceHost.addView(label(R.string.icons_title));
@@ -1203,9 +1206,6 @@ public final class MainActivity extends ScaledActivity {
                     config.cardOpacityPercent = value;
                     changed();
                 }, null);
-        // With day colours apart these are the night ones.
-        cardsHost.addView(cardColorButton(config.dayColors
-                ? WidgetTheme.NIGHT : WidgetTheme.of(this)));
         addSlider(cardsHost, getString(R.string.card_radius), 0,
                 WidgetConfig.CARD_RADIUS_MAX_DP, config.cardRadiusDp,
                 value -> getString(R.string.dp_value, value), value -> {
@@ -1230,7 +1230,7 @@ public final class MainActivity extends ScaledActivity {
                     config.tileRadiusPercent = value;
                     changed();
                 }, null);
-        rebuildDayColors();
+        rebuildColors();
     }
 
     // ---- state -------------------------------------------------------------------------------
@@ -1361,9 +1361,9 @@ public final class MainActivity extends ScaledActivity {
             size = ClimateService.widgetSize(getApplicationContext(), editedWidget);
         }
         try {
-            RemoteViews views = WidgetViews.build(getApplicationContext(), config,
+            RemoteViews views = WidgetViews.build(withEditedMode(getApplicationContext()), config,
                     demo ? DemoState.INSTANCE : live, prefs.carModel(), size, false, 1f);
-            View preview = views.apply(this, previewHost);
+            View preview = views.apply(withEditedMode(this), previewHost);
             int width = previewHost.getWidth() - previewHost.getPaddingLeft()
                     - previewHost.getPaddingRight();
             float toScreen = getResources().getDisplayMetrics().density
@@ -1380,11 +1380,18 @@ public final class MainActivity extends ScaledActivity {
             WidgetGeometry.Plan plan = WidgetGeometry.plan(config, size.widthPx, size.heightPx,
                     getApplicationContext().getResources().getDisplayMetrics().density,
                     ClimateCommands.tempRange(demo ? DemoState.INSTANCE : live).steps());
-            previewHost.setLayout(config, plan);
+            previewHost.setLayout(config, plan, editNight ? WidgetTheme.NIGHT : WidgetTheme.DAY);
             heightReport.setText(HeightReport.describe(this, plan));
         } catch (RuntimeException error) {
             AppLog.warn("Preview failed", error);
         }
+    }
+
+    private Context withEditedMode(Context base) {
+        Configuration mode = new Configuration(base.getResources().getConfiguration());
+        mode.uiMode = (mode.uiMode & ~Configuration.UI_MODE_NIGHT_MASK)
+                | (editNight ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO);
+        return base.createConfigurationContext(mode);
     }
 
     private boolean hasClimateValues(ClimateState state) {

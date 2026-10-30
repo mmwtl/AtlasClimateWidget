@@ -41,6 +41,7 @@ final class TileDragLayer extends FrameLayout {
     private final RectF lifted = new RectF();
 
     private Listener listener;
+    private WidgetTheme mode = WidgetTheme.NIGHT;
     private WidgetConfig config;
     private WidgetGeometry.Plan plan;
 
@@ -68,8 +69,10 @@ final class TileDragLayer extends FrameLayout {
     }
 
     /** The layout the preview was built from; {@code null} when there is nothing to drag. */
-    void setLayout(WidgetConfig config, WidgetGeometry.Plan plan) {
+    /** @param mode the theme the preview is drawn in */
+    void setLayout(WidgetConfig config, WidgetGeometry.Plan plan, WidgetTheme mode) {
         this.config = config;
+        this.mode = mode;
         this.plan = plan;
         if (dragged != null && (config == null || !config.functions.contains(dragged))) {
             endDrag();
@@ -185,7 +188,7 @@ final class TileDragLayer extends FrameLayout {
 
     /** The card behind the tiles as seen in the preview, so the empty slot looks vacated. */
     private int cardColor() {
-        int card = WidgetTheme.cardColor(config, getContext());
+        int card = WidgetTheme.cardColor(config, mode);
         float alpha = config.cardOpacityPercent / 100f;
         int back = Ui.BACKGROUND;
         return Color.rgb(

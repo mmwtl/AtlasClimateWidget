@@ -107,7 +107,7 @@ final class WidgetConfig {
      * its own block instead of a part of the temperature block. 4: the card radius is in
      * screen dp instead of being multiplied by the widget scale.
      */
-    static final int VERSION = 4;
+    static final int VERSION = 5;
     static final int COLUMNS_MIN = 1;
     static final int COLUMNS_MAX = 8;
     static final int CARD_RADIUS_MAX_DP = 40;
@@ -117,7 +117,9 @@ final class WidgetConfig {
      * Card colour that follows the head unit's day and night theme. It is the graphite default
      * every layout saved before the themes holds, so those cards follow the theme as well.
      */
-    static final int THEME_CARD_COLOR = 0xFF262626;
+    static final int THEME_CARD_COLOR = 0;
+    /** What layouts before version 5 stored for a card following the theme. */
+    private static final int LEGACY_THEME_CARD_COLOR = 0xFF262626;
     /** Default before version 4, scaled by the widget scale. */
     static final int CARD_RADIUS_LEGACY_DP = 18;
     static final int TILE_RADIUS_MAX_PERCENT = 50;
@@ -207,14 +209,22 @@ final class WidgetConfig {
         return tileStyle == TileStyle.ICON;
     }
 
+    private static int savedCardColor(int saved, int version) {
+        if (saved == THEME_CARD_COLOR) {
+            return THEME_CARD_COLOR;
+        }
+        int color = saved | 0xFF000000;
+        return version < 5 && color == LEGACY_THEME_CARD_COLOR ? THEME_CARD_COLOR : color;
+    }
+
     /** Palette of the widget in the given theme. */
     Palette palette(boolean night) {
-        return dayColors && !night ? dayPalette : palette;
+        return night ? palette : dayPalette;
     }
 
     /** Card colour of the widget in the given theme, {@link #THEME_CARD_COLOR} included. */
     int cardColor(boolean night) {
-        return dayColors && !night ? dayCardColor : cardColor;
+        return night ? cardColor : dayCardColor;
     }
 
     /** Whether the card takes the theme's colour in the given theme, see {@link WidgetTheme}. */
@@ -241,11 +251,7 @@ final class WidgetConfig {
     IconSet iconSet = IconSet.ATLAS;
     /** {@link #THEME_CARD_COLOR} follows the day and night theme; any other stays as is. */
     int cardColor = THEME_CARD_COLOR;
-    /**
-     * Whether the day theme takes {@link #dayPalette} and {@link #dayCardColor}; off, both
-     * themes share {@link #palette} and {@link #cardColor}.
-     */
-    boolean dayColors;
+    /** The day theme's own colours; {@link #palette} and {@link #cardColor} are the night's. */
     Palette dayPalette = Palette.ATLAS;
     int dayCardColor = THEME_CARD_COLOR;
     int cardOpacityPercent = 100;
@@ -513,7 +519,6 @@ final class WidgetConfig {
             json.put("filledActive", filledActive);
             json.put("iconSet", iconSet.name());
             json.put("cardColor", cardColor);
-            json.put("dayColors", dayColors);
             json.put("dayPalette", dayPalette.name());
             json.put("dayCardColor", dayCardColor);
             json.put("cardOpacityPercent", cardOpacityPercent);
@@ -642,11 +647,18 @@ final class WidgetConfig {
         config.palette = enumValue(Palette.class, json.optString("palette"), config.palette);
         config.filledActive = json.optBoolean("filledActive", config.filledActive);
         config.iconSet = enumValue(IconSet.class, json.optString("iconSet"), config.iconSet);
-        config.cardColor = json.optInt("cardColor", config.cardColor) | 0xFF000000;
-        config.dayColors = json.optBoolean("dayColors", config.dayColors);
-        config.dayPalette = enumValue(Palette.class, json.optString("dayPalette"),
-                config.dayPalette);
-        config.dayCardColor = json.optInt("dayCardColor", config.dayCardColor) | 0xFF000000;
+        int version = json.optInt("version", 1);
+        config.cardColor = savedCardColor(json.optInt("cardColor", config.cardColor), version);
+        if (version < 5) {
+            // One colour set: a picked colour stayed in both themes.
+            config.dayPalette = config.palette;
+            config.dayCardColor = config.cardColor;
+        } else {
+            config.dayPalette = enumValue(Palette.class, json.optString("dayPalette"),
+                    config.dayPalette);
+            config.dayCardColor = savedCardColor(
+                    json.optInt("dayCardColor", config.dayCardColor), version);
+        }
         config.cardOpacityPercent = clamp(json.optInt("cardOpacityPercent",
                 config.cardOpacityPercent), 0, 100);
         config.cardPaddingDp = clamp(json.optInt("cardPaddingDp", config.cardPaddingDp),

@@ -68,8 +68,8 @@ final class WidgetTheme {
     }
 
     static WidgetTheme forColor(int color) {
-        // Above this both texts read alike; dark text wins on lighter cards.
-        return luminance(color) > 0.2 ? DAY : NIGHT;
+        // Black and white text have equal WCAG contrast at this luminance.
+        return luminance(color) < 0.179 ? NIGHT : DAY;
     }
 
     /** Opaque card colour the widget draws in the head unit's theme, before its opacity. */
@@ -120,6 +120,6 @@ final class WidgetTheme {
 
     private static double linear(int channel) {
         double value = channel / 255.0;
-        return value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+        return value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
     }
 }

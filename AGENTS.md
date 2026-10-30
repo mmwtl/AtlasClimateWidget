@@ -92,15 +92,15 @@ line, read as in AtlasAppWidget (`Fuel`).
 - Cards: `CardLayout.SEPARATE` gives every block its own card; `SINGLE` puts all rows in one card,
   blocks a card padding apart without dividers. Fill shares extra height per block in both
   modes.
-- Card colour (`cardColor`, per widget, opaque RGB; `cardOpacityPercent` is separate) is picked on
-  the Look tab with `ColorPickerDialog`, the RGB dialog of AtlasAppWidget; the button shows the
-  colour and its hex code, or «по теме». `WidgetConfig.THEME_CARD_COLOR` (`#262626`, the old
-  default every earlier layout holds) means the card follows the theme; «По теме» in the dialog
-  sets it back. Any other colour stays in both themes and picks the theme whose text reads on it.
-  Day colours (`dayColors`, per widget, off by default): the Look tab's collapsed «Цвета днём»
-  section gives the day theme its own `dayPalette` and `dayCardColor`; the main ones are then
-  the night ones. Turning it on copies the current colours. The renderer resolves both through
-  `WidgetConfig.palette(night)`/`cardColor(night)` with the head unit's mode.
+- Colours (per widget): `cardColor` and `palette` are the night ones, `dayCardColor` and
+  `dayPalette` the day ones, resolved through `WidgetConfig.cardColor(night)`/`palette(night)`.
+  `WidgetConfig.THEME_CARD_COLOR` (0; a picked colour is opaque) means the card follows the theme;
+  any other colour picks the theme whose text reads on it (`WidgetTheme.forColor`, the same
+  luminance threshold as AtlasAppWidget and AtlasMediaWidget). `cardOpacityPercent` is separate.
+  The Look tab's collapsed «Свои цвета» card is the only editor: a День/Ночь segment switches the
+  edited colours and the preview's mode (`MainActivity.editNight`, not stored), and «По теме» in
+  `ColorPickerDialog`, the RGB dialog of AtlasAppWidget, sets the card back. Layouts before
+  version 5 have one colour set: `#262626` becomes the theme and a picked colour stays in both.
 - Day and night: the widget follows the head unit's night mode (OneOS switches it with the
   headlights) in the AtlasLauncher palette, `WidgetTheme` (day card `#EDEEF0`, tiles `#FFFFFF`,
   text `#202124`/`#5F6368`; night `#232528`, `#404347`, `#F1F2F4`/`#C4C7CA`). The strips are

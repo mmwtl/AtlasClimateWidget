@@ -48,53 +48,65 @@ public final class WidgetThemeTest {
         assertSame(WidgetTheme.DAY, WidgetTheme.forColor(0xFFFFFFFF));
         assertSame(WidgetTheme.DAY, WidgetTheme.forColor(0xFFB9CCD6));
         WidgetConfig config = new WidgetConfig();
-        config.cardColor = 0xFF102030;
+        config.dayCardColor = 0xFF102030;
         assertSame(WidgetTheme.NIGHT, WidgetTheme.forCard(config, WidgetTheme.DAY));
         assertEquals(0xFF102030, WidgetTheme.cardColor(config, WidgetTheme.DAY));
+        config.cardColor = 0xFFF0E0D0;
+        assertSame(WidgetTheme.DAY, WidgetTheme.forCard(config, WidgetTheme.NIGHT));
     }
 
-    @Test public void graphiteCardsFollowTheTheme() throws Exception {
+    @Test public void newCardsFollowTheTheme() {
         WidgetConfig config = new WidgetConfig();
         assertTrue(config.themedCard(true));
+        assertTrue(config.themedCard(false));
         assertEquals(WidgetTheme.DAY.card, WidgetTheme.cardColor(config, WidgetTheme.DAY));
         assertEquals(WidgetTheme.NIGHT.card, WidgetTheme.cardColor(config, WidgetTheme.NIGHT));
-        // Layouts saved before the themes stored the graphite default.
-        JSONObject saved = new JSONObject(config.toJson());
-        saved.put("cardColor", 0xFF262626);
-        assertTrue(WidgetConfig.fromJson(saved.toString()).themedCard(true));
-        saved.put("cardColor", 0xFF303030);
-        assertFalse(WidgetConfig.fromJson(saved.toString()).themedCard(true));
     }
 
-    @Test public void dayColorsApplyOnlyByDayWhenOn() throws Exception {
+    @Test public void colorsOfEachThemeSurviveSaving() {
         WidgetConfig config = new WidgetConfig();
         config.palette = Palette.VIOLET;
         config.cardColor = 0xFF102030;
         config.dayPalette = Palette.TEAL;
-        config.dayCardColor = 0xFFF0E0D0;
-        // Off by default: both themes share the colours, as before.
-        assertSame(Palette.VIOLET, config.palette(false));
-        assertEquals(0xFF102030, WidgetTheme.cardColor(config, WidgetTheme.DAY));
-        assertSame(WidgetTheme.NIGHT, WidgetTheme.forCard(config, WidgetTheme.DAY));
-
-        config.dayColors = true;
-        assertSame(Palette.VIOLET, config.palette(true));
-        assertSame(Palette.TEAL, config.palette(false));
-        assertEquals(0xFF102030, WidgetTheme.cardColor(config, WidgetTheme.NIGHT));
-        assertEquals(0xFFF0E0D0, WidgetTheme.cardColor(config, WidgetTheme.DAY));
-        assertSame(WidgetTheme.DAY, WidgetTheme.forCard(config, WidgetTheme.DAY));
         config.dayCardColor = WidgetConfig.THEME_CARD_COLOR;
-        assertEquals(WidgetTheme.DAY.card, WidgetTheme.cardColor(config, WidgetTheme.DAY));
 
         WidgetConfig copy = WidgetConfig.fromJson(config.toJson());
-        assertTrue(copy.dayColors);
-        assertSame(Palette.TEAL, copy.dayPalette);
+        assertSame(Palette.VIOLET, copy.palette(true));
+        assertSame(Palette.TEAL, copy.palette(false));
+        assertEquals(0xFF102030, copy.cardColor(true));
         assertTrue(copy.themedCard(false));
-        JSONObject old = new JSONObject(config.toJson());
-        old.remove("dayColors");
-        old.remove("dayPalette");
-        old.remove("dayCardColor");
-        assertFalse(WidgetConfig.fromJson(old.toString()).dayColors);
+    }
+
+    @Test public void oldLayoutsMakeTheGraphiteDefaultFollowTheTheme() throws Exception {
+        JSONObject saved = legacyLayout();
+        saved.put("cardColor", 0xFF262626);
+        WidgetConfig config = WidgetConfig.fromJson(saved.toString());
+        assertTrue(config.themedCard(true));
+        assertTrue(config.themedCard(false));
+    }
+
+    @Test public void oldLayoutsKeepAPickedColourInBothThemes() throws Exception {
+        JSONObject saved = legacyLayout();
+        saved.put("cardColor", 0xFF303030);
+        saved.put("palette", Palette.VIOLET.name());
+        WidgetConfig config = WidgetConfig.fromJson(saved.toString());
+        assertEquals(0xFF303030, config.cardColor(true));
+        assertEquals(0xFF303030, config.cardColor(false));
+        assertSame(Palette.VIOLET, config.palette(false));
+    }
+
+    @Test public void graphitePickedInACurrentLayoutStaysPicked() {
+        WidgetConfig config = new WidgetConfig();
+        config.cardColor = 0xFF262626;
+        assertFalse(WidgetConfig.fromJson(config.toJson()).themedCard(true));
+    }
+
+    private static JSONObject legacyLayout() throws Exception {
+        JSONObject saved = new JSONObject(new WidgetConfig().toJson());
+        saved.put("version", 4);
+        saved.remove("dayPalette");
+        saved.remove("dayCardColor");
+        return saved;
     }
 
     @Test public void mixBlendsChannels() {
