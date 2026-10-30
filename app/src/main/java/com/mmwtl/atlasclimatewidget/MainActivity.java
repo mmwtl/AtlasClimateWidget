@@ -1201,9 +1201,9 @@ public final class MainActivity extends ScaledActivity {
         appearanceHost.addView(hint(R.string.widget_scale_hint));
 
         cardsHost.removeAllViews();
-        addSlider(cardsHost, getString(R.string.card_opacity), 0, 100,
-                config.cardOpacityPercent, value -> value + "%", value -> {
-                    config.cardOpacityPercent = value;
+        addSlider(cardsHost, getString(R.string.card_opacity), 0, 20,
+                Math.round(config.cardOpacityPercent / 5f), step -> step * 5 + "%", step -> {
+                    config.cardOpacityPercent = step * 5;
                     changed();
                 }, null);
         addSlider(cardsHost, getString(R.string.card_radius), 0,
