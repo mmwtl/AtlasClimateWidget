@@ -76,12 +76,14 @@ final class WidgetConfig {
     }
 
     /**
-     * Temperature block layout: a bar per zone, or only − and + around the value, the zones
-     * side by side in one row.
+     * Temperature block layout: a bar per zone, or only − and + with the zones side by side:
+     * around each value in one row, or stacked at the card's edges with the values towards
+     * the middle.
      */
     enum TempLayout {
         BAR(R.string.temp_layout_bar),
-        BUTTONS(R.string.temp_layout_buttons);
+        BUTTONS(R.string.temp_layout_buttons),
+        EDGES(R.string.temp_layout_edges);
 
         final int titleRes;
 
@@ -197,6 +199,12 @@ final class WidgetConfig {
     boolean headerFuelFree;
     boolean headerRange;
     TempLayout temperatureLayout = TempLayout.BAR;
+
+    /** Whether the temperature block has only − and +, without bars. */
+    boolean temperatureButtonsOnly() {
+        return temperatureLayout != TempLayout.BAR;
+    }
+
     /** The bar's − and +; the button layout always has them. */
     boolean temperatureButtons = true;
     boolean fanButtons = true;

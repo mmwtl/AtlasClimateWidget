@@ -389,6 +389,34 @@ public final class WidgetGeometryTest {
         }
     }
 
+    @Test public void edgeLayoutStacksPlusAboveMinusAtTheEdges() {
+        WidgetConfig config = new WidgetConfig();
+        config.infoEnabled = false;
+        config.temperatureDual = true;
+        config.temperatureLayout = WidgetConfig.TempLayout.EDGES;
+        config.scalePercent = 100;
+        WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
+        WidgetGeometry.Strip plus = plan.strips.get(0);
+        WidgetGeometry.Strip minus = plan.strips.get(1);
+        assertEquals(WidgetGeometry.RowKind.TEMP_BUTTONS, plus.row.kind);
+        assertEquals(WidgetGeometry.RowKind.TEMP_BUTTONS, minus.row.kind);
+        assertEquals(0, plus.row.index);
+        assertEquals(1, minus.row.index);
+        assertEquals(WidgetGeometry.TEMP_EDGE_ROW_DP, plus.contentHeight, 0.01f);
+        assertTrue(plan.strips.get(2).row.kind != WidgetGeometry.RowKind.TEMP_BUTTONS);
+        int last = plus.zoneCount - 1;
+        assertEquals("tempstep/1/1", WidgetViews.control(config, plus, 0));
+        assertEquals("tempstep/4/1", WidgetViews.control(config, plus, last));
+        assertEquals("tempstep/1/-1", WidgetViews.control(config, minus, 0));
+        assertEquals("tempstep/4/-1", WidgetViews.control(config, minus, last));
+        assertNull("the values are inert", WidgetViews.control(config, plus, last / 2));
+
+        config.temperatureDual = false;
+        plus = WidgetGeometry.plan(config, 640f, 0f, 1f, 25).strips.get(0);
+        assertNull("one zone keeps its stack on the right", WidgetViews.control(config, plus, 0));
+        assertEquals("tempstep/1/1", WidgetViews.control(config, plus, plus.zoneCount - 1));
+    }
+
     @Test public void consoleDualZoneStacksValueAndBarPerZone() {
         WidgetConfig config = new WidgetConfig();
         config.infoEnabled = false;

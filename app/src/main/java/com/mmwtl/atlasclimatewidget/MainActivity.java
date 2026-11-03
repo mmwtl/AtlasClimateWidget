@@ -983,8 +983,10 @@ public final class MainActivity extends ScaledActivity {
                     options.addView(temperatureLayouts());
                     options.addView(configSwitch(R.string.temp_dual, config.temperatureDual,
                             value -> config.temperatureDual = value));
-                    if (config.temperatureLayout == WidgetConfig.TempLayout.BUTTONS) {
-                        options.addView(hint(R.string.temp_buttons_hint));
+                    if (config.temperatureButtonsOnly()) {
+                        options.addView(hint(
+                                config.temperatureLayout == WidgetConfig.TempLayout.EDGES
+                                        ? R.string.temp_edges_hint : R.string.temp_buttons_hint));
                         break;
                     }
                     options.addView(configSwitch(R.string.temp_buttons, config.temperatureButtons,

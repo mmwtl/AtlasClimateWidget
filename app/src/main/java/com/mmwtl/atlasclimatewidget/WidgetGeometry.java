@@ -36,6 +36,9 @@ final class WidgetGeometry {
     /** Diameter of every round console button, so the −/+ of all bars line up. */
     static final float CONSOLE_BUTTON_DP = 36f;
     static final float CONSOLE_SEGMENT_ROW_DP = 48f;
+    /** Edge temperature layout: each of the + and − rows, and the gap between them. */
+    static final float TEMP_EDGE_ROW_DP = 42f;
+    static final float TEMP_EDGE_GAP_DP = 6f;
     /**
      * Console tiles flatten down to this height/width ratio before anything else shrinks, so a
      * tight cell keeps the bars and fan buttons at size; filling never grows them past square.
@@ -51,7 +54,10 @@ final class WidgetGeometry {
         HEADER,
         /** Console only: −, the zone's value and +; the zone's bar follows as TEMPERATURE. */
         TEMP_VALUE,
-        /** Button layout: −, the value and + of each zone, the zones side by side. */
+        /**
+         * Button layouts: −, the value and + of each zone, the zones side by side. The edge
+         * layout has two of these rows, + (index 0) above −, the values spanning both.
+         */
         TEMP_BUTTONS,
         TEMPERATURE,
         FAN,
@@ -440,6 +446,15 @@ final class WidgetGeometry {
                 break;
             case TEMPERATURE: {
                 int zones = config.temperatureDual ? 2 : 1;
+                if (config.temperatureLayout == WidgetConfig.TempLayout.EDGES) {
+                    for (int index = 0; index < 2; index++) {
+                        rows.add(new Row(block, RowKind.TEMP_BUTTONS, index,
+                                TEMP_EDGE_ROW_DP * density * scale));
+                        gaps.add((index == 0 ? TEMP_EDGE_GAP_DP : TEMP_ROW_GAP_DP)
+                                * density * scale);
+                    }
+                    break;
+                }
                 if (config.temperatureLayout == WidgetConfig.TempLayout.BUTTONS) {
                     rows.add(new Row(block, RowKind.TEMP_BUTTONS, 0,
                             temperatureButtonsRowDp(config) * density * scale));
@@ -545,11 +560,16 @@ final class WidgetGeometry {
                     break;
                 }
                 case TEMP_BUTTONS: {
-                    // Square-ish cells; each zone's outer cells hold its − and +.
-                    float valueHeight = row.height * temperatureButtonsValueShare(config);
+                    // Square-ish cells. In one row each zone's outer cells hold its − and +;
+                    // at the edges the outer cells of the row hold the stacked buttons.
                     float inner = width - 2f * padding;
-                    int zones = config.temperatureDual ? 2 : 1;
                     buttonCells = 1;
+                    if (config.temperatureLayout == WidgetConfig.TempLayout.EDGES) {
+                        zoneCount = Math.max(3, Math.round(inner / row.height));
+                        break;
+                    }
+                    float valueHeight = row.height * temperatureButtonsValueShare(config);
+                    int zones = config.temperatureDual ? 2 : 1;
                     zoneCount = zones * Math.max(3, Math.round(inner / zones / valueHeight));
                     break;
                 }

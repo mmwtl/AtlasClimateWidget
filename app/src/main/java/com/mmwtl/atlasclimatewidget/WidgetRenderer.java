@@ -434,6 +434,10 @@ final class WidgetRenderer {
      * touch cells.
      */
     private void drawTemperatureButtons(Canvas canvas, WidgetGeometry.Strip strip) {
+        if (config.temperatureLayout == WidgetConfig.TempLayout.EDGES) {
+            drawTemperatureEdges(canvas, strip);
+            return;
+        }
         boolean console = config.style == WidgetConfig.Style.CONSOLE;
         int zones = config.temperatureDual ? 2 : 1;
         float height = strip.contentHeight;
@@ -490,6 +494,99 @@ final class WidgetRenderer {
         }
     }
 
+    /**
+     * Edge layout: this strip's row of the stacked buttons (+ above −) on the card's edges,
+     * the driver's left and the passenger's (or the only zone's) right. The zone names and
+     * values span both rows, so each strip draws its slice of them; with two zones the values
+     * lean towards the divider in the middle.
+     */
+    private void drawTemperatureEdges(Canvas canvas, WidgetGeometry.Strip strip) {
+        boolean console = config.style == WidgetConfig.Style.CONSOLE;
+        boolean dual = config.temperatureDual;
+        float inner = plan.width - 2f * plan.padding;
+        float cell = inner / strip.zoneCount;
+        float diameter = console ? consoleButton()
+                : Math.min(cell, strip.contentHeight) * 0.8f;
+        diameter = Math.min(diameter, Math.min(cell, strip.contentHeight));
+        float cy = strip.contentHeight / 2f;
+        boolean plus = strip.row.index == 0;
+        drawCircleButton(canvas, plan.width - plan.padding - diameter / 2f, cy, diameter, plus);
+        if (dual) {
+            drawCircleButton(canvas, plan.padding + diameter / 2f, cy, diameter, plus);
+        }
+        // Both rows in this strip's coordinates.
+        float top = 0f;
+        float bottom = strip.contentHeight;
+        float origin = plan.stripTop(strip) + strip.contentTop;
+        for (WidgetGeometry.Strip other : plan.strips) {
+            if (other.block == strip.block
+                    && other.row.kind == WidgetGeometry.RowKind.TEMP_BUTTONS) {
+                float offset = plan.stripTop(other) + other.contentTop - origin;
+                top = Math.min(top, offset);
+                bottom = Math.max(bottom, offset + other.contentHeight);
+            }
+        }
+        float span = bottom - top;
+        float labelHeight = dual
+                ? (console ? WidgetGeometry.CONSOLE_ZONE_LABEL_DP : WidgetGeometry.TEMP_LABEL_DP)
+                * dp * plan.verticalScale : 0f;
+        float valueTop = top + labelHeight;
+        float valueHeight = bottom - valueTop;
+        float valueY = valueTop + valueHeight / 2f;
+        float middle = plan.width / 2f;
+        float margin = Math.max(plan.gap, diameter * 0.5f);
+        float edge = diameter + diameter * 0.3f;
+        for (int index = 0; index < (dual ? 2 : 1); index++) {
+            boolean driver = index == 0;
+            int zone = driver ? Hvac.ZONE_DRIVER : Hvac.ZONE_PASSENGER;
+            // The zone's room between its stack and the middle.
+            float left = !dual ? plan.padding + edge
+                    : driver ? plan.padding + edge : middle + margin;
+            float right = !dual ? plan.width - plan.padding - edge
+                    : driver ? middle - margin : plan.width - plan.padding - edge;
+            Float value = ClimateCommands.temperature(state, zone);
+            String label = value == null ? "--°" : formatTemperature(value);
+            textPaint.setTypeface(console ? MEDIUM : Typeface.DEFAULT_BOLD);
+            textPaint.setTextSize(Math.min(valueHeight * (console ? 0.62f : 0.5f),
+                    span * 0.5f));
+            float wide = textPaint.measureText(label);
+            if (wide > right - left && right > left) {
+                textPaint.setTextSize(textPaint.getTextSize() * (right - left) / wide);
+                wide = right - left;
+            }
+            float x = !dual ? middle - textPaint.measureText(label.endsWith("°")
+                    ? label.substring(0, label.length() - 1) : label) / 2f
+                    : driver ? right - wide : left;
+            textPaint.getTextBounds("0", 0, 1, bounds);
+            textPaint.setColor(value == null ? theme.textSecondary : theme.text);
+            canvas.drawText(label, x, valueY - bounds.exactCenterY(), textPaint);
+            if (dual) {
+                textPaint.setTypeface(console ? MEDIUM : Typeface.DEFAULT);
+                textPaint.setTextSize(Math.min((console ? 11f : 12f) * dp, labelHeight * 0.8f));
+                textPaint.setColor(theme.textSecondary);
+                String name = context.getString(driver
+                        ? R.string.zone_driver : R.string.zone_passenger);
+                float nameWidth = textPaint.measureText(name);
+                // Names line up with their values' outer side towards the middle.
+                float nameX = driver ? right - nameWidth : left;
+                textPaint.getTextBounds(name, 0, name.length(), bounds);
+                canvas.drawText(name, nameX, top + labelHeight / 2f - bounds.exactCenterY(),
+                        textPaint);
+            }
+        }
+        if (dual) {
+            float lineHeight = span * 0.6f;
+            float lineY = top + span / 2f;
+            paint.setShader(null);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(theme.track);
+            float stroke = Math.max(1f, dp);
+            rect.set(middle - stroke / 2f, lineY - lineHeight / 2f, middle + stroke / 2f,
+                    lineY + lineHeight / 2f);
+            canvas.drawRoundRect(rect, stroke / 2f, stroke / 2f, paint);
+        }
+    }
+
     /** Console bar row: a thin track across the content width with a round knob. */
     private void drawConsoleBar(Canvas canvas, WidgetGeometry.Strip strip, int zone) {
         float height = strip.contentHeight;
@@ -537,8 +634,8 @@ final class WidgetRenderer {
             }
             float height = value ? strip.contentHeight * WidgetGeometry.CONSOLE_VALUE_ROW_DP
                     / WidgetGeometry.consoleValueRowDp(config)
-                    : buttons ? strip.contentHeight
-                    * WidgetGeometry.temperatureButtonsValueShare(config)
+                    : buttons && config.temperatureLayout == WidgetConfig.TempLayout.BUTTONS
+                    ? strip.contentHeight * WidgetGeometry.temperatureButtonsValueShare(config)
                     : strip.contentHeight;
             diameter = Math.min(diameter, Math.min(height,
                     inner / strip.zoneCount * strip.buttonCells));

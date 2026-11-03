@@ -143,6 +143,17 @@ final class WidgetViews {
                 return cell == strip.zoneCount - 1 ? "tempstep/" + zone + "/1" : null;
             }
             case TEMP_BUTTONS: {
+                if (config.temperatureLayout == WidgetConfig.TempLayout.EDGES) {
+                    // + above −; the driver's stack is first, the passenger's (or the only
+                    // zone's) last.
+                    String step = strip.row.index == 0 ? "/1" : "/-1";
+                    if (cell == strip.zoneCount - 1) {
+                        return "tempstep/" + (config.temperatureDual
+                                ? Hvac.ZONE_PASSENGER : Hvac.ZONE_DRIVER) + step;
+                    }
+                    return cell == 0 && config.temperatureDual
+                            ? "tempstep/" + Hvac.ZONE_DRIVER + step : null;
+                }
                 // Each zone owns its half of the cells: − first, + last.
                 int perZone = config.temperatureDual ? strip.zoneCount / 2 : strip.zoneCount;
                 int zone = cell < perZone ? Hvac.ZONE_DRIVER : Hvac.ZONE_PASSENGER;
