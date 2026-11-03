@@ -128,7 +128,8 @@ line, read as in AtlasAppWidget (`Fuel`).
   (− its first, + its last). `TempLayout.EDGES` («− и + по краям») stacks + above − on the
   card's edges in two `TEMP_BUTTONS` rows (index 0 is +), the driver's stack first and the
   passenger's (or the only zone's) last; the names and values span both rows, each strip
-  drawing its slice, and with two zones lean towards the divider. The bar's «Кнопки − и +»
+  drawing its slice; with two zones each name centres over its value, the pair centred on
+  the buttons' midline and leaning towards the divider. The bar's «Кнопки − и +»
   switch applies to neither.
   When a console layout is too tall, tile rows flatten first (down to
   `CONSOLE_MIN_TILE_ASPECT`) so bars and fan buttons keep their size; fill never grows console

@@ -527,15 +527,12 @@ final class WidgetRenderer {
             }
         }
         float span = bottom - top;
-        float labelHeight = dual
-                ? (console ? WidgetGeometry.CONSOLE_ZONE_LABEL_DP : WidgetGeometry.TEMP_LABEL_DP)
-                * dp * plan.verticalScale : 0f;
-        float valueTop = top + labelHeight;
-        float valueHeight = bottom - valueTop;
-        float valueY = valueTop + valueHeight / 2f;
+        // The values sit on the buttons' midline, the zone names centred above them.
+        float mid = top + span / 2f;
         float middle = plan.width / 2f;
         float margin = Math.max(plan.gap, diameter * 0.5f);
         float edge = diameter + diameter * 0.3f;
+        float valueSize = span * (console ? 0.46f : 0.38f);
         for (int index = 0; index < (dual ? 2 : 1); index++) {
             boolean driver = index == 0;
             int zone = driver ? Hvac.ZONE_DRIVER : Hvac.ZONE_PASSENGER;
@@ -546,37 +543,50 @@ final class WidgetRenderer {
                     : driver ? middle - margin : plan.width - plan.padding - edge;
             Float value = ClimateCommands.temperature(state, zone);
             String label = value == null ? "--°" : formatTemperature(value);
+            String digits = label.endsWith("°") ? label.substring(0, label.length() - 1) : label;
             textPaint.setTypeface(console ? MEDIUM : Typeface.DEFAULT_BOLD);
-            textPaint.setTextSize(Math.min(valueHeight * (console ? 0.62f : 0.5f),
-                    span * 0.5f));
+            textPaint.setTextSize(valueSize);
             float wide = textPaint.measureText(label);
             if (wide > right - left && right > left) {
-                textPaint.setTextSize(textPaint.getTextSize() * (right - left) / wide);
+                textPaint.setTextSize(valueSize * (right - left) / wide);
                 wide = right - left;
             }
-            float x = !dual ? middle - textPaint.measureText(label.endsWith("°")
-                    ? label.substring(0, label.length() - 1) : label) / 2f
-                    : driver ? right - wide : left;
+            float digitsWidth = textPaint.measureText(digits);
+            // With two zones the values lean on the middle; one zone centres its digits.
+            float x = !dual ? middle - digitsWidth / 2f : driver ? right - wide : left;
             textPaint.getTextBounds("0", 0, 1, bounds);
+            float cap = bounds.height();
+            float zero = bounds.exactCenterY();
+            // One zone puts its value on the buttons' midline; two centre the name and the
+            // value together on it.
+            float nameSize = Math.min((console ? 11f : 12f) * dp, span * 0.16f);
+            float nameGap = nameSize * 0.45f;
+            float valueY = dual ? mid + (nameSize + nameGap) / 2f : mid;
             textPaint.setColor(value == null ? theme.textSecondary : theme.text);
-            canvas.drawText(label, x, valueY - bounds.exactCenterY(), textPaint);
+            canvas.drawText(label, x, valueY - zero, textPaint);
             if (dual) {
                 textPaint.setTypeface(console ? MEDIUM : Typeface.DEFAULT);
-                textPaint.setTextSize(Math.min((console ? 11f : 12f) * dp, labelHeight * 0.8f));
-                textPaint.setColor(theme.textSecondary);
+                textPaint.setTextSize(nameSize);
                 String name = context.getString(driver
                         ? R.string.zone_driver : R.string.zone_passenger);
                 float nameWidth = textPaint.measureText(name);
-                // Names line up with their values' outer side towards the middle.
-                float nameX = driver ? right - nameWidth : left;
-                textPaint.getTextBounds(name, 0, name.length(), bounds);
-                canvas.drawText(name, nameX, top + labelHeight / 2f - bounds.exactCenterY(),
-                        textPaint);
+                if (nameWidth > right - left && right > left) {
+                    textPaint.setTextSize(nameSize * (right - left) / nameWidth);
+                    nameWidth = right - left;
+                }
+                // Centred over the digits, kept inside the zone's room.
+                float nameX = x + digitsWidth / 2f - nameWidth / 2f;
+                nameX = Math.max(left, Math.min(right - nameWidth, nameX));
+                textPaint.setColor(theme.textSecondary);
+                Paint.FontMetrics metrics = textPaint.getFontMetrics();
+                float nameCenter = valueY - cap / 2f - nameGap - nameSize / 2f;
+                float nameY = nameCenter - (metrics.ascent + metrics.descent) / 2f;
+                canvas.drawText(name, nameX, nameY, textPaint);
             }
         }
         if (dual) {
             float lineHeight = span * 0.6f;
-            float lineY = top + span / 2f;
+            float lineY = mid;
             paint.setShader(null);
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(theme.track);
