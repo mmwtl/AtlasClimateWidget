@@ -980,8 +980,13 @@ public final class MainActivity extends ScaledActivity {
                     options.addView(hint(R.string.info_hint));
                     break;
                 case TEMPERATURE:
+                    options.addView(temperatureLayouts());
                     options.addView(configSwitch(R.string.temp_dual, config.temperatureDual,
                             value -> config.temperatureDual = value));
+                    if (config.temperatureLayout == WidgetConfig.TempLayout.BUTTONS) {
+                        options.addView(hint(R.string.temp_buttons_hint));
+                        break;
+                    }
                     options.addView(configSwitch(R.string.temp_buttons, config.temperatureButtons,
                             value -> config.temperatureButtons = value));
                     options.addView(hint(R.string.temp_hint));
@@ -1021,6 +1026,27 @@ public final class MainActivity extends ScaledActivity {
             options.setAlpha(enabled ? 1f : 0.45f);
             blocksHost.addView(options);
         }
+    }
+
+    private LinearLayout temperatureLayouts() {
+        LinearLayout layouts = new LinearLayout(this);
+        layouts.setOrientation(LinearLayout.HORIZONTAL);
+        Ui.topMargin(layouts, 6);
+        for (WidgetConfig.TempLayout layout : WidgetConfig.TempLayout.values()) {
+            TextView segment = Ui.segment(this, layout.titleRes);
+            Ui.setSegmentSelected(this, segment, config.temperatureLayout == layout);
+            if (config.temperatureLayout != layout) {
+                // The row sits on a nested surface, where the usual segment colour disappears.
+                segment.setBackground(Ui.rounded(Ui.SURFACE, Ui.dp(this, 8)));
+            }
+            segment.setOnClickListener(view -> {
+                config.temperatureLayout = layout;
+                changed();
+                rebuildBlocks();
+            });
+            Ui.addSegment(layouts, segment);
+        }
+        return layouts;
     }
 
     private LinearLayout fanLayouts() {

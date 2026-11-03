@@ -122,6 +122,10 @@ line, read as in AtlasAppWidget (`Fuel`).
   are put once into the old grouped order (modes, glass, seats) so they open unchanged. All
   console round buttons share one diameter and sit on the content edges; labels centre on font
   metrics, not glyph bounds.
+  `TempLayout.BUTTONS` (per widget, «Только − и +» on the Blocks tab; the bar by default)
+  drops the bars: one `TEMP_BUTTONS` row in both styles holds each zone's −, value and +, the
+  driver and the passenger side by side behind a thin divider, each owning half the cells
+  (− its first, + its last). The bar's «Кнопки − и +» switch does not apply to it.
   When a console layout is too tall, tile rows flatten first (down to
   `CONSOLE_MIN_TILE_ASPECT`) so bars and fan buttons keep their size; fill never grows console
   tiles past square.

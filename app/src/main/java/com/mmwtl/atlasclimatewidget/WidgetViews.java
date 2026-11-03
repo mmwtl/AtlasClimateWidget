@@ -142,6 +142,16 @@ final class WidgetViews {
                 }
                 return cell == strip.zoneCount - 1 ? "tempstep/" + zone + "/1" : null;
             }
+            case TEMP_BUTTONS: {
+                // Each zone owns its half of the cells: − first, + last.
+                int perZone = config.temperatureDual ? strip.zoneCount / 2 : strip.zoneCount;
+                int zone = cell < perZone ? Hvac.ZONE_DRIVER : Hvac.ZONE_PASSENGER;
+                int local = cell % perZone;
+                if (local == 0) {
+                    return "tempstep/" + zone + "/-1";
+                }
+                return local == perZone - 1 ? "tempstep/" + zone + "/1" : null;
+            }
             case TEMPERATURE: {
                 int zone = strip.row.index == 0 ? Hvac.ZONE_DRIVER : Hvac.ZONE_PASSENGER;
                 if (cell < buttons) {

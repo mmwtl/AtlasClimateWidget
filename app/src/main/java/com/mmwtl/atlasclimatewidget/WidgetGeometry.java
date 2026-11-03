@@ -51,6 +51,8 @@ final class WidgetGeometry {
         HEADER,
         /** Console only: −, the zone's value and +; the zone's bar follows as TEMPERATURE. */
         TEMP_VALUE,
+        /** Button layout: −, the value and + of each zone, the zones side by side. */
+        TEMP_BUTTONS,
         TEMPERATURE,
         FAN,
         /** Bar fan layout: the directions above the speeds, or the top half of the presets. */
@@ -438,6 +440,12 @@ final class WidgetGeometry {
                 break;
             case TEMPERATURE: {
                 int zones = config.temperatureDual ? 2 : 1;
+                if (config.temperatureLayout == WidgetConfig.TempLayout.BUTTONS) {
+                    rows.add(new Row(block, RowKind.TEMP_BUTTONS, 0,
+                            temperatureButtonsRowDp(config) * density * scale));
+                    gaps.add(TEMP_ROW_GAP_DP * density * scale);
+                    break;
+                }
                 if (config.style == WidgetConfig.Style.CONSOLE) {
                     for (int zone = 0; zone < zones; zone++) {
                         rows.add(new Row(block, RowKind.TEMP_VALUE, zone,
@@ -536,6 +544,15 @@ final class WidgetGeometry {
                             ? Math.max(3, Math.round((width - 2f * padding) / valueHeight)) : 0;
                     break;
                 }
+                case TEMP_BUTTONS: {
+                    // Square-ish cells; each zone's outer cells hold its − and +.
+                    float valueHeight = row.height * temperatureButtonsValueShare(config);
+                    float inner = width - 2f * padding;
+                    int zones = config.temperatureDual ? 2 : 1;
+                    buttonCells = 1;
+                    zoneCount = zones * Math.max(3, Math.round(inner / zones / valueHeight));
+                    break;
+                }
                 case TEMPERATURE:
                     if (console) {
                         zoneCount = temperatureSteps;
@@ -592,6 +609,21 @@ final class WidgetGeometry {
 
     static float consoleValueRowDp(WidgetConfig config) {
         return CONSOLE_VALUE_ROW_DP + (config.temperatureDual ? CONSOLE_ZONE_LABEL_DP : 0f);
+    }
+
+    /** Height of the button layout's row: the value, with the zone names above when dual. */
+    static float temperatureButtonsRowDp(WidgetConfig config) {
+        boolean console = config.style == WidgetConfig.Style.CONSOLE;
+        float value = console ? CONSOLE_VALUE_ROW_DP : TEMP_ROW_DP;
+        float label = console ? CONSOLE_ZONE_LABEL_DP : TEMP_LABEL_DP;
+        return value + (config.temperatureDual ? label : 0f);
+    }
+
+    /** Part of the button layout's row taken by the value and the buttons. */
+    static float temperatureButtonsValueShare(WidgetConfig config) {
+        float value = config.style == WidgetConfig.Style.CONSOLE
+                ? CONSOLE_VALUE_ROW_DP : TEMP_ROW_DP;
+        return value / temperatureButtonsRowDp(config);
     }
 
     static float fanControlsRowDp(WidgetConfig config) {

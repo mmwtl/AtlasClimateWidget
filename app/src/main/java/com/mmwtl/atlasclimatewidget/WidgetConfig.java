@@ -76,6 +76,21 @@ final class WidgetConfig {
     }
 
     /**
+     * Temperature block layout: a bar per zone, or only − and + around the value, the zones
+     * side by side in one row.
+     */
+    enum TempLayout {
+        BAR(R.string.temp_layout_bar),
+        BUTTONS(R.string.temp_layout_buttons);
+
+        final int titleRes;
+
+        TempLayout(int titleRes) {
+            this.titleRes = titleRes;
+        }
+    }
+
+    /**
      * Fan block layout: one bar that shows speeds in manual mode and auto-fan presets in AUTO,
      * or FX11-style rows with the speed bar, directions and presets all shown at once.
      */
@@ -181,6 +196,8 @@ final class WidgetConfig {
     boolean headerFuelPercent;
     boolean headerFuelFree;
     boolean headerRange;
+    TempLayout temperatureLayout = TempLayout.BAR;
+    /** The bar's − and +; the button layout always has them. */
     boolean temperatureButtons = true;
     boolean fanButtons = true;
     /** Fan block parts, as in FX11: speed bar, blowing directions and auto-fan presets. */
@@ -494,6 +511,7 @@ final class WidgetConfig {
             json.put("headerFuelPercent", headerFuelPercent);
             json.put("headerFuelFree", headerFuelFree);
             json.put("headerRange", headerRange);
+            json.put("temperatureLayout", temperatureLayout.name());
             json.put("temperatureButtons", temperatureButtons);
             json.put("fanButtons", fanButtons);
             json.put("fanBar", fanBar);
@@ -592,6 +610,8 @@ final class WidgetConfig {
         } else {
             config.infoEnabled = json.optBoolean("infoEnabled", config.infoEnabled);
         }
+        config.temperatureLayout = enumValue(TempLayout.class,
+                json.optString("temperatureLayout"), config.temperatureLayout);
         config.temperatureButtons = json.optBoolean("temperatureButtons",
                 config.temperatureButtons);
         config.fanButtons = json.optBoolean("fanButtons", config.fanButtons);

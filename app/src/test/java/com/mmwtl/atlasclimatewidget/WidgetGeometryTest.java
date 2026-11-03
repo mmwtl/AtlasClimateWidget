@@ -354,6 +354,41 @@ public final class WidgetGeometryTest {
         assertEquals(WidgetConfig.FAN_ROW_PRESETS, plan.strips.get(3).row.index);
     }
 
+    @Test public void buttonLayoutPutsZonesSideBySide() {
+        for (WidgetConfig.Style style : WidgetConfig.Style.values()) {
+            WidgetConfig config = new WidgetConfig();
+            config.infoEnabled = false;
+            config.style = style;
+            config.temperatureDual = true;
+            config.temperatureLayout = WidgetConfig.TempLayout.BUTTONS;
+            config.temperatureButtons = false;
+            config.scalePercent = 100;
+            WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
+            WidgetGeometry.Strip row = plan.strips.get(0);
+            assertEquals("one row for both zones", WidgetGeometry.RowKind.TEMP_BUTTONS,
+                    row.row.kind);
+            assertTrue(plan.strips.get(1).row.kind != WidgetGeometry.RowKind.TEMPERATURE);
+            assertEquals(WidgetGeometry.temperatureButtonsRowDp(config), row.contentHeight,
+                    0.01f);
+            assertEquals(0, row.zoneCount % 2);
+            assertTrue(row.zoneCount >= 6);
+            int half = row.zoneCount / 2;
+            assertEquals("tempstep/1/-1", WidgetViews.control(config, row, 0));
+            assertNull(WidgetViews.control(config, row, 1));
+            assertEquals("tempstep/1/1", WidgetViews.control(config, row, half - 1));
+            assertEquals("tempstep/4/-1", WidgetViews.control(config, row, half));
+            assertEquals("tempstep/4/1", WidgetViews.control(config, row, row.zoneCount - 1));
+
+            config.temperatureDual = false;
+            row = WidgetGeometry.plan(config, 640f, 0f, 1f, 25).strips.get(0);
+            assertEquals(WidgetGeometry.RowKind.TEMP_BUTTONS, row.row.kind);
+            assertTrue(row.zoneCount >= 3);
+            assertEquals("tempstep/1/-1", WidgetViews.control(config, row, 0));
+            assertEquals("tempstep/1/1", WidgetViews.control(config, row, row.zoneCount - 1));
+            assertNull(WidgetViews.control(config, row, row.zoneCount / 2));
+        }
+    }
+
     @Test public void consoleDualZoneStacksValueAndBarPerZone() {
         WidgetConfig config = new WidgetConfig();
         config.infoEnabled = false;
