@@ -3,8 +3,15 @@
     <color name="atlas_background">#171717</color>
     <color name="atlas_accent">#7893A0</color>
     <color name="icon_background">#171717</color>
-    <!-- Widget views the host inflates; values-night holds the night ones, see WidgetTheme. -->
-    <color name="widget_surface">#EDEEF0</color>
-    <color name="widget_text_secondary">#5F6368</color>
-    <color name="widget_pressed">#1F000000</color>
+    <!-- Widget views the host inflates, see WidgetTheme. The host resolves values-night in its
+         own configuration, so views that follow a theme fixed in the settings pick the day or
+         night colour from code; only the loading layout follows values-night. -->
+    <color name="widget_surface_day">#EDEEF0</color>
+    <color name="widget_surface_night">#232528</color>
+    <color name="widget_text_secondary_day">#5F6368</color>
+    <color name="widget_text_secondary_night">#C4C7CA</color>
+    <color name="widget_pressed_day">#1F000000</color>
+    <color name="widget_pressed_night">#28FFFFFF</color>
+    <color name="widget_surface">@color/widget_surface_day</color>
+    <color name="widget_text_secondary">@color/widget_text_secondary_day</color>
 </resources>

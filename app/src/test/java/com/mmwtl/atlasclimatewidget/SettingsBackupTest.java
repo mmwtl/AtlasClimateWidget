@@ -15,6 +15,7 @@ public final class SettingsBackupTest {
         backup.tempStepTenths = 10;
         backup.levelsFromMax = true;
         backup.keptWhenOff = true;
+        backup.themeMode = WidgetTheme.FIXED_NIGHT;
         backup.fanPresets = "FIVE";
         backup.uiScaleTenths = 17;
         backup.fuelCustomFormula = true;
@@ -35,6 +36,7 @@ public final class SettingsBackupTest {
             assertEquals(10, copy.tempStepTenths);
             assertTrue(copy.levelsFromMax);
             assertTrue(copy.keptWhenOff);
+            assertEquals(WidgetTheme.FIXED_NIGHT, copy.themeMode);
             assertEquals("FIVE", copy.fanPresets);
             assertEquals(17, copy.uiScaleTenths);
             assertTrue(copy.fuelCustomFormula);
@@ -66,6 +68,11 @@ public final class SettingsBackupTest {
         assertEquals("1.2", json.getString("appVersion"));
         assertFalse(SettingsBackup.parse(json.toString()).levelsFromMax);
         assertFalse(SettingsBackup.parse(json.toString()).keptWhenOff);
+        json.getJSONObject("settings").remove("themeMode");
+        assertEquals("older backups follow the head unit", WidgetTheme.AUTO,
+                SettingsBackup.parse(json.toString()).themeMode);
+        json.getJSONObject("settings").put("themeMode", 7);
+        assertEquals(WidgetTheme.AUTO, SettingsBackup.parse(json.toString()).themeMode);
     }
 
     @Test public void dropsABrokenFuelFormula() {

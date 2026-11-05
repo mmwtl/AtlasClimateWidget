@@ -162,7 +162,7 @@
     <string name="card_opacity">Непрозрачность карточек</string>
     <string name="card_color">Цвет фона</string>
     <string name="colors_title">Свои цвета</string>
-    <string name="colors_summary">Необязательно: без них виджет следует теме OneOS</string>
+    <string name="colors_summary">Необязательно: без них виджет в цветах темы</string>
     <string name="colors_day">День</string>
     <string name="colors_night">Ночь</string>
     <string name="colors_hint">Цвета отдельно для дня и ночи; предпросмотр показывает выбранный режим. «По теме» в выборе цвета возвращает цвет темы. Текст и значки подбираются по яркости фона.</string>
@@ -207,6 +207,9 @@
     <string name="temp_step_whole">1 °C</string>
     <string name="levels_from_max">Уровни с максимального</string>
     <string name="levels_from_max_hint">Нажатие на подогрев или вентиляцию: выкл → 3 → 2 → 1 → выкл. Иначе выкл → 1 → 2 → 3 → выкл. Люк, шторка и фары всегда переключаются по шагам, начиная с малого.</string>
+    <string name="theme_title">Тема виджетов</string>
+    <string name="theme_auto">Авто</string>
+    <string name="theme_hint">«Авто» переключает дневную и ночную тему вместе с режимом OneOS, который следует свету фар. «День» и «Ночь» оставляют одну тему всегда. Настройка общая для всех виджетов.</string>
     <string name="kept_when_off">Обводить выбор при выключенном климате</string>
     <string name="kept_when_off_hint">Когда климат выключен, направления обдува, пресеты и AUTO не подсвечиваются. С этой настройкой сохранённый машиной выбор обводится рамкой, без неё не выделяется ничего.</string>
 

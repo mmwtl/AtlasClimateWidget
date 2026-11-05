@@ -201,7 +201,7 @@ public final class ClimateService extends Service {
         running = true;
         startedAt = SystemClock.elapsedRealtime();
         prefs = new Prefs(this);
-        lastNight = WidgetTheme.of(this).night;
+        lastNight = WidgetTheme.of(WidgetTheme.themed(this)).night;
         startInForeground();
         workerThread = new HandlerThread("climate-bridge");
         workerThread.start();
@@ -243,11 +243,12 @@ public final class ClimateService extends Service {
     /**
      * OneOS switches the night mode with the headlights. The host recreates the widget views
      * then, but the strips are bitmaps drawn here, so they are drawn again in the new theme.
+     * A theme fixed in the settings ignores the switch.
      */
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        boolean night = WidgetTheme.of(newConfig).night;
+        boolean night = WidgetTheme.of(WidgetTheme.themed(this)).night;
         if (night != lastNight && worker != null) {
             lastNight = night;
             AppLog.info("Night mode " + (night ? "on" : "off"));
@@ -758,6 +759,7 @@ public final class ClimateService extends Service {
      */
     static void update(Context context, AppWidgetManager manager, Prefs prefs,
             ClimateState state, int widgetId, boolean force) {
+        context = WidgetTheme.themed(context);
         WidgetConfig config = prefs.widget(widgetId);
         WidgetViews.Size size = widgetSize(context, widgetId);
         String scrubbed = widgetId == scrubbedWidget ? scrubbedStrip : null;

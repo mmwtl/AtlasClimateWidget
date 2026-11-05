@@ -71,6 +71,10 @@ final class WidgetViews {
         root.setInt(R.id.widget_root, "setGravity", Gravity.TOP);
         if (plan.strips.isEmpty()) {
             RemoteViews empty = new RemoteViews(packageName, R.layout.widget_empty);
+            WidgetTheme theme = WidgetTheme.of(context);
+            empty.setInt(R.id.widget_empty, "setBackgroundResource",
+                    theme.night ? R.drawable.widget_card_night : R.drawable.widget_card_day);
+            empty.setTextColor(R.id.widget_empty_text, theme.textSecondary);
             if (interactive) {
                 empty.setOnClickPendingIntent(R.id.widget_empty, openSettings(context));
             }
@@ -80,6 +84,8 @@ final class WidgetViews {
         WidgetRenderer renderer = new WidgetRenderer(context, config, state, model, plan)
                 .withDraggedBar(scrubbedStrip);
         boolean auto = ClimateCommands.fanState(state).auto;
+        int pressed = WidgetTheme.of(context).night
+                ? R.drawable.zone_pressed_night : R.drawable.zone_pressed_day;
         for (WidgetGeometry.Strip strip : plan.strips) {
             RemoteViews views = new RemoteViews(packageName, R.layout.widget_strip);
             Bitmap bitmap = renderer.render(strip, true,
@@ -92,7 +98,10 @@ final class WidgetViews {
             views.setViewPadding(R.id.strip_zones, padding, 0, padding, 0);
             for (int cell = 0; cell < strip.zoneCount; cell++) {
                 String control = interactive ? control(config, strip, cell, auto) : null;
-                RemoteViews zone = new RemoteViews(packageName, zoneLayout(strip, control));
+                RemoteViews zone = new RemoteViews(packageName, zoneLayout(control));
+                if (pressesTile(strip, control)) {
+                    zone.setInt(R.id.zone, "setBackgroundResource", pressed);
+                }
                 if (control != null) {
                     zone.setOnClickPendingIntent(R.id.zone,
                             widgetId != AppWidgetManager.INVALID_APPWIDGET_ID
@@ -107,16 +116,17 @@ final class WidgetViews {
         return root;
     }
 
+    private static int zoneLayout(String control) {
+        return control == null ? R.layout.widget_zone_blank : R.layout.widget_zone_plain;
+    }
+
     /**
      * Only a tile's cell is its whole button. A bar button spans several cells, so a pressed
-     * cell would light up a narrow stripe of it; bars rely on the redrawn value instead.
+     * cell would light up a narrow stripe of it; bars rely on the redrawn value instead. The
+     * pressed shape is set from code: the host would resolve its colour in its own theme.
      */
-    private static int zoneLayout(WidgetGeometry.Strip strip, String control) {
-        if (control == null) {
-            return R.layout.widget_zone_blank;
-        }
-        return strip.row.kind == WidgetGeometry.RowKind.TILES
-                ? R.layout.widget_zone : R.layout.widget_zone_plain;
+    private static boolean pressesTile(WidgetGeometry.Strip strip, String control) {
+        return control != null && strip.row.kind == WidgetGeometry.RowKind.TILES;
     }
 
     static String control(WidgetConfig config, WidgetGeometry.Strip strip, int cell) {

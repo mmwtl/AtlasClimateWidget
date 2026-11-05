@@ -337,7 +337,7 @@ public final class WidgetSetupActivity extends ScaledActivity {
         previewCaption.setText(demo ? R.string.setup_preview_demo : R.string.setup_preview_live);
         WidgetViews.Size size = ClimateService.widgetSize(getApplicationContext(), widgetId);
         try {
-            RemoteViews views = WidgetViews.build(getApplicationContext(), config,
+            RemoteViews views = WidgetViews.build(WidgetTheme.themed(getApplicationContext()), config,
                     demo ? DemoState.INSTANCE : live, prefs.carModel(), size, false, 1f);
             View preview = views.apply(this, previewHost);
             int width = previewHost.getWidth() - previewHost.getPaddingLeft()

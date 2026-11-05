@@ -12,6 +12,7 @@ final class Prefs {
     static final String KEY_TEMP_STEP_TENTHS = "temp_step_tenths";
     static final String KEY_LEVELS_FROM_MAX = "levels_from_max";
     static final String KEY_KEPT_WHEN_OFF = "kept_when_off";
+    static final String KEY_THEME_MODE = "theme_mode";
     static final String KEY_DIRECT_CAR = "direct_car";
     static final String KEY_UI_SCALE_TENTHS = "ui_scale_tenths";
     static final String KEY_TEMPLATE = "widget_template";
@@ -62,6 +63,15 @@ final class Prefs {
 
     void setKeptWhenOff(boolean value) {
         preferences.edit().putBoolean(KEY_KEPT_WHEN_OFF, value).apply();
+    }
+
+    /** {@link WidgetTheme#AUTO}, {@link WidgetTheme#FIXED_DAY} or {@link WidgetTheme#FIXED_NIGHT}. */
+    int themeMode() {
+        return WidgetTheme.validMode(preferences.getInt(KEY_THEME_MODE, WidgetTheme.AUTO));
+    }
+
+    void setThemeMode(int value) {
+        preferences.edit().putInt(KEY_THEME_MODE, WidgetTheme.validMode(value)).apply();
     }
 
     /** Experimental: read the car through the ECarX API instead of GInputBridge. */
@@ -201,6 +211,7 @@ final class Prefs {
         backup.tempStepTenths = temperatureStep() >= 1f ? 10 : 5;
         backup.levelsFromMax = levelsFromMax();
         backup.keptWhenOff = keptWhenOff();
+        backup.themeMode = themeMode();
         backup.fanPresets = fanPresets().name();
         backup.uiScaleTenths = preferences.getInt(KEY_UI_SCALE_TENTHS, 0);
         backup.fuelCustomFormula = fuelCustomFormula();
@@ -220,6 +231,7 @@ final class Prefs {
                 .putInt(KEY_TEMP_STEP_TENTHS, backup.tempStepTenths >= 10 ? 10 : 5)
                 .putBoolean(KEY_LEVELS_FROM_MAX, backup.levelsFromMax)
                 .putBoolean(KEY_KEPT_WHEN_OFF, backup.keptWhenOff)
+                .putInt(KEY_THEME_MODE, WidgetTheme.validMode(backup.themeMode))
                 .putString(KEY_FAN_PRESETS, backup.fanPresets)
                 .putBoolean(KEY_FUEL_CUSTOM_FORMULA, backup.fuelCustomFormula)
                 .putFloat(KEY_FUEL_MULTIPLIER, backup.fuelMultiplier)

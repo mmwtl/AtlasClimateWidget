@@ -371,13 +371,14 @@ public final class MainActivity extends ScaledActivity {
         page.addView(appearance);
 
         cardsHost = collapsibleCard(page, R.string.cards_title, R.string.cards_summary);
-        editNight = WidgetTheme.of(this).night;
+        editNight = WidgetTheme.of(WidgetTheme.themed(this)).night;
         colorsHost = collapsibleCard(page, R.string.colors_title, R.string.colors_summary);
     }
 
     private void buildSystemTab(LinearLayout page) {
         page.addView(buildStatusCard());
         page.addView(buildBehaviourCard());
+        page.addView(buildThemeCard());
         page.addView(buildFuelCard());
         page.addView(buildInterfaceCard());
         page.addView(buildBackupCard());
@@ -628,6 +629,38 @@ public final class MainActivity extends ScaledActivity {
         });
         card.addView(keptWhenOff);
         card.addView(hint(R.string.kept_when_off_hint));
+        return card;
+    }
+
+    /** Global: all widgets follow the head unit's day and night mode or keep one theme. */
+    private LinearLayout buildThemeCard() {
+        LinearLayout card = Ui.card(this);
+        card.addView(Ui.heading(this, R.string.theme_title, 20));
+        LinearLayout modes = new LinearLayout(this);
+        modes.setOrientation(LinearLayout.HORIZONTAL);
+        Ui.topMargin(modes, 8);
+        int[] titles = {R.string.theme_auto, R.string.colors_day, R.string.colors_night};
+        int[] values = {WidgetTheme.AUTO, WidgetTheme.FIXED_DAY, WidgetTheme.FIXED_NIGHT};
+        List<TextView> segments = new ArrayList<>();
+        for (int index = 0; index < values.length; index++) {
+            int mode = values[index];
+            TextView segment = Ui.segment(this, titles[index]);
+            Ui.setSegmentSelected(this, segment, prefs.themeMode() == mode);
+            segment.setOnClickListener(view -> {
+                prefs.setThemeMode(mode);
+                for (int other = 0; other < segments.size(); other++) {
+                    Ui.setSegmentSelected(this, segments.get(other), values[other] == mode);
+                }
+                // The colours and the preview open in the theme the widgets now show.
+                editNight = WidgetTheme.of(WidgetTheme.themed(this)).night;
+                rebuildColors();
+                globalChanged();
+            });
+            segments.add(segment);
+            Ui.addSegment(modes, segment);
+        }
+        card.addView(modes);
+        card.addView(hint(R.string.theme_hint));
         return card;
     }
 

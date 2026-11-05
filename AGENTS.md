@@ -104,12 +104,17 @@ line, read as in AtlasAppWidget (`Fuel`).
 - Day and night: the widget follows the head unit's night mode (OneOS switches it with the
   headlights) in the AtlasLauncher palette, `WidgetTheme` (day card `#EDEEF0`, tiles `#FFFFFF`,
   text `#202124`/`#5F6368`; night `#232528`, `#404347`, `#F1F2F4`/`#C4C7CA`). The strips are
-  bitmaps, so the renderer reads the theme from the process configuration and
-  `ClimateService.onConfigurationChanged` redraws all widgets when the night mode changes; the
-  inflated views (`widget_card`, empty and loading layouts, the pressed cell) use `values-night`
-  colours. Palette accents, the temperature gradient and white content on a filled tile stay
+  bitmaps, so the renderer reads the theme from the configuration and
+  `ClimateService.onConfigurationChanged` redraws all widgets when the night mode changes. Palette accents, the temperature gradient and white content on a filled tile stay
   fixed; day soft tiles and lit bare icons are derived from the accent for contrast
-  (`WidgetThemeTest`). There is no theme switch of its own. The settings app stays graphite.
+  (`WidgetThemeTest`). The System tab's global «Тема виджетов» (`Prefs.themeMode`, in the
+  backup) is «Авто» (the head unit's mode), «День» or «Ночь»: `WidgetTheme.themed` gives a
+  context whose night qualifier is the fixed theme's, and every render path (`ClimateService`,
+  `ScrubActivity`, the setup preview, the initial `MainActivity.editNight`) reads the theme
+  from it; a fixed theme ignores the system switch. The host resolves the widget's own
+  resources in its configuration, so the empty card and the pressed tile cell get their
+  day or night drawables from code (`WidgetViews`); only `widget_loading`, the initial layout,
+  follows `values-night`. The settings app stays graphite.
 - Card radius (`cardRadiusDp`, 0–40, default 24 like the stock OneOS cards) is screen dp, the
   same contract as the other Atlas widgets: `WidgetGeometry.plan` sets `Plan.cardRadius` from
   the display density, outside `scalePercent`, the vertical squeeze and the card size. Layouts

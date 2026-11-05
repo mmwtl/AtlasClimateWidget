@@ -6,7 +6,8 @@ import android.content.res.Configuration;
 /**
  * Day and night colours of the widget, matching the AtlasLauncher palette. The strips are
  * bitmaps, so resource qualifiers cannot switch them: the renderer picks the theme from the
- * process configuration and {@link ClimateService} redraws when the night mode changes.
+ * configuration of a {@link #themed} context and {@link ClimateService} redraws when the night
+ * mode changes.
  * Palette accents stay the same in both themes, with white content on a filled tile.
  */
 final class WidgetTheme {
@@ -44,7 +45,33 @@ final class WidgetTheme {
         this.onText = onText;
     }
 
-    /** The head unit's current mode; OneOS switches it with the headlights. */
+    /** Theme modes of the settings: the head unit's, or always day or night. */
+    static final int AUTO = 0;
+    static final int FIXED_DAY = 1;
+    static final int FIXED_NIGHT = 2;
+
+    static int validMode(int mode) {
+        return mode == FIXED_DAY || mode == FIXED_NIGHT ? mode : AUTO;
+    }
+
+    /**
+     * The context in the theme chosen in the settings: its resources and {@link #of(Context)}
+     * are the fixed theme's, or the head unit's in {@link #AUTO}. The host resolves the widget's
+     * own resources in its configuration, so views it inflates get their colours set from code.
+     */
+    static Context themed(Context context) {
+        int mode = new Prefs(context).themeMode();
+        if (mode == AUTO) {
+            return context;
+        }
+        // Only the night bits are set; the rest keeps following the system.
+        Configuration override = new Configuration();
+        override.uiMode = mode == FIXED_NIGHT
+                ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO;
+        return context.createConfigurationContext(override);
+    }
+
+    /** The mode of the context's configuration; see {@link #themed}. */
     static WidgetTheme of(Context context) {
         return of(context.getResources().getConfiguration());
     }

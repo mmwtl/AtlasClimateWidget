@@ -61,6 +61,8 @@ public final class ScrubActivity extends Activity {
     private int zonePadding;
     private int zoneWidth;
     private ScrubView view;
+    /** The application context in the widget theme. */
+    private Context themed;
     /** Screen position of the scrubber window. */
     private int windowLeft;
     private int windowTop;
@@ -112,6 +114,7 @@ public final class ScrubActivity extends Activity {
             return false;
         }
         Context app = getApplicationContext();
+        themed = WidgetTheme.themed(app);
         Prefs prefs = new Prefs(app);
         config = prefs.widget(widgetId);
         model = prefs.carModel();
@@ -371,7 +374,7 @@ public final class ScrubActivity extends Activity {
             if (closing) {
                 // The restored strip below shows the live state, so the window follows it
                 // every frame until it leaves.
-                bitmap = new WidgetRenderer(getApplicationContext(), config,
+                bitmap = new WidgetRenderer(themed, config,
                         ClimateService.STORE.snapshot(SystemClock.elapsedRealtime()), model, plan)
                         .render(strip, false, true);
                 postInvalidateOnAnimation();
@@ -379,7 +382,7 @@ public final class ScrubActivity extends Activity {
                 renderedValue = value;
                 ClimateState state = new DraggedState(
                         ClimateService.STORE.snapshot(SystemClock.elapsedRealtime()));
-                bitmap = new WidgetRenderer(getApplicationContext(), config, state, model, plan)
+                bitmap = new WidgetRenderer(themed, config, state, model, plan)
                         .render(strip, false, true);
             }
             canvas.save();
@@ -484,7 +487,7 @@ public final class ScrubActivity extends Activity {
         protected void onDraw(Canvas canvas) {
             float top = below ? pointerSize : 0f;
             pill.set(0f, top, getWidth(), top + pillHeight);
-            paint.setColor(WidgetTheme.of(getContext()).text);
+            paint.setColor(WidgetTheme.of(themed).text);
             canvas.drawRoundRect(pill, pillHeight / 2f, pillHeight / 2f, paint);
             float x = Math.max(pillHeight / 2f, Math.min(getWidth() - pillHeight / 2f, pointerX));
             pointer.reset();
@@ -495,7 +498,7 @@ public final class ScrubActivity extends Activity {
             pointer.lineTo(x + pointerSize, base);
             pointer.close();
             canvas.drawPath(pointer, paint);
-            paint.setColor(WidgetTheme.of(getContext()).onText);
+            paint.setColor(WidgetTheme.of(themed).onText);
             paint.getTextBounds(label, 0, label.length(), bounds);
             canvas.drawText(label, pill.centerX() - paint.measureText(label) / 2f,
                     pill.centerY() - bounds.exactCenterY(), paint);
