@@ -96,7 +96,9 @@ line, read as in AtlasAppWidget (`Fuel`).
   `dayPalette` the day ones, resolved through `WidgetConfig.cardColor(night)`/`palette(night)`.
   `WidgetConfig.THEME_CARD_COLOR` (0; a picked colour is opaque) means the card follows the theme;
   any other colour picks the theme whose text reads on it (`WidgetTheme.forColor`, the same
-  luminance threshold as AtlasAppWidget and AtlasMediaWidget). `cardOpacityPercent` is separate.
+  luminance threshold as AtlasAppWidget and AtlasMediaWidget). `cardOpacityPercent` is separate;
+  `contentOpacityPercent` (20–100) fades tiles, bars, text and icons together as one layer over
+  the card, so they never show through each other.
   The Look tab's collapsed «Свои цвета» card is the only editor: a День/Ночь segment switches the
   edited colours and the preview's mode (`MainActivity.editNight`, not stored), and «По теме» in
   `ColorPickerDialog`, the RGB dialog of AtlasAppWidget, sets the card back. Layouts before

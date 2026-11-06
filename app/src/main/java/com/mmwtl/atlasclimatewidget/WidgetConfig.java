@@ -128,6 +128,7 @@ final class WidgetConfig {
     static final int COLUMNS_MIN = 1;
     static final int COLUMNS_MAX = 8;
     static final int CARD_RADIUS_MAX_DP = 40;
+    static final int CONTENT_OPACITY_MIN_PERCENT = 20;
     /** Radius of the stock OneOS cards, shared by all Atlas widgets. */
     static final int CARD_RADIUS_DEFAULT_DP = 24;
     /**
@@ -280,6 +281,8 @@ final class WidgetConfig {
     Palette dayPalette = Palette.ATLAS;
     int dayCardColor = THEME_CARD_COLOR;
     int cardOpacityPercent = 100;
+    /** Tiles, bars, text and icons, over the card; never fully hidden. */
+    int contentOpacityPercent = 100;
     /** Screen dp, independent of {@link #scalePercent} and of the card size. */
     int cardRadiusDp = CARD_RADIUS_DEFAULT_DP;
     int cardPaddingDp = 14;
@@ -548,6 +551,7 @@ final class WidgetConfig {
             json.put("dayPalette", dayPalette.name());
             json.put("dayCardColor", dayCardColor);
             json.put("cardOpacityPercent", cardOpacityPercent);
+            json.put("contentOpacityPercent", contentOpacityPercent);
             json.put("cardRadiusDp", cardRadiusDp);
             json.put("cardPaddingDp", cardPaddingDp);
             json.put("tileRadiusPercent", tileRadiusPercent);
@@ -689,6 +693,8 @@ final class WidgetConfig {
         }
         config.cardOpacityPercent = clamp(json.optInt("cardOpacityPercent",
                 config.cardOpacityPercent), 0, 100);
+        config.contentOpacityPercent = clamp(json.optInt("contentOpacityPercent",
+                config.contentOpacityPercent), CONTENT_OPACITY_MIN_PERCENT, 100);
         config.cardPaddingDp = clamp(json.optInt("cardPaddingDp", config.cardPaddingDp),
                 PADDING_MIN_DP, PADDING_MAX_DP);
         config.tileRadiusPercent = clamp(json.optInt("tileRadiusPercent",

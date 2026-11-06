@@ -18,6 +18,7 @@ public final class WidgetConfigTest {
         config.tileStyle = WidgetConfig.TileStyle.ICON;
         config.palette = Palette.SEMANTIC;
         config.cardOpacityPercent = 40;
+        config.contentOpacityPercent = 65;
         config.fanBar = false;
         config.fanDirections = false;
         config.cardLayout = WidgetConfig.CardLayout.SINGLE;
@@ -42,6 +43,7 @@ public final class WidgetConfigTest {
         assertEquals(Palette.SEMANTIC, copy.palette);
         assertEquals(WidgetConfig.IconSet.OEM, copy.iconSet);
         assertEquals(40, copy.cardOpacityPercent);
+        assertEquals(65, copy.contentOpacityPercent);
         assertFalse(copy.fanBar);
         assertFalse(copy.fanDirections);
         assertTrue(copy.fanPresets);

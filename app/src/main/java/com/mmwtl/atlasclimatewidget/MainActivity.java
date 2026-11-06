@@ -1267,6 +1267,12 @@ public final class MainActivity extends ScaledActivity {
                     config.cardOpacityPercent = step * 5;
                     changed();
                 }, null);
+        addSlider(cardsHost, getString(R.string.content_opacity),
+                WidgetConfig.CONTENT_OPACITY_MIN_PERCENT / 5, 20,
+                Math.round(config.contentOpacityPercent / 5f), step -> step * 5 + "%", step -> {
+                    config.contentOpacityPercent = step * 5;
+                    changed();
+                }, null);
         addSlider(cardsHost, getString(R.string.card_radius), 0,
                 WidgetConfig.CARD_RADIUS_MAX_DP, config.cardRadiusDp,
                 value -> getString(R.string.dp_value, value), value -> {

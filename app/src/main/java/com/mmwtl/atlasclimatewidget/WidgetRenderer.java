@@ -99,7 +99,10 @@ final class WidgetRenderer {
         if (card) {
             drawCard(canvas, strip);
         }
-        canvas.save();
+        // Tiles, bars, text and icons fade together over the card, never through each other.
+        int restore = config.contentOpacityPercent < 100
+                ? canvas.saveLayerAlpha(null, Math.round(config.contentOpacityPercent * 2.55f))
+                : canvas.save();
         canvas.translate(0f, strip.contentTop);
         if (!content) {
             // The AUTO column spans the fan block's rows, so it stays with the widget: drawn
@@ -107,7 +110,7 @@ final class WidgetRenderer {
             if (isFanBar(strip)) {
                 drawFanAuto(canvas, strip);
             }
-            canvas.restore();
+            canvas.restoreToCount(restore);
             return bitmap;
         }
         switch (strip.row.kind) {
@@ -142,7 +145,7 @@ final class WidgetRenderer {
             default:
                 break;
         }
-        canvas.restore();
+        canvas.restoreToCount(restore);
         return bitmap;
     }
 
