@@ -3,6 +3,7 @@ package com.mmwtl.atlasclimatewidget;
 import android.content.Context;
 import android.os.Handler;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -241,7 +242,7 @@ final class Ecarx implements CarLink {
     private boolean ensure() {
         try {
             if (car == null) {
-                car = create.invoke(null, context);
+                car = createCar();
             }
             if (car != null && functions == null) {
                 functions = getFunctionManager.invoke(car);
@@ -253,6 +254,24 @@ final class Ecarx implements CarLink {
             AppLog.warn("ECarX car is not ready", error);
         }
         return functions != null;
+    }
+
+    /** Some head units reject the app's signature in the factory, as in MyGeelyWidgets. */
+    private Object createCar() throws ReflectiveOperationException {
+        try {
+            return create.invoke(null, context);
+        } catch (InvocationTargetException error) {
+            if (!(error.getCause() instanceof SecurityException)) {
+                throw error;
+            }
+            AppLog.warn("ECarX Car.create denied access, trying CarImpl", error.getCause());
+            Constructor<?> constructor = Class.forName(PACKAGE + ".car.CarImpl")
+                    .getDeclaredConstructor(Context.class);
+            constructor.setAccessible(true);
+            Object result = constructor.newInstance(context);
+            AppLog.info("ECarX CarImpl created after Car.create denied access");
+            return result;
+        }
     }
 
     private void answer() {

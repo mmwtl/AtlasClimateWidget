@@ -9,6 +9,7 @@ import android.os.Handler;
 import android.os.Looper;
 
 import com.ecarx.xui.adaptapi.car.Car;
+import com.ecarx.xui.adaptapi.car.CarImpl;
 
 import org.junit.After;
 import org.junit.Before;
@@ -44,6 +45,9 @@ public final class EcarxTest {
 
     @Before
     public void setUp() {
+        Car.createError = null;
+        CarImpl.createError = null;
+        CarImpl.creations = 0;
         car = new Car();
         Car.instance = car;
     }
@@ -51,6 +55,9 @@ public final class EcarxTest {
     @After
     public void tearDown() {
         Car.instance = null;
+        Car.createError = null;
+        CarImpl.createError = null;
+        CarImpl.creations = 0;
     }
 
     private Ecarx connect() {
@@ -58,6 +65,53 @@ public final class EcarxTest {
                 new Handler(Looper.getMainLooper()), sink);
         assertNotNull(link);
         return link;
+    }
+
+    @Test
+    public void signatureRejectionUsesCarImplForReadsWritesAndWatchers() {
+        Car.createError = new SecurityException("signature rejected");
+        car.values.put(SEAT + "@1", 2);
+        car.sensors.put(Hvac.SENSOR_TEMPERATURE_INDOOR, 21.4f);
+        Ecarx link = connect();
+        link.requestProperty(SEAT, 1, false);
+        link.requestSensor(Hvac.SENSOR_TEMPERATURE_INDOOR);
+        link.setInt(SEAT, 1, 3);
+        link.listenProperty(SEAT, 1, false);
+        link.listenSensor(Hvac.SENSOR_TEMPERATURE_INDOOR);
+        assertEquals(List.of(SEAT + "@1=2.0",
+                "s" + Hvac.SENSOR_TEMPERATURE_INDOOR + "=21.4"), answers);
+        assertEquals(List.of(SEAT + "@1=3"), car.sets);
+        assertTrue(car.watchers.containsKey(SEAT));
+        assertTrue(car.listeners.containsKey(Hvac.SENSOR_TEMPERATURE_INDOOR));
+        assertEquals(1, CarImpl.creations);
+    }
+
+    @Test
+    public void normalFactoryDoesNotUseCarImpl() {
+        connect();
+        assertEquals(0, CarImpl.creations);
+    }
+
+    @Test
+    public void otherFactoryErrorsDoNotUseCarImpl() {
+        Car.createError = new IllegalStateException("car service is down");
+        Ecarx link = connect();
+        link.requestProperty(SEAT, 1, false);
+        assertTrue(answers.isEmpty());
+        assertEquals(0, CarImpl.creations);
+    }
+
+    @Test
+    public void failedCarImplCreationCanBeRetried() {
+        Car.createError = new SecurityException("signature rejected");
+        CarImpl.createError = new IllegalStateException("car service is down");
+        Ecarx link = connect();
+        assertTrue(answers.isEmpty());
+        CarImpl.createError = null;
+        car.values.put(SEAT + "@1", 2);
+        link.requestProperty(SEAT, 1, false);
+        assertEquals(List.of(SEAT + "@1=2.0"), answers);
+        assertEquals(2, CarImpl.creations);
     }
 
     @Test

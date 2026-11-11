@@ -13,6 +13,7 @@ import java.util.Map;
 /** Test double of {@code Car}: a car whose values, failures and watchers tests control. */
 public final class Car implements ICar, ICarFunction, ISensor {
     public static Car instance;
+    public static RuntimeException createError;
 
     /** Values by {@code id@zone}; the zoneless calls use zone {@code "g"}. */
     public final Map<String, Number> values = new HashMap<>();
@@ -23,6 +24,9 @@ public final class Car implements ICar, ICarFunction, ISensor {
     public boolean down;
 
     public static ICar create(Context context) {
+        if (createError != null) {
+            throw createError;
+        }
         return instance;
     }
 
