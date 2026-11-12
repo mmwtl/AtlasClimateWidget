@@ -25,20 +25,16 @@ public final class Car implements ICar, ICarFunction, ISensor {
     public boolean down;
     public final Map<Integer, FunctionStatus> support = new HashMap<>();
     public final Map<String, FunctionStatus> zonedSupport = new HashMap<>();
-    public final Map<String, int[]> supportedValues = new HashMap<>();
     public int rejectedFunction;
+    public int supportQueries;
 
     @Override
     public FunctionStatus isFunctionSupported(int function, int zone) {
         if (down) {
             throw new IllegalStateException("car service is down");
         }
+        supportQueries++;
         return zonedSupport.get(function + "@" + zone);
-    }
-
-    @Override
-    public int[] getSupportedFunctionValue(int function, int zone) {
-        return supportedValues.get(function + "@" + zone);
     }
 
     @Override
@@ -46,6 +42,7 @@ public final class Car implements ICar, ICarFunction, ISensor {
         if (down) {
             throw new IllegalStateException("car service is down");
         }
+        supportQueries++;
         return support.get(function);
     }
 

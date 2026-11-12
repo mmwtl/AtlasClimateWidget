@@ -15,7 +15,7 @@ public final class ClimateCommandsTest {
         return new ClimateStore();
     }
 
-    @Test public void detectedBlowerSupportOverridesTheModelChoice() {
+    @Test public void blowerChoiceNudgesOrSetsTheSpeed() {
         ClimateStore store = store(0);
         store.putProperty(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL, Hvac.FAN_SPEED_LEVEL_1 + 2, 0);
         store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 0, 0);

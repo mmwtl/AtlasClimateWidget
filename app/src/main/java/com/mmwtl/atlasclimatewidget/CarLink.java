@@ -17,14 +17,9 @@ interface CarLink {
 
     boolean isDirect();
 
-    /** Whether fan −/+ should use the blower command; unknown support keeps the old choice. */
+    /** Whether fan −/+ nudge the blower: the model's choice unless the car has no blower. */
     default boolean fanBlower(boolean modelDefault) {
         return modelDefault;
-    }
-
-    /** Known number of AUTO profiles, or zero until the API reports its values. */
-    default int fanPresetCount() {
-        return 0;
     }
 
     /** Handles an action directly if supported; false leaves the existing bridge action. */

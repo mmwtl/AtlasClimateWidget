@@ -49,18 +49,34 @@ final class Hvac {
 
     /** Body functions from GInputBridge's launcher tiles; 1 = open, folded, on. */
     static final int DOOR = 553779456;
+    /**
+     * Tailgate state of newer head units, zone {@link #ZONE_TRUNK}, read instead of {@link #DOOR}
+     * where supported; commands stay on {@link #DOOR}. Values after MyGeelyWidgets.
+     */
     static final int TAILGATE_STATE = 738330112;
+    static final int TAILGATE_UNKNOWN = 738330113;
     static final int TAILGATE_CLOSED = 738330114;
-    static final int TAILGATE_FIRST_STATE = 738330115;
-    static final int TAILGATE_STOP_CLOSING = 738330121;
+    static final int TAILGATE_OPENING = 738330115;
+    static final int TAILGATE_OPENING_SLOW = 738330116;
+    static final int TAILGATE_STOPPED_OPENING = 738330117;
+    static final int TAILGATE_OPEN = 738330118;
+    static final int TAILGATE_CLOSING = 738330119;
+    static final int TAILGATE_CLOSING_SLOW = 738330120;
+    static final int TAILGATE_STOPPED_CLOSING = 738330121;
     static final int TAILGATE_HALF_OPEN = 738330128;
-    static final int TAILGATE_LAST_STATE = 738330129;
+    static final int TAILGATE_MIN_POSITION = 738330129;
+    /** {@link #DOOR} value that stops a moving tailgate. */
     static final int TAILGATE_PAUSE = 553779457;
+    /**
+     * Seat memory, driver's zone: the older API restores through this function (the bridge's
+     * {@code SEAT_MEMORY}); newer head units lack it and take a slot in
+     * {@link #SEAT_POSITION_SET}, then {@link #SEAT_POSITION_RESTORE} in
+     * {@link #SEAT_POSITION_BUTTON}, as in MyGeelyWidgets.
+     */
     static final int SEAT_MEMORY_RESTORE = 760219136;
-    static final int SEAT_MEMORY_MODE_1 = 760218882;
-    static final int SEAT_MEMORY_MODE_2 = 760218883;
     static final int SEAT_POSITION_SET = 759169536;
     static final int SEAT_POSITION_BUTTON = 759169280;
+    static final int SEAT_POSITION_RESTORE = 2;
     static final int FOLD_REAR_MIRROR = 554041600;
     static final int READING_LIGHT = 553980672;
     static final int WINDSCREEN_SERVICE_POSITION = 537657600;

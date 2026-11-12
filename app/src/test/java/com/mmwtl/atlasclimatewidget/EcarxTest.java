@@ -156,7 +156,7 @@ public final class EcarxTest {
     }
 
     @Test
-    public void tailgateReadsSeparateStateButWritesDoorAndDoesNotInventUnknownState() {
+    public void tailgateReadsSeparateStateButWritesDoorWithTheStatesNextMove() {
         int logical = Hvac.DOOR;
         int actual = Hvac.TAILGATE_STATE;
         int zone = Hvac.ZONE_TRUNK;
@@ -168,76 +168,69 @@ public final class EcarxTest {
         link.setInt(logical, zone, 1);
         assertEquals(List.of(logical + "@" + zone + "=1"), car.sets);
         assertTrue(car.watchers.containsKey(actual));
-        car.values.put(actual + "@" + zone, 738330118);
-        car.watchers.get(actual).onFunctionValueChanged(actual, zone, 738330118);
+        car.values.put(actual + "@" + zone, Hvac.TAILGATE_OPEN);
+        car.watchers.get(actual).onFunctionValueChanged(actual, zone, Hvac.TAILGATE_OPEN);
         ShadowLooper.idleMainLooper();
-        car.values.put(actual + "@" + zone, 738330113);
+        car.values.put(actual + "@" + zone, Hvac.TAILGATE_UNKNOWN);
         link.requestProperty(logical, zone, false);
-        link.setInt(logical, zone, 0);
-        assertEquals(1, car.sets.size());
-        assertEquals(List.of(logical + "@" + zone + "=0.0",
-                logical + "@" + zone + "=1.0", logical + "@" + zone + "=-1.0"), answers);
+        // Shown closed as in MyGeelyWidgets, and a tap there only closes.
+        link.setInt(logical, zone, 1);
+        car.values.put(actual + "@" + zone, 42);
+        link.requestProperty(logical, zone, false);
+        link.setInt(logical, zone, 1);
+        assertEquals(List.of(logical + "@" + zone + "=1", logical + "@" + zone + "=0"),
+                car.sets);
+        assertEquals(List.of(logical + "@" + zone + "=0.0", logical + "@" + zone + "=1.0",
+                logical + "@" + zone + "=0.0", logical + "@" + zone + "=-1.0"), answers);
     }
 
     @Test
-    public void fanBlowerUsesSupportRatherThanModelAndUnknownKeepsTheDefault() {
+    public void tailgateStoppedWhileClosingOpensAgainAndHalfOpenReversesTheLastMove() {
+        int zone = Hvac.ZONE_TRUNK;
+        String state = Hvac.TAILGATE_STATE + "@" + zone;
+        car.zonedSupport.put(state, FunctionStatus.active);
         Ecarx link = connect();
-        assertTrue(link.fanBlower(true));
-        assertFalse(link.fanBlower(false));
+        car.values.put(state, Hvac.TAILGATE_STOPPED_CLOSING);
+        link.setInt(Hvac.DOOR, zone, 0);
+        car.values.put(state, Hvac.TAILGATE_MIN_POSITION);
+        link.setInt(Hvac.DOOR, zone, 0);
+        car.values.put(state, Hvac.TAILGATE_CLOSING_SLOW);
+        link.requestProperty(Hvac.DOOR, zone, false);
+        car.values.put(state, Hvac.TAILGATE_HALF_OPEN);
+        link.setInt(Hvac.DOOR, zone, 0);
+        car.values.put(state, Hvac.TAILGATE_OPENING);
+        link.requestProperty(Hvac.DOOR, zone, false);
+        car.values.put(state, Hvac.TAILGATE_HALF_OPEN);
+        link.setInt(Hvac.DOOR, zone, 1);
+        String door = Hvac.DOOR + "@" + zone + "=";
+        assertEquals(List.of(door + 1, door + 1, door + 1, door + 0), car.sets);
+    }
+
+    @Test
+    public void fanBlowerFollowsTheModelUnlessTheCarHasNone() {
+        Ecarx link = connect();
         String key = ClimateCommands.FAN_BLOWER + "@8";
-        car.zonedSupport.put(key, FunctionStatus.notactive);
-        assertTrue(link.fanBlower(false));
-        car.zonedSupport.put(key, FunctionStatus.notavailable);
-        assertFalse(link.fanBlower(true));
+        car.zonedSupport.put(key, FunctionStatus.active);
+        assertFalse(link.fanBlower(false));
         car.zonedSupport.put(key, FunctionStatus.error);
         assertTrue(link.fanBlower(true));
+        car.zonedSupport.put(key, FunctionStatus.notactive);
+        assertTrue(link.fanBlower(true));
     }
 
     @Test
-    public void threeAutoProfilesNormalizeBothDirectionsAndWatcherValues() {
-        int id = Hvac.AUTO_FAN_SETTING;
-        car.supportedValues.put(id + "@8", new int[]{id + 3, id + 1, id + 2});
-        car.values.put(id + "@8", id + 1);
+    public void missingFanBlowerIsRememberedUntilTheCarServiceIsLost() {
+        String key = ClimateCommands.FAN_BLOWER + "@8";
+        car.zonedSupport.put(key, FunctionStatus.notavailable);
         Ecarx link = connect();
-        link.requestProperty(id, 8, false);
-        assertEquals(3, link.fanPresetCount());
-        assertEquals(List.of(id + "@8=" + (double) Hvac.AUTO_FAN_QUIETER), answers);
-        link.setInt(id, 8, Hvac.AUTO_FAN_HIGHER);
-        assertEquals(List.of(id + "@8=" + (id + 3)), car.sets);
-        link.listenProperty(id, 8, false);
-        answers.clear();
-        car.values.put(id + "@8", id + 3);
-        car.watchers.get(id).onFunctionValueChanged(id, 8, id + 3);
-        ShadowLooper.idleMainLooper();
-        assertEquals(List.of(id + "@8=" + (double) Hvac.AUTO_FAN_HIGHER), answers);
+        assertFalse(link.fanBlower(true));
+        car.zonedSupport.put(key, FunctionStatus.active);
+        assertFalse(link.fanBlower(true));
+        car.down = true;
+        link.requestProperty(TEMP, 1, true);
+        car.down = false;
+        assertTrue(link.fanBlower(true));
     }
-
-    @Test
-    public void fiveAutoProfilesKeepTheirActualValues() {
-        int id = Hvac.AUTO_FAN_SETTING;
-        car.supportedValues.put(id + "@8", ClimateCommands.FAN_PRESETS_FIVE.clone());
-        car.values.put(id + "@8", Hvac.AUTO_FAN_SILENT);
-        Ecarx link = connect();
-        link.requestProperty(id, 8, false);
-        link.setInt(id, 8, Hvac.AUTO_FAN_HIGHER);
-        assertEquals(5, link.fanPresetCount());
-        assertEquals(List.of(id + "@8=" + (double) Hvac.AUTO_FAN_SILENT), answers);
-        assertEquals(List.of(id + "@8=" + Hvac.AUTO_FAN_HIGHER), car.sets);
-    }
-
-    @Test
-    public void unknownAutoProfilesAreNotGuessedOrCached() {
-        int id = Hvac.AUTO_FAN_SETTING;
-        Ecarx link = connect();
-        link.setInt(id, 8, Hvac.AUTO_FAN_HIGHER);
-        assertEquals(0, link.fanPresetCount());
-        car.supportedValues.put(id + "@8", new int[]{id + 1, id + 2, id + 5});
-        link.setInt(id, 8, Hvac.AUTO_FAN_QUIETER);
-        assertEquals(3, link.fanPresetCount());
-        assertEquals(List.of(id + "@8=" + Hvac.AUTO_FAN_HIGHER,
-                id + "@8=" + Hvac.AUTO_FAN_SILENT), car.sets);
-    }
-
 
     @Test
     public void movingTailgateUsesPauseInsteadOfReversing() {
@@ -265,32 +258,47 @@ public final class EcarxTest {
     }
 
     @Test
-    public void knownThreeProfilesLimitTheWidgetWithoutChangingTheSavedPreference()
-            throws Exception {
-        Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
-        prefs.setFanPresets(Prefs.FanPresets.FIVE);
-        java.lang.reflect.Field running = ClimateService.class.getDeclaredField("running");
-        java.lang.reflect.Field active = ClimateService.class.getDeclaredField("directActive");
-        java.lang.reflect.Field count = ClimateService.class.getDeclaredField("directFanPresetCount");
-        running.setAccessible(true);
-        active.setAccessible(true);
-        count.setAccessible(true);
-        boolean wasRunning = running.getBoolean(null);
-        boolean wasActive = active.getBoolean(null);
-        int wasCount = count.getInt(null);
-        try {
-            running.setBoolean(null, true);
-            active.setBoolean(null, true);
-            count.setInt(null, 3);
-            assertEquals(3, prefs.resolved(new WidgetConfig()).fanPresetCount);
-            assertEquals(Prefs.FanPresets.FIVE, prefs.fanPresets());
-            active.setBoolean(null, false);
-            assertEquals(5, prefs.resolved(new WidgetConfig()).fanPresetCount);
-        } finally {
-            running.setBoolean(null, wasRunning);
-            active.setBoolean(null, wasActive);
-            count.setInt(null, wasCount);
-        }
+    public void definiteAnswersAreAskedOnceAndCallbacksNeverAsk() {
+        noLegacyWindshield();
+        car.support.put(Hvac.WINDSHIELD_HEAT_2026, FunctionStatus.notavailable);
+        car.zonedSupport.put(Hvac.TAILGATE_STATE + "@" + Hvac.ZONE_TRUNK,
+                FunctionStatus.notavailable);
+        car.zonedSupport.put(Hvac.WINDOW_POS + "@" + Hvac.ZONE_SUNSHADE,
+                FunctionStatus.notavailable);
+        car.zonedSupport.put(Hvac.WINDOW_POS + "@8", FunctionStatus.notavailable);
+        car.values.put(Hvac.WINDSHIELD_HEAT_ATLAS + "@g", 0);
+        car.values.put(Hvac.DOOR + "@" + Hvac.ZONE_TRUNK, 0);
+        car.values.put(Hvac.WINDOW_POS + "@" + Hvac.ZONE_SUNSHADE, 0f);
+        Ecarx link = connect();
+        link.requestProperty(Hvac.WINDSHIELD_HEAT_ATLAS, Gib.AREA_GLOBAL, false);
+        link.requestProperty(Hvac.DOOR, Hvac.ZONE_TRUNK, false);
+        link.requestProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, true);
+        link.listenProperty(Hvac.WINDSHIELD_HEAT_ATLAS, Gib.AREA_GLOBAL, false);
+        link.listenProperty(Hvac.DOOR, Hvac.ZONE_TRUNK, false);
+        int asked = car.supportQueries;
+        link.requestProperty(Hvac.WINDSHIELD_HEAT_ATLAS, Gib.AREA_GLOBAL, false);
+        link.requestProperty(Hvac.DOOR, Hvac.ZONE_TRUNK, false);
+        link.requestProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, true);
+        link.setInt(Hvac.WINDSHIELD_HEAT_ATLAS, Gib.AREA_GLOBAL, 1);
+        car.watchers.get(Hvac.DOOR).onFunctionValueChanged(Hvac.DOOR, Hvac.ZONE_TRUNK, 1);
+        ShadowLooper.idleMainLooper();
+        assertEquals(asked, car.supportQueries);
+        assertEquals(Hvac.WINDSHIELD_HEAT_ATLAS + "@g=1", car.sets.get(0));
+    }
+
+    @Test
+    public void callbacksDoNotAskAboutUnknownVariants() {
+        car.values.put(Hvac.WINDSHIELD_HEAT_ATLAS + "@g", 0);
+        car.values.put(TEMP + "@1", 22f);
+        Ecarx link = connect();
+        link.requestProperty(Hvac.WINDSHIELD_HEAT_ATLAS, Gib.AREA_GLOBAL, false);
+        link.requestProperty(TEMP, 1, true);
+        link.listenProperty(Hvac.WINDSHIELD_HEAT_ATLAS, Gib.AREA_GLOBAL, false);
+        link.listenProperty(TEMP, 1, true);
+        int asked = car.supportQueries;
+        car.watchers.get(TEMP).onCustomizeFunctionValueChanged(TEMP, 1, 23f);
+        ShadowLooper.idleMainLooper();
+        assertEquals(asked, car.supportQueries);
     }
 
     @Test
@@ -339,16 +347,23 @@ public final class EcarxTest {
     }
 
     @Test
-    public void legacySeatMemoryUsesReportedSlotAndUnknownSupportKeepsBridgeAction() {
+    public void legacyOrUnknownSeatMemoryKeepsTheBridgeAction() {
         Ecarx link = connect();
         assertFalse(link.carFunction("SEAT_MEMORY"));
         assertFalse(link.carFunction("CLIMATE_MENU"));
-        assertTrue(car.sets.isEmpty());
         car.zonedSupport.put(Hvac.SEAT_MEMORY_RESTORE + "@1", FunctionStatus.active);
-        car.values.put(Hvac.SEAT_MEMORY_RESTORE + "@1", Hvac.SEAT_MEMORY_MODE_1);
-        assertTrue(link.carFunction("SEAT_MEMORY"));
-        assertEquals(List.of(Hvac.SEAT_MEMORY_RESTORE + "@1=" + Hvac.SEAT_MEMORY_MODE_2),
-                car.sets);
+        car.zonedSupport.put(Hvac.SEAT_POSITION_SET + "@1", FunctionStatus.active);
+        car.zonedSupport.put(Hvac.SEAT_POSITION_BUTTON + "@1", FunctionStatus.active);
+        assertFalse(link.carFunction("SEAT_MEMORY"));
+        assertTrue(car.sets.isEmpty());
+    }
+
+    @Test
+    public void newSeatMemorySlotSurvivesANewLink() {
+        newSeatMemory();
+        connect().carFunction("SEAT_MEMORY");
+        connect().carFunction("SEAT_MEMORY");
+        assertEquals(Hvac.SEAT_POSITION_SET + "@1=2", car.sets.get(2));
     }
 
     @Test

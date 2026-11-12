@@ -1,6 +1,7 @@
 package com.mmwtl.atlasclimatewidget;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Handler;
 
 import java.lang.reflect.Constructor;
@@ -8,12 +9,9 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -38,6 +36,9 @@ final class Ecarx implements CarLink {
     private static final String WATCHER = FUNCTION + "$IFunctionValueWatcher";
     private static final String SENSOR = PACKAGE + ".car.sensor.ISensor";
     private static final String LISTENER = SENSOR + "$ISensorListener";
+    /** State of the direct link, not a setting, so not in {@link SettingsBackup}. */
+    private static final String STATE = "ecarx_state";
+    private static final String SEAT_SLOT = "seat_memory_slot";
 
     private final Context context;
     private final Handler worker;
@@ -60,7 +61,6 @@ final class Ecarx implements CarLink {
     private final Method unregisterListener;
     private final Method isFunctionSupported;
     private final Method isZonedFunctionSupported;
-    private final Method getSupportedValues;
     private final Object watcher;
     private final Object listener;
 
@@ -73,12 +73,17 @@ final class Ecarx implements CarLink {
     private final Set<Integer> watchedSensors = new HashSet<>();
     private final Set<Integer> registered = new HashSet<>();
     private final Set<Integer> registeredSensors = new HashSet<>();
-    /** Logical widget ids to the ids this head unit supports; worker-thread only. */
+    /**
+     * Variants of the API this head unit uses, found from its support answers and forgotten with
+     * the car service. Null means the car has not answered yet; a definite «no» is kept too, so
+     * reads and change callbacks do not ask again.
+     */
     private final Map<Integer, Integer> propertyIds = new HashMap<>();
     private Integer sunshadeArea;
-    private boolean tailgateState;
-    private int[] autoFanValues;
-    private int seatMemoryMode;
+    private Boolean tailgateState;
+    private Boolean blower;
+    /** The tailgate's last direction, 1 up and 2 down: a half-open stop reverses it. */
+    private int tailgateMove;
 
     private Ecarx(Context context, Handler worker, Sink sink) throws ReflectiveOperationException {
         this.context = context.getApplicationContext();
@@ -117,19 +122,12 @@ final class Ecarx implements CarLink {
         }
         isFunctionSupported = supported;
         Method zonedSupport;
-        Method values;
         try {
             zonedSupport = function.getMethod("isFunctionSupported", int.class, int.class);
         } catch (NoSuchMethodException missing) {
             zonedSupport = null;
         }
-        try {
-            values = function.getMethod("getSupportedFunctionValue", int.class, int.class);
-        } catch (NoSuchMethodException missing) {
-            values = null;
-        }
         isZonedFunctionSupported = zonedSupport;
-        getSupportedValues = values;
         watcher = proxy(watcherClass);
         listener = proxy(listenerClass);
     }
@@ -166,7 +164,7 @@ final class Ecarx implements CarLink {
             return;
         }
         boolean global = area == Gib.AREA_GLOBAL;
-        int actualId = readId(id, area);
+        int actualId = readId(id, area, true);
         int actualArea = propertyArea(id, area);
         Object value;
         try {
@@ -190,16 +188,7 @@ final class Ecarx implements CarLink {
             answer();
             double raw = ((Number) value).doubleValue();
             if (actualId == Hvac.TAILGATE_STATE) {
-                // Commands still use DOOR 0/1. Unknown states must not enable the tile.
-                if (raw == Hvac.TAILGATE_CLOSED) {
-                    raw = 0;
-                } else if (tailgateOpenState((int) raw)) {
-                    raw = 1;
-                } else {
-                    raw = -1;
-                }
-            } else if (id == Hvac.AUTO_FAN_SETTING) {
-                raw = fanPresetValue((int) raw, false);
+                raw = tailgateShown((int) raw);
             }
             sink.onProperty(id, area, raw);
         }
@@ -237,7 +226,7 @@ final class Ecarx implements CarLink {
             return;
         }
         int area = watched.get(id).keySet().iterator().next();
-        int actualId = readId(id, area);
+        int actualId = readId(id, area, true);
         if (!registered.contains(actualId)
                 && Boolean.TRUE.equals(call(registerWatcher, functions, actualId, watcher))) {
             registered.add(actualId);
@@ -258,25 +247,18 @@ final class Ecarx implements CarLink {
     public void setInt(int id, int area, int value) {
         if (ensure()) {
             if (id == Hvac.DOOR && area == Hvac.ZONE_TRUNK
-                    && readId(id, area) == Hvac.TAILGATE_STATE) {
+                    && readId(id, area, true) == Hvac.TAILGATE_STATE) {
+                // A tap means the tailgate's next move, which its current state decides.
                 Object state = call(getZonedInt, functions, Hvac.TAILGATE_STATE, area);
-                if (!(state instanceof Number)) {
+                Integer command = state instanceof Number
+                        ? tailgateCommand(((Number) state).intValue()) : null;
+                if (command == null) {
                     return;
                 }
-                int current = ((Number) state).intValue();
-                if (current != Hvac.TAILGATE_CLOSED && !tailgateOpenState(current)) {
-                    return;
-                }
-                if (current == 738330115 || current == 738330116
-                        || current == 738330119 || current == 738330120) {
-                    value = Hvac.TAILGATE_PAUSE;
-                }
-            }
-            if (id == Hvac.AUTO_FAN_SETTING) {
-                value = fanPresetValue(value, true);
+                value = command;
             }
             if (area == Gib.AREA_GLOBAL) {
-                call(setInt, functions, propertyId(id), value);
+                call(setInt, functions, propertyId(id, true), value);
             } else {
                 call(setZonedInt, functions, id, propertyArea(id, area), value);
             }
@@ -306,21 +288,29 @@ final class Ecarx implements CarLink {
         registeredSensors.clear();
         watched.clear();
         watchedSensors.clear();
-        propertyIds.clear();
-        sunshadeArea = null;
-        tailgateState = false;
-        autoFanValues = null;
+        forgetVariants();
+        tailgateMove = 0;
     }
 
-    /** Only choose the 2026 wiring after explicit support answers, never after a read error. */
-    private int propertyId(int id) {
+    private void forgetVariants() {
+        propertyIds.clear();
+        sunshadeArea = null;
+        tailgateState = null;
+        blower = null;
+    }
+
+    /**
+     * The windshield heating id this head unit uses. The 2026 one is chosen only after explicit
+     * answers, never after an error or silence. Without {@code probe} only a known answer is used.
+     */
+    private int propertyId(int id, boolean probe) {
         if (id != Hvac.WINDSHIELD_HEAT_ATLAS && id != Hvac.WINDSHIELD_HEAT_PREFACE
                 && id != Hvac.WINDSHIELD_HEAT_CITYRAY) {
             return id;
         }
         Integer resolved = propertyIds.get(id);
-        if (resolved != null) {
-            return resolved;
+        if (resolved != null || !probe) {
+            return resolved != null ? resolved : id;
         }
         // Probe all legacy variants first: DEFROST_FRONT can mean ordinary airflow on old cars.
         int[] candidates = {id, Hvac.WINDSHIELD_HEAT_ATLAS, Hvac.WINDSHIELD_HEAT_PREFACE,
@@ -329,34 +319,83 @@ final class Ecarx implements CarLink {
         for (int candidate : candidates) {
             Boolean exists = supported(candidate);
             if (Boolean.TRUE.equals(exists)) {
-                propertyIds.put(id, candidate);
-                AppLog.info("ECarX windshield heating: " + id + " -> " + candidate);
-                return candidate;
+                return resolve(id, candidate);
             }
             allUnsupported &= Boolean.FALSE.equals(exists);
         }
-        if (allUnsupported && Boolean.TRUE.equals(supported(Hvac.WINDSHIELD_HEAT_2026))) {
-            propertyIds.put(id, Hvac.WINDSHIELD_HEAT_2026);
-            AppLog.info("ECarX windshield heating: " + id + " -> " + Hvac.WINDSHIELD_HEAT_2026);
-            return Hvac.WINDSHIELD_HEAT_2026;
+        if (!allUnsupported) {
+            return id;
+        }
+        Boolean newer = supported(Hvac.WINDSHIELD_HEAT_2026);
+        if (Boolean.TRUE.equals(newer)) {
+            return resolve(id, Hvac.WINDSHIELD_HEAT_2026);
+        }
+        if (Boolean.FALSE.equals(newer)) {
+            // The car has no windshield heating at all: keep the model's id and stop asking.
+            propertyIds.put(id, id);
         }
         return id;
     }
 
-    private int readId(int id, int area) {
-        if (id == Hvac.DOOR && area == Hvac.ZONE_TRUNK) {
-            if (!tailgateState && Boolean.TRUE.equals(supported(Hvac.TAILGATE_STATE, area))) {
-                tailgateState = true;
-                AppLog.info("ECarX tailgate state: " + Hvac.TAILGATE_STATE);
-            }
-            return tailgateState ? Hvac.TAILGATE_STATE : id;
-        }
-        return area == Gib.AREA_GLOBAL ? propertyId(id) : id;
+    private int resolve(int id, int actual) {
+        propertyIds.put(id, actual);
+        AppLog.info("ECarX windshield heating: " + id + " -> " + actual);
+        return actual;
     }
 
-    private static boolean tailgateOpenState(int value) {
-        return value >= Hvac.TAILGATE_FIRST_STATE && value <= Hvac.TAILGATE_STOP_CLOSING
-                || value == Hvac.TAILGATE_HALF_OPEN || value == Hvac.TAILGATE_LAST_STATE;
+    private int readId(int id, int area, boolean probe) {
+        if (id == Hvac.DOOR && area == Hvac.ZONE_TRUNK) {
+            if (tailgateState == null && probe) {
+                tailgateState = supported(Hvac.TAILGATE_STATE, area);
+                if (Boolean.TRUE.equals(tailgateState)) {
+                    AppLog.info("ECarX tailgate state: " + Hvac.TAILGATE_STATE);
+                }
+            }
+            return Boolean.TRUE.equals(tailgateState) ? Hvac.TAILGATE_STATE : id;
+        }
+        return area == Gib.AREA_GLOBAL ? propertyId(id, probe) : id;
+    }
+
+    /** The tailgate state as {@link Hvac#DOOR} reports it: 0 closed, 1 open, -1 unknown. */
+    private double tailgateShown(int state) {
+        noteTailgateMove(state);
+        if (state == 0 || state == Hvac.TAILGATE_UNKNOWN || state == Hvac.TAILGATE_CLOSED) {
+            return 0;
+        }
+        return state > Hvac.TAILGATE_CLOSED && state <= Hvac.TAILGATE_MIN_POSITION ? 1 : -1;
+    }
+
+    /** The {@link Hvac#DOOR} command a tap sends, as in MyGeelyWidgets; null sends nothing. */
+    private Integer tailgateCommand(int state) {
+        switch (state) {
+            case Hvac.TAILGATE_CLOSED:
+            case Hvac.TAILGATE_STOPPED_CLOSING:
+            case Hvac.TAILGATE_MIN_POSITION:
+                return 1;
+            case Hvac.TAILGATE_OPENING:
+            case Hvac.TAILGATE_OPENING_SLOW:
+            case Hvac.TAILGATE_CLOSING:
+            case Hvac.TAILGATE_CLOSING_SLOW:
+                noteTailgateMove(state);
+                return Hvac.TAILGATE_PAUSE;
+            case Hvac.TAILGATE_HALF_OPEN: {
+                int command = tailgateMove == 2 ? 1 : 0;
+                tailgateMove = 0;
+                return command;
+            }
+            default:
+                // Unknown, stopped opening, open and the reserved states close it.
+                return state == 0 || state >= Hvac.TAILGATE_UNKNOWN
+                        && state <= Hvac.TAILGATE_MIN_POSITION ? 0 : null;
+        }
+    }
+
+    private void noteTailgateMove(int state) {
+        if (state == Hvac.TAILGATE_OPENING || state == Hvac.TAILGATE_OPENING_SLOW) {
+            tailgateMove = 1;
+        } else if (state == Hvac.TAILGATE_CLOSING || state == Hvac.TAILGATE_CLOSING_SLOW) {
+            tailgateMove = 2;
+        }
     }
 
     private int propertyArea(int id, int area) {
@@ -367,109 +406,59 @@ final class Ecarx implements CarLink {
             Boolean old = supported(id, area);
             if (Boolean.TRUE.equals(old)) {
                 sunshadeArea = area;
-            } else if (Boolean.FALSE.equals(old)
-                    && Boolean.TRUE.equals(supported(id, Hvac.ZONE_SUNSHADE_2026))) {
-                sunshadeArea = Hvac.ZONE_SUNSHADE_2026;
-                AppLog.info("ECarX sunshade area: " + sunshadeArea);
+            } else if (Boolean.FALSE.equals(old)) {
+                Boolean newer = supported(id, Hvac.ZONE_SUNSHADE_2026);
+                if (Boolean.TRUE.equals(newer)) {
+                    sunshadeArea = Hvac.ZONE_SUNSHADE_2026;
+                    AppLog.info("ECarX sunshade area: " + sunshadeArea);
+                } else if (Boolean.FALSE.equals(newer)) {
+                    sunshadeArea = area;
+                }
             }
         }
         return sunshadeArea == null ? area : sunshadeArea;
     }
 
+    /** As in MyGeelyWidgets: the model's choice, dropped only when the car has no blower step. */
     @Override
     public boolean fanBlower(boolean modelDefault) {
-        if (!ensure()) {
-            return modelDefault;
-        }
-        Boolean exists = supported(ClimateCommands.FAN_BLOWER, Hvac.ZONE_ROW_1_ALL);
-        return exists == null ? modelDefault : exists;
-    }
-
-    @Override
-    public int fanPresetCount() {
-        return autoFanValues == null ? 0 : autoFanValues.length;
-    }
-
-    /** Normalize the car's three profiles to the widget's quiet/normal/strong encoding. */
-    private int fanPresetValue(int value, boolean write) {
-        if (autoFanValues == null && getSupportedValues != null) {
-            Object result = call(getSupportedValues, functions,
-                    Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL);
-            if (result instanceof int[]) {
-                int[] supported = (int[]) result;
-                List<Integer> ordered = new ArrayList<>();
-                for (int candidate : ClimateCommands.FAN_PRESETS_FIVE) {
-                    for (int actual : supported) {
-                        if (actual == candidate) {
-                            ordered.add(candidate);
-                            break;
-                        }
-                    }
-                }
-                // Only the three/five-profile contracts found in the reference APK are known.
-                boolean three = ordered.size() == 3
-                        && ordered.get(1) == Hvac.AUTO_FAN_NORMAL
-                        && (ordered.get(0) == Hvac.AUTO_FAN_QUIETER
-                        || ordered.get(0) == Hvac.AUTO_FAN_SILENT)
-                        && (ordered.get(2) == Hvac.AUTO_FAN_HIGH
-                        || ordered.get(2) == Hvac.AUTO_FAN_HIGHER);
-                if (three || ordered.size() == 5) {
-                    autoFanValues = new int[ordered.size()];
-                    for (int i = 0; i < ordered.size(); i++) {
-                        autoFanValues[i] = ordered.get(i);
-                    }
-                    AppLog.info("ECarX AUTO fan values: "
-                            + Arrays.toString(autoFanValues));
-                }
-            }
-        }
-        if (autoFanValues == null || autoFanValues.length != 3) {
-            return value;
-        }
-        int[] logical = ClimateCommands.FAN_PRESETS_THREE;
-        int[] from = write ? logical : autoFanValues;
-        int[] to = write ? autoFanValues : logical;
-        for (int i = 0; i < from.length; i++) {
-            if (value == from[i]) {
-                return to[i];
-            }
-        }
-        return value;
-    }
-
-    @Override
-    public boolean carFunction(String function) {
-        if (!"SEAT_MEMORY".equals(function) || !ensure()) {
+        if (!modelDefault) {
             return false;
         }
-        Boolean legacy = supported(Hvac.SEAT_MEMORY_RESTORE, Hvac.ZONE_DRIVER);
-        if (Boolean.FALSE.equals(legacy)
-                && Boolean.TRUE.equals(supported(Hvac.SEAT_POSITION_SET, Hvac.ZONE_DRIVER))
-                && Boolean.TRUE.equals(supported(Hvac.SEAT_POSITION_BUTTON, Hvac.ZONE_DRIVER))) {
-            int next = seatMemoryMode == 1 ? 2 : 1;
-            AppLog.info("ECarX seat memory: select slot " + next + ", then restore");
-            if (Boolean.TRUE.equals(call(setZonedInt, functions,
-                    Hvac.SEAT_POSITION_SET, Hvac.ZONE_DRIVER, next))
-                    && Boolean.TRUE.equals(call(setZonedInt, functions,
-                    Hvac.SEAT_POSITION_BUTTON, Hvac.ZONE_DRIVER, 2))) {
-                // The new API has no verified feedback of the recalled slot.
-                seatMemoryMode = next;
-            } else {
-                AppLog.warn("ECarX seat memory command failed", null);
+        if (blower == null && ensure()) {
+            blower = supported(ClimateCommands.FAN_BLOWER, Hvac.ZONE_ROW_1_ALL);
+            if (Boolean.FALSE.equals(blower)) {
+                AppLog.info("ECarX has no fan blower step, fan -/+ set the speed");
             }
-            return true;
         }
-        if (Boolean.TRUE.equals(legacy)) {
-            Object current = call(getZonedInt, functions,
-                    Hvac.SEAT_MEMORY_RESTORE, Hvac.ZONE_DRIVER);
-            if (current instanceof Number) {
-                int next = ((Number) current).intValue() == Hvac.SEAT_MEMORY_MODE_1
-                        ? Hvac.SEAT_MEMORY_MODE_2 : Hvac.SEAT_MEMORY_MODE_1;
-                call(setZonedInt, functions, Hvac.SEAT_MEMORY_RESTORE, Hvac.ZONE_DRIVER, next);
-            }
-            return true;
+        return !Boolean.FALSE.equals(blower);
+    }
+
+    /**
+     * Seat memory on head units without {@link Hvac#SEAT_MEMORY_RESTORE}: a slot, then restore.
+     * The car does not report the recalled slot, so the last one is kept in the app's storage
+     * and taps alternate 1 and 2. Older head units keep the bridge's {@code SEAT_MEMORY}.
+     */
+    @Override
+    public boolean carFunction(String function) {
+        if (!"SEAT_MEMORY".equals(function) || !ensure()
+                || !Boolean.FALSE.equals(supported(Hvac.SEAT_MEMORY_RESTORE, Hvac.ZONE_DRIVER))
+                || !Boolean.TRUE.equals(supported(Hvac.SEAT_POSITION_SET, Hvac.ZONE_DRIVER))
+                || !Boolean.TRUE.equals(supported(Hvac.SEAT_POSITION_BUTTON, Hvac.ZONE_DRIVER))) {
+            return false;
         }
-        return false;
+        SharedPreferences state = context.getSharedPreferences(STATE, Context.MODE_PRIVATE);
+        int slot = state.getInt(SEAT_SLOT, 0) == 1 ? 2 : 1;
+        AppLog.info("ECarX seat memory: select slot " + slot + ", then restore");
+        if (Boolean.TRUE.equals(call(setZonedInt, functions,
+                Hvac.SEAT_POSITION_SET, Hvac.ZONE_DRIVER, slot))
+                && Boolean.TRUE.equals(call(setZonedInt, functions,
+                Hvac.SEAT_POSITION_BUTTON, Hvac.ZONE_DRIVER, Hvac.SEAT_POSITION_RESTORE))) {
+            state.edit().putInt(SEAT_SLOT, slot).apply();
+        } else {
+            AppLog.warn("ECarX seat memory command failed", null);
+        }
+        return true;
     }
 
     private Boolean supported(int id) {
@@ -546,10 +535,7 @@ final class Ecarx implements CarLink {
         answered = false;
         registered.clear();
         registeredSensors.clear();
-        propertyIds.clear();
-        sunshadeArea = null;
-        tailgateState = false;
-        autoFanValues = null;
+        forgetVariants();
     }
 
     /** Invokes a getter, rethrowing the API's own exception. */
@@ -616,7 +602,8 @@ final class Ecarx implements CarLink {
                     : new HashMap<>(watched).entrySet()) {
                 int logicalId = entry.getKey();
                 int watchedArea = entry.getValue().keySet().iterator().next();
-                if (readId(logicalId, watchedArea) != id) {
+                // Only known variants: a callback must not ask the car about every function.
+                if (readId(logicalId, watchedArea, false) != id) {
                     continue;
                 }
                 for (Map.Entry<Integer, Boolean> area
