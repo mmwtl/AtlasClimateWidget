@@ -16,6 +16,7 @@ final class Hvac {
     /** {@link #WINDOW_POS} areas for the sunroof glass and its sunshade, after FX11. */
     static final int ZONE_SUNROOF = 4;
     static final int ZONE_SUNSHADE = 65544;
+    static final int ZONE_SUNSHADE_2026 = 8;
     /** {@link #DOOR} area of the tailgate, as in GInputBridge and FX11. */
     static final int ZONE_TRUNK = 536870912;
     /** Reading light zones FX11 switches together; it reads the state from the passenger's. */
@@ -48,6 +49,18 @@ final class Hvac {
 
     /** Body functions from GInputBridge's launcher tiles; 1 = open, folded, on. */
     static final int DOOR = 553779456;
+    static final int TAILGATE_STATE = 738330112;
+    static final int TAILGATE_CLOSED = 738330114;
+    static final int TAILGATE_FIRST_STATE = 738330115;
+    static final int TAILGATE_STOP_CLOSING = 738330121;
+    static final int TAILGATE_HALF_OPEN = 738330128;
+    static final int TAILGATE_LAST_STATE = 738330129;
+    static final int TAILGATE_PAUSE = 553779457;
+    static final int SEAT_MEMORY_RESTORE = 760219136;
+    static final int SEAT_MEMORY_MODE_1 = 760218882;
+    static final int SEAT_MEMORY_MODE_2 = 760218883;
+    static final int SEAT_POSITION_SET = 759169536;
+    static final int SEAT_POSITION_BUTTON = 759169280;
     static final int FOLD_REAR_MIRROR = 554041600;
     static final int READING_LIGHT = 553980672;
     static final int WINDSCREEN_SERVICE_POSITION = 537657600;
@@ -75,6 +88,8 @@ final class Hvac {
     static final int WINDSHIELD_HEAT_ATLAS = 269027328;
     static final int WINDSHIELD_HEAT_PREFACE = 269753088;
     static final int WINDSHIELD_HEAT_CITYRAY = 269755136;
+    /** MyGeelyWidgets uses DEFROST_FRONT for the heating wires on some 2026 head units. */
+    static final int WINDSHIELD_HEAT_2026 = 268697856;
 
     static final int SENSOR_TEMPERATURE_AMBIENT = 1051392;
     static final int SENSOR_TEMPERATURE_INDOOR = 1051648;

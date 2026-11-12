@@ -8,9 +8,12 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -55,6 +58,9 @@ final class Ecarx implements CarLink {
     private final Method getSensor;
     private final Method registerListener;
     private final Method unregisterListener;
+    private final Method isFunctionSupported;
+    private final Method isZonedFunctionSupported;
+    private final Method getSupportedValues;
     private final Object watcher;
     private final Object listener;
 
@@ -67,6 +73,12 @@ final class Ecarx implements CarLink {
     private final Set<Integer> watchedSensors = new HashSet<>();
     private final Set<Integer> registered = new HashSet<>();
     private final Set<Integer> registeredSensors = new HashSet<>();
+    /** Logical widget ids to the ids this head unit supports; worker-thread only. */
+    private final Map<Integer, Integer> propertyIds = new HashMap<>();
+    private Integer sunshadeArea;
+    private boolean tailgateState;
+    private int[] autoFanValues;
+    private int seatMemoryMode;
 
     private Ecarx(Context context, Handler worker, Sink sink) throws ReflectiveOperationException {
         this.context = context.getApplicationContext();
@@ -96,6 +108,28 @@ final class Ecarx implements CarLink {
         getSensor = sensor.getMethod("getSensorLatestValue", int.class);
         registerListener = sensor.getMethod("registerListener", listenerClass, int.class);
         unregisterListener = sensor.getMethod("unregisterListener", listenerClass);
+        Method supported;
+        try {
+            supported = function.getMethod("isFunctionSupported", int.class);
+        } catch (NoSuchMethodException missing) {
+            // Keep the existing direct link usable if this firmware cannot report support.
+            supported = null;
+        }
+        isFunctionSupported = supported;
+        Method zonedSupport;
+        Method values;
+        try {
+            zonedSupport = function.getMethod("isFunctionSupported", int.class, int.class);
+        } catch (NoSuchMethodException missing) {
+            zonedSupport = null;
+        }
+        try {
+            values = function.getMethod("getSupportedFunctionValue", int.class, int.class);
+        } catch (NoSuchMethodException missing) {
+            values = null;
+        }
+        isZonedFunctionSupported = zonedSupport;
+        getSupportedValues = values;
         watcher = proxy(watcherClass);
         listener = proxy(listenerClass);
     }
@@ -132,14 +166,16 @@ final class Ecarx implements CarLink {
             return;
         }
         boolean global = area == Gib.AREA_GLOBAL;
+        int actualId = readId(id, area);
+        int actualArea = propertyArea(id, area);
         Object value;
         try {
             if (isFloat) {
-                value = global ? read(getFloat, functions, id)
-                        : read(getZonedFloat, functions, id, area);
+                value = global ? read(getFloat, functions, actualId)
+                        : read(getZonedFloat, functions, actualId, actualArea);
             } else {
-                value = global ? read(getInt, functions, id)
-                        : read(getZonedInt, functions, id, area);
+                value = global ? read(getInt, functions, actualId)
+                        : read(getZonedInt, functions, actualId, actualArea);
             }
         } catch (UnsupportedOperationException unsupported) {
             // The car answered that it has no such function; the bridge reports that as -1.
@@ -152,7 +188,20 @@ final class Ecarx implements CarLink {
         }
         if (value instanceof Number) {
             answer();
-            sink.onProperty(id, area, ((Number) value).doubleValue());
+            double raw = ((Number) value).doubleValue();
+            if (actualId == Hvac.TAILGATE_STATE) {
+                // Commands still use DOOR 0/1. Unknown states must not enable the tile.
+                if (raw == Hvac.TAILGATE_CLOSED) {
+                    raw = 0;
+                } else if (tailgateOpenState((int) raw)) {
+                    raw = 1;
+                } else {
+                    raw = -1;
+                }
+            } else if (id == Hvac.AUTO_FAN_SETTING) {
+                raw = fanPresetValue((int) raw, false);
+            }
+            sink.onProperty(id, area, raw);
         }
     }
 
@@ -184,11 +233,14 @@ final class Ecarx implements CarLink {
     }
 
     private void watch(int id) {
-        if (!answered || !watched.containsKey(id) || registered.contains(id) || !ensure()) {
+        if (!answered || !watched.containsKey(id) || !ensure()) {
             return;
         }
-        if (Boolean.TRUE.equals(call(registerWatcher, functions, id, watcher))) {
-            registered.add(id);
+        int area = watched.get(id).keySet().iterator().next();
+        int actualId = readId(id, area);
+        if (!registered.contains(actualId)
+                && Boolean.TRUE.equals(call(registerWatcher, functions, actualId, watcher))) {
+            registered.add(actualId);
         }
     }
 
@@ -205,10 +257,28 @@ final class Ecarx implements CarLink {
     @Override
     public void setInt(int id, int area, int value) {
         if (ensure()) {
+            if (id == Hvac.DOOR && area == Hvac.ZONE_TRUNK
+                    && readId(id, area) == Hvac.TAILGATE_STATE) {
+                Object state = call(getZonedInt, functions, Hvac.TAILGATE_STATE, area);
+                if (!(state instanceof Number)) {
+                    return;
+                }
+                int current = ((Number) state).intValue();
+                if (current != Hvac.TAILGATE_CLOSED && !tailgateOpenState(current)) {
+                    return;
+                }
+                if (current == 738330115 || current == 738330116
+                        || current == 738330119 || current == 738330120) {
+                    value = Hvac.TAILGATE_PAUSE;
+                }
+            }
+            if (id == Hvac.AUTO_FAN_SETTING) {
+                value = fanPresetValue(value, true);
+            }
             if (area == Gib.AREA_GLOBAL) {
-                call(setInt, functions, id, value);
+                call(setInt, functions, propertyId(id), value);
             } else {
-                call(setZonedInt, functions, id, area, value);
+                call(setZonedInt, functions, id, propertyArea(id, area), value);
             }
         }
     }
@@ -219,7 +289,7 @@ final class Ecarx implements CarLink {
             if (area == Gib.AREA_GLOBAL) {
                 call(setFloat, functions, id, value);
             } else {
-                call(setZonedFloat, functions, id, area, value);
+                call(setZonedFloat, functions, id, propertyArea(id, area), value);
             }
         }
     }
@@ -236,6 +306,196 @@ final class Ecarx implements CarLink {
         registeredSensors.clear();
         watched.clear();
         watchedSensors.clear();
+        propertyIds.clear();
+        sunshadeArea = null;
+        tailgateState = false;
+        autoFanValues = null;
+    }
+
+    /** Only choose the 2026 wiring after explicit support answers, never after a read error. */
+    private int propertyId(int id) {
+        if (id != Hvac.WINDSHIELD_HEAT_ATLAS && id != Hvac.WINDSHIELD_HEAT_PREFACE
+                && id != Hvac.WINDSHIELD_HEAT_CITYRAY) {
+            return id;
+        }
+        Integer resolved = propertyIds.get(id);
+        if (resolved != null) {
+            return resolved;
+        }
+        // Probe all legacy variants first: DEFROST_FRONT can mean ordinary airflow on old cars.
+        int[] candidates = {id, Hvac.WINDSHIELD_HEAT_ATLAS, Hvac.WINDSHIELD_HEAT_PREFACE,
+                Hvac.WINDSHIELD_HEAT_CITYRAY};
+        boolean allUnsupported = true;
+        for (int candidate : candidates) {
+            Boolean exists = supported(candidate);
+            if (Boolean.TRUE.equals(exists)) {
+                propertyIds.put(id, candidate);
+                AppLog.info("ECarX windshield heating: " + id + " -> " + candidate);
+                return candidate;
+            }
+            allUnsupported &= Boolean.FALSE.equals(exists);
+        }
+        if (allUnsupported && Boolean.TRUE.equals(supported(Hvac.WINDSHIELD_HEAT_2026))) {
+            propertyIds.put(id, Hvac.WINDSHIELD_HEAT_2026);
+            AppLog.info("ECarX windshield heating: " + id + " -> " + Hvac.WINDSHIELD_HEAT_2026);
+            return Hvac.WINDSHIELD_HEAT_2026;
+        }
+        return id;
+    }
+
+    private int readId(int id, int area) {
+        if (id == Hvac.DOOR && area == Hvac.ZONE_TRUNK) {
+            if (!tailgateState && Boolean.TRUE.equals(supported(Hvac.TAILGATE_STATE, area))) {
+                tailgateState = true;
+                AppLog.info("ECarX tailgate state: " + Hvac.TAILGATE_STATE);
+            }
+            return tailgateState ? Hvac.TAILGATE_STATE : id;
+        }
+        return area == Gib.AREA_GLOBAL ? propertyId(id) : id;
+    }
+
+    private static boolean tailgateOpenState(int value) {
+        return value >= Hvac.TAILGATE_FIRST_STATE && value <= Hvac.TAILGATE_STOP_CLOSING
+                || value == Hvac.TAILGATE_HALF_OPEN || value == Hvac.TAILGATE_LAST_STATE;
+    }
+
+    private int propertyArea(int id, int area) {
+        if (id != Hvac.WINDOW_POS || area != Hvac.ZONE_SUNSHADE) {
+            return area;
+        }
+        if (sunshadeArea == null) {
+            Boolean old = supported(id, area);
+            if (Boolean.TRUE.equals(old)) {
+                sunshadeArea = area;
+            } else if (Boolean.FALSE.equals(old)
+                    && Boolean.TRUE.equals(supported(id, Hvac.ZONE_SUNSHADE_2026))) {
+                sunshadeArea = Hvac.ZONE_SUNSHADE_2026;
+                AppLog.info("ECarX sunshade area: " + sunshadeArea);
+            }
+        }
+        return sunshadeArea == null ? area : sunshadeArea;
+    }
+
+    @Override
+    public boolean fanBlower(boolean modelDefault) {
+        if (!ensure()) {
+            return modelDefault;
+        }
+        Boolean exists = supported(ClimateCommands.FAN_BLOWER, Hvac.ZONE_ROW_1_ALL);
+        return exists == null ? modelDefault : exists;
+    }
+
+    @Override
+    public int fanPresetCount() {
+        return autoFanValues == null ? 0 : autoFanValues.length;
+    }
+
+    /** Normalize the car's three profiles to the widget's quiet/normal/strong encoding. */
+    private int fanPresetValue(int value, boolean write) {
+        if (autoFanValues == null && getSupportedValues != null) {
+            Object result = call(getSupportedValues, functions,
+                    Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL);
+            if (result instanceof int[]) {
+                int[] supported = (int[]) result;
+                List<Integer> ordered = new ArrayList<>();
+                for (int candidate : ClimateCommands.FAN_PRESETS_FIVE) {
+                    for (int actual : supported) {
+                        if (actual == candidate) {
+                            ordered.add(candidate);
+                            break;
+                        }
+                    }
+                }
+                // Only the three/five-profile contracts found in the reference APK are known.
+                boolean three = ordered.size() == 3
+                        && ordered.get(1) == Hvac.AUTO_FAN_NORMAL
+                        && (ordered.get(0) == Hvac.AUTO_FAN_QUIETER
+                        || ordered.get(0) == Hvac.AUTO_FAN_SILENT)
+                        && (ordered.get(2) == Hvac.AUTO_FAN_HIGH
+                        || ordered.get(2) == Hvac.AUTO_FAN_HIGHER);
+                if (three || ordered.size() == 5) {
+                    autoFanValues = new int[ordered.size()];
+                    for (int i = 0; i < ordered.size(); i++) {
+                        autoFanValues[i] = ordered.get(i);
+                    }
+                    AppLog.info("ECarX AUTO fan values: "
+                            + Arrays.toString(autoFanValues));
+                }
+            }
+        }
+        if (autoFanValues == null || autoFanValues.length != 3) {
+            return value;
+        }
+        int[] logical = ClimateCommands.FAN_PRESETS_THREE;
+        int[] from = write ? logical : autoFanValues;
+        int[] to = write ? autoFanValues : logical;
+        for (int i = 0; i < from.length; i++) {
+            if (value == from[i]) {
+                return to[i];
+            }
+        }
+        return value;
+    }
+
+    @Override
+    public boolean carFunction(String function) {
+        if (!"SEAT_MEMORY".equals(function) || !ensure()) {
+            return false;
+        }
+        Boolean legacy = supported(Hvac.SEAT_MEMORY_RESTORE, Hvac.ZONE_DRIVER);
+        if (Boolean.FALSE.equals(legacy)
+                && Boolean.TRUE.equals(supported(Hvac.SEAT_POSITION_SET, Hvac.ZONE_DRIVER))
+                && Boolean.TRUE.equals(supported(Hvac.SEAT_POSITION_BUTTON, Hvac.ZONE_DRIVER))) {
+            int next = seatMemoryMode == 1 ? 2 : 1;
+            AppLog.info("ECarX seat memory: select slot " + next + ", then restore");
+            if (Boolean.TRUE.equals(call(setZonedInt, functions,
+                    Hvac.SEAT_POSITION_SET, Hvac.ZONE_DRIVER, next))
+                    && Boolean.TRUE.equals(call(setZonedInt, functions,
+                    Hvac.SEAT_POSITION_BUTTON, Hvac.ZONE_DRIVER, 2))) {
+                // The new API has no verified feedback of the recalled slot.
+                seatMemoryMode = next;
+            } else {
+                AppLog.warn("ECarX seat memory command failed", null);
+            }
+            return true;
+        }
+        if (Boolean.TRUE.equals(legacy)) {
+            Object current = call(getZonedInt, functions,
+                    Hvac.SEAT_MEMORY_RESTORE, Hvac.ZONE_DRIVER);
+            if (current instanceof Number) {
+                int next = ((Number) current).intValue() == Hvac.SEAT_MEMORY_MODE_1
+                        ? Hvac.SEAT_MEMORY_MODE_2 : Hvac.SEAT_MEMORY_MODE_1;
+                call(setZonedInt, functions, Hvac.SEAT_MEMORY_RESTORE, Hvac.ZONE_DRIVER, next);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private Boolean supported(int id) {
+        if (isFunctionSupported == null) {
+            return null;
+        }
+        return supportStatus(call(isFunctionSupported, functions, id));
+    }
+
+    private Boolean supported(int id, int area) {
+        if (area == Gib.AREA_GLOBAL) {
+            return supported(id);
+        }
+        return isZonedFunctionSupported == null ? null
+                : supportStatus(call(isZonedFunctionSupported, functions, id, area));
+    }
+
+    private static Boolean supportStatus(Object status) {
+        if (!(status instanceof Enum<?>)) {
+            return null;
+        }
+        String name = ((Enum<?>) status).name();
+        if ("error".equals(name)) {
+            return null;
+        }
+        return "active".equals(name) || "notactive".equals(name);
     }
 
     /** Gets the car and its managers, which may appear only once the car service is up. */
@@ -286,6 +546,10 @@ final class Ecarx implements CarLink {
         answered = false;
         registered.clear();
         registeredSensors.clear();
+        propertyIds.clear();
+        sunshadeArea = null;
+        tailgateState = false;
+        autoFanValues = null;
     }
 
     /** Invokes a getter, rethrowing the API's own exception. */
@@ -348,12 +612,17 @@ final class Ecarx implements CarLink {
             AppLog.debug("<- ECarX id=" + id + " zone=" + zone + " value=" + value);
         }
         worker.post(() -> {
-            Map<Integer, Boolean> areas = watched.get(id);
-            if (areas == null) {
-                return;
-            }
-            for (Map.Entry<Integer, Boolean> area : new HashMap<>(areas).entrySet()) {
-                requestProperty(id, area.getKey(), area.getValue());
+            for (Map.Entry<Integer, Map<Integer, Boolean>> entry
+                    : new HashMap<>(watched).entrySet()) {
+                int logicalId = entry.getKey();
+                int watchedArea = entry.getValue().keySet().iterator().next();
+                if (readId(logicalId, watchedArea) != id) {
+                    continue;
+                }
+                for (Map.Entry<Integer, Boolean> area
+                        : new HashMap<>(entry.getValue()).entrySet()) {
+                    requestProperty(logicalId, area.getKey(), area.getValue());
+                }
             }
         });
     }

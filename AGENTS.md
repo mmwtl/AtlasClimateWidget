@@ -27,7 +27,7 @@ line, read as in AtlasAppWidget (`Fuel`).
   «Работать без GInputBridge» switch (`Prefs.directCar`) makes the service read and write
   properties and sensors through `Ecarx`, the head unit's `com.ecarx.xui.adaptapi` reached by
   reflection as FX11 calls it, behind the same `CarLink` as the bridge. The bridge's own car
-  functions still go through the bridge; without the API the service falls back to the bridge
+  functions still go through the bridge, except seat memory when supported directly; without the API the service falls back to the bridge
   and the status card says so. Switching links clears the store, and bridge broadcasts are
   ignored while the direct link is active. Test doubles of the API live in the test sources.
 - `MainActivity` is the full settings editor with Blocks, Tiles, Look and System tabs pinned under

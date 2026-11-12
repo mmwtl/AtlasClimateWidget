@@ -35,7 +35,7 @@ import java.util.Objects;
  * Keeps the GInputBridge subscription alive while widgets exist, executes widget controls and
  * redraws the widgets. The bridge answers with implicit broadcasts, which only a registered
  * receiver in a running process can get. With the experimental direct mode the car is read
- * through {@link Ecarx} instead, the bridge's own functions still going through the bridge.
+ * through {@link Ecarx} instead. Bridge actions still use the bridge, except supported seat memory.
  */
 public final class ClimateService extends Service {
     static final String ACTION_START = "com.mmwtl.atlasclimatewidget.START";
@@ -96,6 +96,7 @@ public final class ClimateService extends Service {
     private static volatile int scrubbedWidget = AppWidgetManager.INVALID_APPWIDGET_ID;
     private static volatile String scrubbedStrip;
     private static volatile boolean directActive;
+    private static volatile int directFanPresetCount;
     private static volatile boolean firstPushLogged;
 
     private HandlerThread workerThread;
@@ -164,6 +165,10 @@ public final class ClimateService extends Service {
     /** Whether the car is read through the ECarX API rather than GInputBridge. */
     static boolean isDirect() {
         return directActive;
+    }
+
+    static int directFanPresetCount() {
+        return running && directActive ? directFanPresetCount : 0;
     }
 
     /** Called on the main thread after every state change while the listener is set. */
@@ -347,6 +352,9 @@ public final class ClimateService extends Service {
     private final CarLink.Sink sink = new CarLink.Sink() {
         @Override
         public void onProperty(int id, int area, double value) {
+            if (link != null && link.isDirect()) {
+                directFanPresetCount = link.fanPresetCount();
+            }
             ClimateService.this.onProperty(id, area, value);
         }
 
@@ -477,6 +485,7 @@ public final class ClimateService extends Service {
         for (Integer sensor : watch.sensors) {
             link.requestSensor(sensor);
         }
+        directFanPresetCount = link.fanPresetCount();
         if (first) {
             AppLog.startup(watch.properties.size() + watch.sensors.size() + " direct reads in "
                     + (SystemClock.elapsedRealtime() - started) + " ms");
@@ -526,6 +535,7 @@ public final class ClimateService extends Service {
         link = next != null ? next : CarLink.bridge(this);
         linkForDirect = direct;
         directActive = link.isDirect();
+        directFanPresetCount = 0;
         return link;
     }
 
@@ -628,7 +638,8 @@ public final class ClimateService extends Service {
                 return ClimateCommands.setFanPreset(state, Integer.parseInt(parts.get(1)),
                         prefs.fanPresetCount());
             case "fanstep":
-                return ClimateCommands.stepFan(state, model, Integer.parseInt(parts.get(1)),
+                return ClimateCommands.stepFan(state,
+                        link().fanBlower(model != CarModel.ATLAS), Integer.parseInt(parts.get(1)),
                         prefs.fanPresetCount());
             default:
                 return new ArrayList<>();
@@ -637,7 +648,9 @@ public final class ClimateService extends Service {
 
     private void execute(ClimateCommands.Command command, long now) {
         if (command.type == ClimateCommands.Command.Type.CAR_FUNCTION) {
-            Gib.carFunction(this, command.function);
+            if (!link().carFunction(command.function)) {
+                Gib.carFunction(this, command.function);
+            }
             return;
         }
         if (!command.isOptimistic()) {

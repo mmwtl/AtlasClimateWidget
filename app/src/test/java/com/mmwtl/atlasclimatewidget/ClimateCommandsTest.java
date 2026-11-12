@@ -15,6 +15,20 @@ public final class ClimateCommandsTest {
         return new ClimateStore();
     }
 
+    @Test public void detectedBlowerSupportOverridesTheModelChoice() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL, Hvac.FAN_SPEED_LEVEL_1 + 2, 0);
+        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 0, 0);
+        ClimateCommands.Command speed = ClimateCommands.stepFan(store.snapshot(0), false, 1, 3)
+                .get(0);
+        assertEquals(Hvac.FAN_SPEED, speed.id);
+        assertEquals(Hvac.FAN_SPEED_LEVEL_1 + 3, (int) speed.value);
+        ClimateCommands.Command blower = ClimateCommands.stepFan(store.snapshot(0), true, 1, 3)
+                .get(0);
+        assertEquals(ClimateCommands.FAN_BLOWER, blower.id);
+        assertEquals(ClimateCommands.FAN_BLOWER_UP, (int) blower.value);
+    }
+
     @Test public void togglesFromKnownState() {
         ClimateStore store = store(0);
         store.putProperty(Hvac.AC, Gib.AREA_GLOBAL, 1, 0);

@@ -1,7 +1,14 @@
 package com.ecarx.xui.adaptapi.car.base;
 
+import com.ecarx.xui.adaptapi.FunctionStatus;
 /** Test double of the head unit's ECarX interface, only the methods the widget calls. */
 public interface ICarFunction {
+    FunctionStatus isFunctionSupported(int function);
+
+    FunctionStatus isFunctionSupported(int function, int zone);
+
+    int[] getSupportedFunctionValue(int function, int zone);
+
     interface IFunctionValueWatcher {
         void onCustomizeFunctionValueChanged(int function, int zone, float value);
 

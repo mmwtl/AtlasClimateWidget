@@ -124,12 +124,19 @@ final class Prefs {
     }
 
     int fanPresetCount() {
+        int supported = ClimateService.directFanPresetCount();
+        if (supported == 3) {
+            return supported;
+        }
         switch (fanPresets()) {
             case THREE:
                 return ClimateCommands.FAN_PRESETS_THREE.length;
             case FIVE:
                 return ClimateCommands.FAN_PRESETS_FIVE.length;
             default:
+                if (supported != 0) {
+                    return supported;
+                }
                 return carModel() == CarModel.CITYRAY
                         ? ClimateCommands.FAN_PRESETS_FIVE.length
                         : ClimateCommands.FAN_PRESETS_THREE.length;

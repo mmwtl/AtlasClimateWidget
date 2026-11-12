@@ -17,6 +17,21 @@ interface CarLink {
 
     boolean isDirect();
 
+    /** Whether fan −/+ should use the blower command; unknown support keeps the old choice. */
+    default boolean fanBlower(boolean modelDefault) {
+        return modelDefault;
+    }
+
+    /** Known number of AUTO profiles, or zero until the API reports its values. */
+    default int fanPresetCount() {
+        return 0;
+    }
+
+    /** Handles an action directly if supported; false leaves the existing bridge action. */
+    default boolean carFunction(String function) {
+        return false;
+    }
+
     void listenProperty(int id, int area, boolean isFloat);
 
     void requestProperty(int id, int area, boolean isFloat);

@@ -26,7 +26,7 @@
     <string name="status_no_answer_direct">Ответ автомобиля: ещё не получен</string>
     <string name="status_answer_direct">Ответ автомобиля: %1$d с назад</string>
     <string name="direct_car">Работать без GInputBridge (эксперимент)</string>
-    <string name="direct_car_hint">Виджет обращается к автомобилю сам, как FX11, и не ждёт запуска GInputBridge, поэтому после включения ГУ должен оживать быстрее. Режим пробный: если что-то показывается неверно или не переключается, напишите, что именно, и выключите его. «Мне жарко», «Я замёрз», меню климата и память сидений по-прежнему работают через GInputBridge.</string>
+    <string name="direct_car_hint">Виджет обращается к автомобилю сам, как FX11, и не ждёт запуска GInputBridge, поэтому после включения ГУ должен оживать быстрее. Режим пробный: если что-то показывается неверно или не переключается, напишите, что именно, и выключите его. «Мне жарко», «Я замёрз» и меню климата по-прежнему работают через GInputBridge. Память сидений работает напрямую, если API сообщает о её поддержке; иначе — через GInputBridge.</string>
     <string name="status_widgets">Виджетов на экране: %1$d</string>
     <string name="status_service_running">Служба синхронизации: работает</string>
     <string name="status_service_stopped">Служба синхронизации: остановлена</string>
@@ -118,10 +118,10 @@
     <string name="setup_fan_bar">Полоса</string>
     <string name="setup_fan_directions">Направление</string>
     <string name="fan_presets_title">Пресеты авто-обдува</string>
-    <string name="fan_presets_auto">По модели: Atlas — 3, Cityray — 5</string>
+    <string name="fan_presets_auto">Авто: по данным автомобиля или модели</string>
     <string name="fan_presets_three">3: Мягко · Комфорт · Сильно</string>
     <string name="fan_presets_five">5: Тихо · Мягко · Комфорт · Сильно · Макс</string>
-    <string name="fan_presets_hint">Сколько профилей авто-обдува показывает блок обдува в режиме пресетов. Пять значений есть в GInputBridge; какие из них поддерживает штатный климат вашей модели, лучше проверить на машине.</string>
+    <string name="fan_presets_hint">Сколько профилей авто-обдува показывает блок обдува в режиме пресетов. В прямом режиме известный набор из трёх профилей ограничивает выбор тремя; в режиме «Авто» число профилей определяется по данным автомобиля. Если данных нет или используется GInputBridge: Atlas — 3, Cityray — 5.</string>
     <string name="fan_preset_quiet">Тихо</string>
     <string name="fan_preset_strong">Сильно</string>
     <string name="fan_preset_max">Макс</string>
@@ -199,7 +199,7 @@
     <string name="fuel_offset_range">Допустимый диапазон: от −1000 до 1000</string>
     <string name="behaviour_title">Управление</string>
     <string name="car_model_title">Автомобиль</string>
-    <string name="car_model_hint">Влияет на обогрев лобового стекла, управление обдувом кнопками − и + и доступность функций: фары — только Preface, память сидений — Atlas и Cityray.</string>
+    <string name="car_model_hint">Определяет исходные настройки и доступность функций: фары — только Preface, память сидений — Atlas и Cityray. В прямом режиме код обогрева лобового и способ управления вентилятором выбираются по поддержке автомобиля; если поддержка неизвестна, используется выбранная модель.</string>
     <string name="car_model_atlas">Geely Atlas</string>
     <string name="car_model_preface">Geely Preface</string>
     <string name="car_model_cityray">Geely Cityray</string>
