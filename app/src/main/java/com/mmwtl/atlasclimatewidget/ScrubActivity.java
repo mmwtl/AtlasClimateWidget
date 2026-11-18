@@ -78,19 +78,12 @@ public final class ScrubActivity extends Activity {
             finish();
             return;
         }
-        Context app = getApplicationContext();
-        WidgetViews.Size size = widgetId == Prefs.PANEL_ID ? ClimateService.panelSize()
-                : ClimateService.widgetSize(app, widgetId);
-        if (size == null) {
-            finish();
-            return;
-        }
         String control = String.join("/", parts.subList(2, parts.size()));
         startForegroundService(new Intent(this, ClimateService.class)
                 .setAction(ClimateService.ACTION_CONTROL)
                 .setData(Uri.parse(WidgetViews.CONTROL_SCHEME + "://control/" + control)));
         sentValue = value;
-        if (!showScrubber(getIntent().getSourceBounds(), size)) {
+        if (!showScrubber(getIntent().getSourceBounds())) {
             finish();
         }
     }
@@ -98,6 +91,9 @@ public final class ScrubActivity extends Activity {
     private boolean parse(List<String> parts) {
         try {
             widgetId = Integer.parseInt(parts.get(0));
+            if (widgetId <= AppWidgetManager.INVALID_APPWIDGET_ID) {
+                return false;
+            }
             tappedCell = Integer.parseInt(parts.get(1));
             if ("temp".equals(parts.get(2)) && parts.size() >= 5) {
                 temperature = true;
@@ -115,7 +111,7 @@ public final class ScrubActivity extends Activity {
         return false;
     }
 
-    private boolean showScrubber(Rect source, WidgetViews.Size size) {
+    private boolean showScrubber(Rect source) {
         if (source == null || source.isEmpty()) {
             AppLog.warn("Widget host did not report the tapped bounds", null);
             return false;
@@ -126,6 +122,7 @@ public final class ScrubActivity extends Activity {
         config = prefs.widget(widgetId);
         model = prefs.carModel();
         ClimateState state = ClimateService.STORE.snapshot(SystemClock.elapsedRealtime());
+        WidgetViews.Size size = ClimateService.widgetSize(app, widgetId);
         plan = WidgetGeometry.plan(config, size.widthPx, size.heightPx,
                 app.getResources().getDisplayMetrics().density,
                 ClimateCommands.tempRange(state).steps());

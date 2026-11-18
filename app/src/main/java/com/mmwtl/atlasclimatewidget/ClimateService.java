@@ -102,9 +102,12 @@ public final class ClimateService extends Service {
 
     private record Panel(PanelHost host, WidgetViews.Size size) {}
 
+    record PanelFrame(RemoteViews views, WidgetConfig config, CarModel model,
+            WidgetGeometry.Plan plan, boolean auto) {}
+
     /** The climate window, which applies the views drawn here on the main thread. */
     interface PanelHost {
-        void show(RemoteViews views);
+        void show(PanelFrame frame);
     }
 
     private HandlerThread workerThread;
@@ -191,30 +194,24 @@ public final class ClimateService extends Service {
             }
             panel = size == null ? null : new Panel(host, size);
             FRAMES.remove(Prefs.PANEL_ID);
-            if (size == null && scrubbedWidget == Prefs.PANEL_ID) {
-                scrubbedWidget = AppWidgetManager.INVALID_APPWIDGET_ID;
-                scrubbedStrip = null;
-            }
         }
         if (size != null) {
             start(context, ACTION_REFRESH);
         }
     }
 
-    static WidgetViews.Size panelSize() {
-        Panel open = panel;
-        return open == null ? null : open.size;
-    }
-
     /** Draws the climate window; {@code null} after a failure. */
-    static RemoteViews buildPanel(Context context, Prefs prefs, ClimateState state,
+    static PanelFrame buildPanel(Context context, Prefs prefs, ClimateState state,
             WidgetViews.Size size, List<Bitmap> rendered) {
-        context = WidgetTheme.themed(context);
-        String scrubbed = scrubbedWidget == Prefs.PANEL_ID ? scrubbedStrip : null;
         try {
-            return WidgetViews.build(context, Prefs.PANEL_ID, prefs.widget(Prefs.PANEL_ID),
-                    state, prefs.carModel(), size, true, 1f, scrubbed, rendered,
-                    Long.MAX_VALUE);
+            WidgetConfig config = prefs.widget(Prefs.PANEL_ID);
+            CarModel model = prefs.carModel();
+            WidgetGeometry.Plan plan = WidgetGeometry.plan(config, size.widthPx, size.heightPx,
+                    context.getResources().getDisplayMetrics().density,
+                    ClimateCommands.tempRange(state).steps());
+            boolean auto = ClimateCommands.fanState(state).auto;
+            return new PanelFrame(WidgetViews.buildPanel(context, config, state, model, plan,
+                    auto, rendered), config, model, plan, auto);
         } catch (RuntimeException error) {
             AppLog.warn("Climate window render failed", error);
             return null;
@@ -822,14 +819,13 @@ public final class ClimateService extends Service {
         }
         WidgetViews.Size size = open.size;
         Context context = WidgetTheme.themed(this);
-        String scrubbed = scrubbedWidget == Prefs.PANEL_ID ? scrubbedStrip : null;
-        String key = prefs.widget(Prefs.PANEL_ID).toJson() + "|" + WidgetTheme.of(context).night
-                + "|" + size.widthPx + "x" + size.heightPx + "|" + scrubbed;
         List<Bitmap> bitmaps = new ArrayList<>();
-        RemoteViews views = buildPanel(this, prefs, state, size, bitmaps);
-        if (views == null) {
+        PanelFrame rendered = buildPanel(context, prefs, state, size, bitmaps);
+        if (rendered == null) {
             return;
         }
+        String key = rendered.config.toJson() + "|" + WidgetTheme.of(context).night
+                + "|" + size.widthPx + "x" + size.heightPx + "|" + rendered.auto;
         Frame frame = new Frame(key, bitmaps);
         synchronized (FRAMES) {
             if (panel != open || (!force && frame.sameAs(FRAMES.get(Prefs.PANEL_ID)))) {
@@ -840,7 +836,7 @@ public final class ClimateService extends Service {
         MAIN.post(() -> {
             // The window may have closed or been replaced meanwhile.
             if (panel == open) {
-                open.host.show(views);
+                open.host.show(rendered);
             }
         });
     }

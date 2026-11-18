@@ -54,6 +54,9 @@ final class WidgetRenderer {
     private final Rect bounds = new Rect();
     /** Console zone whose bar is being dragged; its large value gives way to the drag bubble. */
     private int draggedZone = -1;
+    private int previewZone;
+    private int previewStep;
+    private int previewFanLevel;
 
     WidgetRenderer(Context context, WidgetConfig config, ClimateState state, CarModel model,
             WidgetGeometry.Plan plan) {
@@ -78,6 +81,24 @@ final class WidgetRenderer {
             }
         }
         return this;
+    }
+
+    /** Shows a local selection while the panel waits for the finger to lift. */
+    WidgetRenderer withBarPreview(WidgetGeometry.Strip strip, int step) {
+        if (strip.row.kind == WidgetGeometry.RowKind.TEMPERATURE) {
+            previewZone = strip.row.index == 0 ? Hvac.ZONE_DRIVER : Hvac.ZONE_PASSENGER;
+            previewStep = step;
+        } else {
+            previewFanLevel = step + 1;
+        }
+        return this;
+    }
+
+    private Float barTemperature(int zone) {
+        if (zone == previewZone) {
+            return range.valueAt(previewStep);
+        }
+        return ClimateCommands.temperature(state, zone);
     }
 
     Bitmap render(WidgetGeometry.Strip strip) {
@@ -357,7 +378,7 @@ final class WidgetRenderer {
                 x1 + thickness / 2f, centerY + thickness / 2f);
         canvas.drawRoundRect(rect, thickness / 2f, thickness / 2f, paint);
 
-        Float value = ClimateCommands.temperature(state, zone);
+        Float value = barTemperature(zone);
         float knobX = (x0 + x1) / 2f;
         String label = "--°";
         int knobColor = theme.track;
@@ -418,7 +439,7 @@ final class WidgetRenderer {
         if (strip.row.index == draggedZone) {
             return;
         }
-        Float value = ClimateCommands.temperature(state, zone);
+        Float value = barTemperature(zone);
         textPaint.setTypeface(MEDIUM);
         textPaint.setTextSize(valueHeight * 0.74f);
         textPaint.setColor(value == null ? theme.textSecondary : theme.text);
@@ -617,7 +638,7 @@ final class WidgetRenderer {
         rect.set(plan.padding, cy - thickness / 2f, plan.width - plan.padding,
                 cy + thickness / 2f);
         canvas.drawRoundRect(rect, thickness / 2f, thickness / 2f, paint);
-        Float value = ClimateCommands.temperature(state, zone);
+        Float value = barTemperature(zone);
         if (value == null) {
             return;
         }
@@ -711,11 +732,13 @@ final class WidgetRenderer {
         float segmentGap = Math.max(2f, 3f * dp);
         float start = plan.padding + cell * strip.stepStart;
         // In AUTO the bar fan layout shows the preset levels in the speeds' place.
-        boolean presets = fan.auto && config.fanLayout == WidgetConfig.FanLayout.BAR;
+        boolean choosing = previewFanLevel > 0;
+        boolean presets = fan.auto && !choosing && config.fanLayout == WidgetConfig.FanLayout.BAR;
+        boolean autoBadge = fan.auto && !choosing && !presets;
         int levels = presets ? ClimateCommands.fanPresets(config.fanPresetCount).length
                 : Hvac.FAN_SPEED_LEVEL_COUNT;
-        int litLevels = presets ? ClimateCommands.fanPreset(state, config.fanPresetCount) + 1
-                : fan.level;
+        int litLevels = choosing ? previewFanLevel : presets
+                ? ClimateCommands.fanPreset(state, config.fanPresetCount) + 1 : fan.level;
         boolean known = presets
                 ? state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL) != null
                 : fan.known && !fan.auto;
@@ -724,9 +747,9 @@ final class WidgetRenderer {
             float left = start + (level - 1) * step
                     + (level == 1 && strip.buttonCells == 0 ? lead : segmentGap / 2f);
             float right = start + level * step - segmentGap / 2f;
-            boolean on = known && !off && level <= litLevels;
+            boolean on = (choosing || (known && !off)) && level <= litLevels;
             int color = on ? lit : theme.track;
-            if (fan.auto && !presets) {
+            if (autoBadge) {
                 color = withAlpha(lit, 90);
             }
             paint.setShader(null);
@@ -734,7 +757,7 @@ final class WidgetRenderer {
             rect.set(left, centerY - segmentHeight / 2f, right, centerY + segmentHeight / 2f);
             canvas.drawRoundRect(rect, segmentHeight / 2f, segmentHeight / 2f, paint);
         }
-        if (fan.auto && !presets) {
+        if (autoBadge) {
             textPaint.setTypeface(Typeface.DEFAULT_BOLD);
             textPaint.setTextSize(Math.min(13f * dp, height * 0.36f));
             String text = "AUTO";

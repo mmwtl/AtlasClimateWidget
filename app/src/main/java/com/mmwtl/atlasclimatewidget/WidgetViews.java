@@ -49,25 +49,14 @@ final class WidgetViews {
     static RemoteViews build(Context context, int widgetId, WidgetConfig config,
             ClimateState state, CarModel model, Size size, boolean interactive, float quality,
             String scrubbedStrip, List<Bitmap> rendered) {
-        return build(context, widgetId, config, state, model, size, interactive, quality,
-                scrubbedStrip, rendered, MAX_BITMAP_BYTES);
-    }
-
-    /**
-     * @param maxBytes bitmap payload limit; the climate window applies the views in this
-     *         process, without Binder, and keeps full resolution
-     */
-    static RemoteViews build(Context context, int widgetId, WidgetConfig config,
-            ClimateState state, CarModel model, Size size, boolean interactive, float quality,
-            String scrubbedStrip, List<Bitmap> rendered, long maxBytes) {
         float density = context.getResources().getDisplayMetrics().density;
         int steps = ClimateCommands.tempRange(state).steps();
         WidgetGeometry.Plan full = WidgetGeometry.plan(config, size.widthPx, size.heightPx,
                 density, steps);
         float bytes = full.fullWidth * full.totalHeight() * 4f;
         float scale = quality;
-        if (bytes * scale * scale > maxBytes) {
-            scale = (float) Math.sqrt(maxBytes / bytes);
+        if (bytes * scale * scale > MAX_BITMAP_BYTES) {
+            scale = (float) Math.sqrt(MAX_BITMAP_BYTES / bytes);
         }
         // Upscaled strips round once more in the host, up to a pixel each; leave room for it.
         WidgetGeometry.Plan plan = scale >= 0.999f
@@ -75,7 +64,20 @@ final class WidgetViews {
                 : WidgetGeometry.plan(config, size.widthPx * scale,
                 Math.max(0f, size.heightPx - full.strips.size()) * scale, density * scale,
                 steps);
+        return build(context, widgetId, config, state, model, plan, scale, interactive,
+                ClimateCommands.fanState(state).auto, scrubbedStrip, rendered);
+    }
 
+    /** The panel draws at full resolution and handles drags in its Activity. */
+    static RemoteViews buildPanel(Context context, WidgetConfig config, ClimateState state,
+            CarModel model, WidgetGeometry.Plan plan, boolean auto, List<Bitmap> rendered) {
+        return build(context, AppWidgetManager.INVALID_APPWIDGET_ID, config, state, model, plan,
+                1f, true, auto, null, rendered);
+    }
+
+    private static RemoteViews build(Context context, int widgetId, WidgetConfig config,
+            ClimateState state, CarModel model, WidgetGeometry.Plan plan, float scale,
+            boolean interactive, boolean auto, String scrubbedStrip, List<Bitmap> rendered) {
         String packageName = context.getPackageName();
         RemoteViews root = new RemoteViews(packageName, R.layout.widget_root);
         root.removeAllViews(R.id.widget_root);
@@ -94,7 +96,6 @@ final class WidgetViews {
         }
         WidgetRenderer renderer = new WidgetRenderer(context, config, state, model, plan)
                 .withDraggedBar(scrubbedStrip);
-        boolean auto = ClimateCommands.fanState(state).auto;
         int pressed = WidgetTheme.of(context).night
                 ? R.drawable.zone_pressed_night : R.drawable.zone_pressed_day;
         for (WidgetGeometry.Strip strip : plan.strips) {
