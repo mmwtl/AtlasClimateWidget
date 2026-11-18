@@ -85,9 +85,12 @@ public final class MainActivity extends ScaledActivity {
     private int editedWidget = TEMPLATE;
     private WidgetConfig config;
     private int[] widgetIds = new int[0];
+    /** Layout ids in the selector's order: the placed widgets, the window, the template. */
+    private int[] layoutIds = {Prefs.PANEL_ID, TEMPLATE};
 
     private ScrollView settingsScroll;
     private LinearLayout previewPanel;
+    private LinearLayout widgetHeightCard;
     private TextView previewTitle;
     private TextView statusText;
     private Spinner widgetSpinner;
@@ -143,6 +146,9 @@ public final class MainActivity extends ScaledActivity {
     private int requestedWidget(android.content.Intent intent) {
         int requested = intent == null ? TEMPLATE
                 : intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, TEMPLATE);
+        if (requested == Prefs.PANEL_ID) {
+            return requested;
+        }
         for (int id : widgetIds) {
             if (id == requested) {
                 return id;
@@ -276,7 +282,7 @@ public final class MainActivity extends ScaledActivity {
         widgetSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                int target = position < widgetIds.length ? widgetIds[position] : TEMPLATE;
+                int target = position < layoutIds.length ? layoutIds[position] : TEMPLATE;
                 if (target != editedWidget) {
                     editedWidget = target;
                     config = loadConfig(target);
@@ -326,12 +332,12 @@ public final class MainActivity extends ScaledActivity {
     }
 
     private void buildBlocksTab(LinearLayout page) {
-        LinearLayout height = Ui.card(this);
-        height.addView(Ui.heading(this, R.string.height_title, 20));
-        height.addView(hint(R.string.height_fill_hint));
+        widgetHeightCard = Ui.card(this);
+        widgetHeightCard.addView(Ui.heading(this, R.string.height_title, 20));
+        widgetHeightCard.addView(hint(R.string.height_fill_hint));
         heightReport = hint(R.string.height_report_unknown);
-        height.addView(heightReport);
-        page.addView(height);
+        widgetHeightCard.addView(heightReport);
+        page.addView(widgetHeightCard);
 
         LinearLayout blocks = Ui.card(this);
         blocks.addView(Ui.heading(this, R.string.blocks_title, 20));
@@ -379,6 +385,7 @@ public final class MainActivity extends ScaledActivity {
         page.addView(buildStatusCard());
         page.addView(buildBehaviourCard());
         page.addView(buildThemeCard());
+        page.addView(buildPanelCard());
         page.addView(buildFuelCard());
         page.addView(buildInterfaceCard());
         page.addView(buildBackupCard());
@@ -452,6 +459,64 @@ public final class MainActivity extends ScaledActivity {
         actions.addView(applyAll, weighted(0, 8));
         actions.addView(reset, weighted(0, 0));
         card.addView(actions);
+        return card;
+    }
+
+    /** The climate window: how to bind it, its size, place and auto-close. */
+    private LinearLayout buildPanelCard() {
+        LinearLayout card = Ui.card(this);
+        card.addView(Ui.heading(this, R.string.panel_shortcut, 20));
+        card.addView(hint(R.string.panel_hint));
+
+        addSlider(card, getString(R.string.panel_width), Prefs.PANEL_WIDTH_MIN,
+                Prefs.PANEL_WIDTH_MAX, prefs.panelWidthPercent(), value -> value + "%",
+                prefs::setPanelWidthPercent, null);
+
+        card.addView(label(R.string.panel_position));
+        LinearLayout positions = new LinearLayout(this);
+        positions.setOrientation(LinearLayout.HORIZONTAL);
+        Ui.topMargin(positions, 8);
+        TextView center = Ui.segment(this, R.string.panel_center);
+        TextView bottom = Ui.segment(this, R.string.panel_bottom);
+        Ui.setSegmentSelected(this, center, !prefs.panelBottom());
+        Ui.setSegmentSelected(this, bottom, prefs.panelBottom());
+        center.setOnClickListener(view -> {
+            prefs.setPanelBottom(false);
+            Ui.setSegmentSelected(this, center, true);
+            Ui.setSegmentSelected(this, bottom, false);
+        });
+        bottom.setOnClickListener(view -> {
+            prefs.setPanelBottom(true);
+            Ui.setSegmentSelected(this, center, false);
+            Ui.setSegmentSelected(this, bottom, true);
+        });
+        Ui.addSegment(positions, center);
+        Ui.addSegment(positions, bottom);
+        card.addView(positions);
+
+        addSlider(card, getString(R.string.panel_close), 0, Prefs.PANEL_CLOSE_MAX,
+                prefs.panelCloseSeconds(), value -> value == 0
+                        ? getString(R.string.panel_close_never)
+                        : getString(R.string.panel_close_seconds, value),
+                prefs::setPanelCloseSeconds, null);
+
+        Button edit = Ui.button(this, R.string.panel_edit);
+        Ui.topMargin(edit, 12);
+        edit.setOnClickListener(view -> {
+            if (editedWidget != Prefs.PANEL_ID) {
+                editedWidget = Prefs.PANEL_ID;
+                config = loadConfig(Prefs.PANEL_ID);
+                rebuildEditor();
+                reloadWidgetList();
+            }
+            selectTab(TAB_BLOCKS);
+        });
+        card.addView(edit);
+        Button open = Ui.button(this, R.string.panel_open);
+        Ui.topMargin(open, 10);
+        open.setOnClickListener(view -> startActivity(ClimatePanelActivity.intent(this)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
+        card.addView(open);
         return card;
     }
 
@@ -934,6 +999,7 @@ public final class MainActivity extends ScaledActivity {
         if (blocksHost == null) {
             return;
         }
+        widgetHeightCard.setVisibility(editedWidget == Prefs.PANEL_ID ? View.GONE : View.VISIBLE);
         rebuildBlocks();
         rebuildTiles();
         rebuildFunctions();
@@ -1330,20 +1396,29 @@ public final class MainActivity extends ScaledActivity {
 
     private void reloadWidgetList() {
         widgetIds = ClimateService.widgetIds(this);
+        layoutIds = new int[widgetIds.length + 2];
+        System.arraycopy(widgetIds, 0, layoutIds, 0, widgetIds.length);
+        layoutIds[widgetIds.length] = Prefs.PANEL_ID;
+        layoutIds[widgetIds.length + 1] = TEMPLATE;
         float density = getApplicationContext().getResources().getDisplayMetrics().density;
         List<String> labels = new ArrayList<>();
-        int selection = widgetIds.length;
+        int selection = -1;
         for (int index = 0; index < widgetIds.length; index++) {
             WidgetViews.Size size = ClimateService.widgetSize(getApplicationContext(),
                     widgetIds[index]);
             labels.add(getString(R.string.widget_item, index + 1,
                     WidgetViews.describe(size, density)));
-            if (widgetIds[index] == editedWidget) {
+        }
+        labels.add(getString(R.string.panel_shortcut));
+        labels.add(getString(R.string.widget_template));
+        for (int index = 0; index < layoutIds.length; index++) {
+            if (layoutIds[index] == editedWidget) {
                 selection = index;
             }
         }
-        labels.add(getString(R.string.widget_template));
-        if (selection == widgetIds.length && editedWidget != TEMPLATE) {
+        if (selection < 0) {
+            // The edited widget was removed from the screen.
+            selection = layoutIds.length - 1;
             editedWidget = TEMPLATE;
             config = loadConfig(TEMPLATE);
             rebuildEditor();
@@ -1424,6 +1499,8 @@ public final class MainActivity extends ScaledActivity {
         if (editedWidget == TEMPLATE) {
             float density = getApplicationContext().getResources().getDisplayMetrics().density;
             size = new WidgetViews.Size(Math.round(WidgetGeometry.DEFAULT_WIDTH_DP * density), 0);
+        } else if (editedWidget == Prefs.PANEL_ID) {
+            size = panelSize(config);
         } else {
             size = ClimateService.widgetSize(getApplicationContext(), editedWidget);
         }
@@ -1452,6 +1529,11 @@ public final class MainActivity extends ScaledActivity {
         } catch (RuntimeException error) {
             AppLog.warn("Preview failed", error);
         }
+    }
+
+    private WidgetViews.Size panelSize(WidgetConfig layout) {
+        return ClimatePanelActivity.size(this, prefs.panelWidthPercent(), layout,
+                ClimateService.STORE.snapshot(SystemClock.elapsedRealtime()));
     }
 
     private Context withEditedMode(Context base) {

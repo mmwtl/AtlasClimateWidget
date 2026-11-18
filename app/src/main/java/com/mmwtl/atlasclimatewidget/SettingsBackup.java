@@ -34,6 +34,11 @@ final class SettingsBackup {
     float fuelOffset = Fuel.OFFSET;
     WidgetConfig template = new WidgetConfig();
     final List<WidgetConfig> widgets = new ArrayList<>();
+    /** The climate window's own layout, or {@code null} in older backups. */
+    WidgetConfig panel;
+    int panelWidthPercent = Prefs.PANEL_WIDTH_DEFAULT;
+    boolean panelBottom;
+    int panelCloseSeconds = Prefs.PANEL_CLOSE_DEFAULT;
 
     String toJson(String appVersion) {
         try {
@@ -63,6 +68,14 @@ final class SettingsBackup {
                 layouts.put(new JSONObject(widget.toJson()));
             }
             json.put("widgets", layouts);
+            JSONObject window = new JSONObject();
+            window.put("widthPercent", panelWidthPercent);
+            window.put("bottom", panelBottom);
+            window.put("closeSeconds", panelCloseSeconds);
+            if (panel != null) {
+                window.put("layout", new JSONObject(panel.toJson()));
+            }
+            json.put("climateWindow", window);
             return json.toString(2);
         } catch (JSONException error) {
             throw new IllegalStateException(error);
@@ -116,6 +129,18 @@ final class SettingsBackup {
                 if (layout != null) {
                     backup.widgets.add(WidgetConfig.fromJson(layout.toString()));
                 }
+            }
+        }
+        JSONObject window = json.optJSONObject("climateWindow");
+        if (window != null) {
+            backup.panelWidthPercent = Prefs.clampPanelWidth(
+                    window.optInt("widthPercent", Prefs.PANEL_WIDTH_DEFAULT));
+            backup.panelBottom = window.optBoolean("bottom", false);
+            backup.panelCloseSeconds = Prefs.clampPanelClose(
+                    window.optInt("closeSeconds", Prefs.PANEL_CLOSE_DEFAULT));
+            JSONObject layout = window.optJSONObject("layout");
+            if (layout != null) {
+                backup.panel = WidgetConfig.fromJson(layout.toString());
             }
         }
         return backup;

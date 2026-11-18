@@ -21,6 +21,22 @@ final class Prefs {
     static final String KEY_FUEL_MULTIPLIER = "fuel_multiplier";
     static final String KEY_FUEL_OFFSET = "fuel_offset";
     static final String KEY_WIDGET_PREFIX = "widget_config_";
+    static final String KEY_PANEL_WIDTH = "panel_width_percent";
+    static final String KEY_PANEL_BOTTOM = "panel_bottom";
+    static final String KEY_PANEL_CLOSE = "panel_close_seconds";
+
+    /**
+     * Layout slot of the climate window ({@link ClimatePanelActivity}). Widget ids are never
+     * negative and the template is {@code INVALID_APPWIDGET_ID} (0), so the window's layout is
+     * kept beside the widgets' without clashing with either.
+     */
+    static final int PANEL_ID = -2;
+    static final int PANEL_WIDTH_MIN = 50;
+    static final int PANEL_WIDTH_MAX = 100;
+    static final int PANEL_WIDTH_DEFAULT = 92;
+    /** Seconds without a touch before the window closes; 0 keeps it open. */
+    static final int PANEL_CLOSE_MAX = 60;
+    static final int PANEL_CLOSE_DEFAULT = 15;
 
     private final SharedPreferences preferences;
 
@@ -188,7 +204,8 @@ final class Prefs {
 
     WidgetConfig widget(int widgetId) {
         String raw = preferences.getString(KEY_WIDGET_PREFIX + widgetId, null);
-        return raw == null ? template() : resolved(WidgetConfig.fromJson(raw));
+        return raw == null && widgetId != PANEL_ID
+                ? template() : resolved(WidgetConfig.fromJson(raw));
     }
 
     /** Whether the widget has its own saved layout rather than the template. */
@@ -202,6 +219,41 @@ final class Prefs {
 
     void removeWidget(int widgetId) {
         preferences.edit().remove(KEY_WIDGET_PREFIX + widgetId).apply();
+    }
+
+    /** Width of the climate window in percent of the screen width. */
+    int panelWidthPercent() {
+        return clampPanelWidth(preferences.getInt(KEY_PANEL_WIDTH, PANEL_WIDTH_DEFAULT));
+    }
+
+    void setPanelWidthPercent(int value) {
+        preferences.edit().putInt(KEY_PANEL_WIDTH, clampPanelWidth(value)).apply();
+    }
+
+    /** Whether the climate window sits at the bottom of the screen rather than its centre. */
+    boolean panelBottom() {
+        return preferences.getBoolean(KEY_PANEL_BOTTOM, false);
+    }
+
+    void setPanelBottom(boolean value) {
+        preferences.edit().putBoolean(KEY_PANEL_BOTTOM, value).apply();
+    }
+
+    /** Seconds without a touch before the climate window closes; 0 never. */
+    int panelCloseSeconds() {
+        return clampPanelClose(preferences.getInt(KEY_PANEL_CLOSE, PANEL_CLOSE_DEFAULT));
+    }
+
+    void setPanelCloseSeconds(int value) {
+        preferences.edit().putInt(KEY_PANEL_CLOSE, clampPanelClose(value)).apply();
+    }
+
+    static int clampPanelWidth(int value) {
+        return Math.max(PANEL_WIDTH_MIN, Math.min(PANEL_WIDTH_MAX, value));
+    }
+
+    static int clampPanelClose(int value) {
+        return Math.max(0, Math.min(PANEL_CLOSE_MAX, value));
     }
 
     /** Everything the user set, with placed widgets in id order. */
@@ -221,6 +273,10 @@ final class Prefs {
         for (int id : sorted(widgetIds)) {
             backup.widgets.add(widget(id));
         }
+        backup.panel = widget(PANEL_ID);
+        backup.panelWidthPercent = panelWidthPercent();
+        backup.panelBottom = panelBottom();
+        backup.panelCloseSeconds = panelCloseSeconds();
         return backup;
     }
 
@@ -236,7 +292,15 @@ final class Prefs {
                 .putBoolean(KEY_FUEL_CUSTOM_FORMULA, backup.fuelCustomFormula)
                 .putFloat(KEY_FUEL_MULTIPLIER, backup.fuelMultiplier)
                 .putFloat(KEY_FUEL_OFFSET, backup.fuelOffset)
-                .putString(KEY_TEMPLATE, backup.template.toJson());
+                .putString(KEY_TEMPLATE, backup.template.toJson())
+                .putInt(KEY_PANEL_WIDTH, clampPanelWidth(backup.panelWidthPercent))
+                .putBoolean(KEY_PANEL_BOTTOM, backup.panelBottom)
+                .putInt(KEY_PANEL_CLOSE, clampPanelClose(backup.panelCloseSeconds));
+        if (backup.panel != null) {
+            editor.putString(KEY_WIDGET_PREFIX + PANEL_ID, backup.panel.toJson());
+        } else {
+            editor.remove(KEY_WIDGET_PREFIX + PANEL_ID);
+        }
         if (backup.uiScaleTenths > 0) {
             editor.putInt(KEY_UI_SCALE_TENTHS, backup.uiScaleTenths);
         }

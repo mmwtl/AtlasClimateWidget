@@ -37,9 +37,20 @@
     <string name="pin_widget_manual">Добавьте виджет «Atlas Climate» через меню виджетов лаунчера.</string>
 
     <string name="edited_widget_title">Раскладка виджета</string>
-    <string name="edited_widget_hint">У каждого виджета на экране своя раскладка; какой из них редактируется, выбирается над предпросмотром. Шаблон применяется к новым виджетам.</string>
+    <string name="edited_widget_hint">Выберите виджет или окно климата над предпросмотром. Шаблон применяется к новым виджетам.</string>
     <string name="widget_item">Виджет %1$d · %2$s</string>
     <string name="widget_template">Шаблон для новых виджетов</string>
+    <string name="panel_shortcut">Окно климата</string>
+    <string name="panel_hint">Чтобы открывать панель кнопкой на руле, в GInputBridge назначьте действие «Запуск ярлыка» и выберите «Окно климата». Повторное нажатие, кнопка «Назад» или касание вне панели закроют окно.</string>
+    <string name="panel_open">Открыть окно</string>
+    <string name="panel_edit">Настроить раскладку окна</string>
+    <string name="panel_width">Ширина окна</string>
+    <string name="panel_position">Положение</string>
+    <string name="panel_center">По центру</string>
+    <string name="panel_bottom">Внизу</string>
+    <string name="panel_close">Закрывать без касаний через</string>
+    <string name="panel_close_never">не закрывать</string>
+    <string name="panel_close_seconds">%1$d с</string>
     <string name="apply_to_all">Применить ко всем</string>
     <string name="applied_to_all">Раскладка применена ко всем виджетам и шаблону</string>
     <string name="reset_layout">Сбросить</string>
@@ -219,7 +230,7 @@
     <string name="interface_scale">Масштаб</string>
 
     <string name="backup_title">Импорт и экспорт настроек</string>
-    <string name="backup_hint">JSON содержит раскладки всех виджетов, шаблон для новых виджетов, модель автомобиля, шаг температуры, пресеты обдува, порядок уровней, формулу топлива и масштаб приложения. Экспорт отправляет файл через «Поделиться» — например, себе в Telegram. Разрешения и работа службы не переносятся.</string>
+    <string name="backup_hint">JSON содержит раскладки виджетов, шаблон, раскладку и параметры окна климата, модель автомобиля, шаг температуры, пресеты обдува, порядок уровней, формулу топлива и масштаб приложения. Экспорт отправляет файл через «Поделиться» — например, себе в Telegram. Разрешения и работа службы не переносятся.</string>
     <string name="backup_export">Экспортировать настройки в JSON</string>
     <string name="backup_import">Импортировать настройки из JSON</string>
     <string name="backup_share_title">Экспорт настроек</string>

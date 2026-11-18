@@ -22,6 +22,11 @@ public final class SettingsBackupTest {
         backup.fuelMultiplier = 0.466f;
         backup.fuelOffset = 4.4f;
         backup.template.columns = 4;
+        backup.panel = new WidgetConfig();
+        backup.panel.columns = 3;
+        backup.panelWidthPercent = 75;
+        backup.panelBottom = true;
+        backup.panelCloseSeconds = 0;
         WidgetConfig first = new WidgetConfig();
         first.style = WidgetConfig.Style.CONSOLE;
         WidgetConfig second = new WidgetConfig();
@@ -43,6 +48,10 @@ public final class SettingsBackupTest {
             assertEquals(0.466f, copy.fuelMultiplier, 1e-6f);
             assertEquals(4.4f, copy.fuelOffset, 1e-6f);
             assertEquals(4, copy.template.columns);
+            assertEquals(3, copy.panel.columns);
+            assertEquals(75, copy.panelWidthPercent);
+            assertTrue(copy.panelBottom);
+            assertEquals(0, copy.panelCloseSeconds);
             assertEquals(2, copy.widgets.size());
             assertEquals(WidgetConfig.Style.CONSOLE, copy.widgets.get(0).style);
             assertTrue(copy.widgets.get(1).functions.contains(ClimateFunction.ME_HOT));
@@ -104,5 +113,9 @@ public final class SettingsBackupTest {
         assertEquals(Fuel.MULTIPLIER, parsed.fuelMultiplier, 0f);
         assertTrue(parsed.widgets.isEmpty());
         assertEquals(new WidgetConfig().columns, parsed.template.columns);
+        assertNull(parsed.panel);
+        assertEquals(Prefs.PANEL_WIDTH_DEFAULT, parsed.panelWidthPercent);
+        assertFalse(parsed.panelBottom);
+        assertEquals(Prefs.PANEL_CLOSE_DEFAULT, parsed.panelCloseSeconds);
     }
 }

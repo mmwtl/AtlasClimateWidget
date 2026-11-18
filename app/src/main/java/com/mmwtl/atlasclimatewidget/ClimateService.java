@@ -98,6 +98,14 @@ public final class ClimateService extends Service {
     private static volatile String scrubbedStrip;
     private static volatile boolean directActive;
     private static volatile boolean firstPushLogged;
+    private static volatile Panel panel;
+
+    private record Panel(PanelHost host, WidgetViews.Size size) {}
+
+    /** The climate window, which applies the views drawn here on the main thread. */
+    interface PanelHost {
+        void show(RemoteViews views);
+    }
 
     private HandlerThread workerThread;
     private Handler worker;
@@ -170,6 +178,47 @@ public final class ClimateService extends Service {
     /** Called on the main thread after every state change while the listener is set. */
     static void setStateListener(Runnable listener) {
         stateListener = listener;
+    }
+
+    /**
+     * Attaches the open climate window, or detaches its host when size is null. While attached the
+     * service keeps running, watches the window's functions and draws it with the widgets.
+     */
+    static void setPanel(Context context, PanelHost host, WidgetViews.Size size) {
+        synchronized (FRAMES) {
+            if (size == null && (panel == null || panel.host != host)) {
+                return;
+            }
+            panel = size == null ? null : new Panel(host, size);
+            FRAMES.remove(Prefs.PANEL_ID);
+            if (size == null && scrubbedWidget == Prefs.PANEL_ID) {
+                scrubbedWidget = AppWidgetManager.INVALID_APPWIDGET_ID;
+                scrubbedStrip = null;
+            }
+        }
+        if (size != null) {
+            start(context, ACTION_REFRESH);
+        }
+    }
+
+    static WidgetViews.Size panelSize() {
+        Panel open = panel;
+        return open == null ? null : open.size;
+    }
+
+    /** Draws the climate window; {@code null} after a failure. */
+    static RemoteViews buildPanel(Context context, Prefs prefs, ClimateState state,
+            WidgetViews.Size size, List<Bitmap> rendered) {
+        context = WidgetTheme.themed(context);
+        String scrubbed = scrubbedWidget == Prefs.PANEL_ID ? scrubbedStrip : null;
+        try {
+            return WidgetViews.build(context, Prefs.PANEL_ID, prefs.widget(Prefs.PANEL_ID),
+                    state, prefs.carModel(), size, true, 1f, scrubbed, rendered,
+                    Long.MAX_VALUE);
+        } catch (RuntimeException error) {
+            AppLog.warn("Climate window render failed", error);
+            return null;
+        }
     }
 
     static int[] widgetIds(Context context) {
@@ -542,7 +591,8 @@ public final class ClimateService extends Service {
     }
 
     private boolean shouldStop() {
-        return widgetIds(this).length == 0 && SystemClock.elapsedRealtime() > keepAliveUntil;
+        return widgetIds(this).length == 0 && panel == null
+                && SystemClock.elapsedRealtime() > keepAliveUntil;
     }
 
     private List<WidgetConfig> configs() {
@@ -550,8 +600,12 @@ public final class ClimateService extends Service {
         for (int id : widgetIds(this)) {
             configs.add(prefs.widget(id));
         }
-        if (SystemClock.elapsedRealtime() <= keepAliveUntil) {
+        boolean settingsOpen = SystemClock.elapsedRealtime() <= keepAliveUntil;
+        if (settingsOpen) {
             configs.add(prefs.template());
+        }
+        if (settingsOpen || panel != null) {
+            configs.add(prefs.widget(Prefs.PANEL_ID));
         }
         return configs;
     }
@@ -741,6 +795,7 @@ public final class ClimateService extends Service {
         for (int widgetId : widgetIds(this)) {
             update(this, manager, prefs, state, widgetId, force);
         }
+        renderPanel(state, force);
         if (state.isConnected() != lastConnected) {
             lastConnected = state.isConnected();
             startInForeground();
@@ -754,6 +809,40 @@ public final class ClimateService extends Service {
     static void update(Context context, AppWidgetManager manager, Prefs prefs,
             ClimateState state, int widgetId) {
         update(context, manager, prefs, state, widgetId, true);
+    }
+
+    /**
+     * Draws the open climate window like a widget. Unchanged content is skipped for the same
+     * reason as there: replacing the views cancels a tap in progress.
+     */
+    private void renderPanel(ClimateState state, boolean force) {
+        Panel open = panel;
+        if (open == null) {
+            return;
+        }
+        WidgetViews.Size size = open.size;
+        Context context = WidgetTheme.themed(this);
+        String scrubbed = scrubbedWidget == Prefs.PANEL_ID ? scrubbedStrip : null;
+        String key = prefs.widget(Prefs.PANEL_ID).toJson() + "|" + WidgetTheme.of(context).night
+                + "|" + size.widthPx + "x" + size.heightPx + "|" + scrubbed;
+        List<Bitmap> bitmaps = new ArrayList<>();
+        RemoteViews views = buildPanel(this, prefs, state, size, bitmaps);
+        if (views == null) {
+            return;
+        }
+        Frame frame = new Frame(key, bitmaps);
+        synchronized (FRAMES) {
+            if (panel != open || (!force && frame.sameAs(FRAMES.get(Prefs.PANEL_ID)))) {
+                return;
+            }
+            FRAMES.put(Prefs.PANEL_ID, frame);
+        }
+        MAIN.post(() -> {
+            // The window may have closed or been replaced meanwhile.
+            if (panel == open) {
+                open.host.show(views);
+            }
+        });
     }
 
     /**

@@ -49,14 +49,25 @@ final class WidgetViews {
     static RemoteViews build(Context context, int widgetId, WidgetConfig config,
             ClimateState state, CarModel model, Size size, boolean interactive, float quality,
             String scrubbedStrip, List<Bitmap> rendered) {
+        return build(context, widgetId, config, state, model, size, interactive, quality,
+                scrubbedStrip, rendered, MAX_BITMAP_BYTES);
+    }
+
+    /**
+     * @param maxBytes bitmap payload limit; the climate window applies the views in this
+     *         process, without Binder, and keeps full resolution
+     */
+    static RemoteViews build(Context context, int widgetId, WidgetConfig config,
+            ClimateState state, CarModel model, Size size, boolean interactive, float quality,
+            String scrubbedStrip, List<Bitmap> rendered, long maxBytes) {
         float density = context.getResources().getDisplayMetrics().density;
         int steps = ClimateCommands.tempRange(state).steps();
         WidgetGeometry.Plan full = WidgetGeometry.plan(config, size.widthPx, size.heightPx,
                 density, steps);
         float bytes = full.fullWidth * full.totalHeight() * 4f;
         float scale = quality;
-        if (bytes * scale * scale > MAX_BITMAP_BYTES) {
-            scale = (float) Math.sqrt(MAX_BITMAP_BYTES / bytes);
+        if (bytes * scale * scale > maxBytes) {
+            scale = (float) Math.sqrt(maxBytes / bytes);
         }
         // Upscaled strips round once more in the host, up to a pixel each; leave room for it.
         WidgetGeometry.Plan plan = scale >= 0.999f

@@ -78,12 +78,19 @@ public final class ScrubActivity extends Activity {
             finish();
             return;
         }
+        Context app = getApplicationContext();
+        WidgetViews.Size size = widgetId == Prefs.PANEL_ID ? ClimateService.panelSize()
+                : ClimateService.widgetSize(app, widgetId);
+        if (size == null) {
+            finish();
+            return;
+        }
         String control = String.join("/", parts.subList(2, parts.size()));
         startForegroundService(new Intent(this, ClimateService.class)
                 .setAction(ClimateService.ACTION_CONTROL)
                 .setData(Uri.parse(WidgetViews.CONTROL_SCHEME + "://control/" + control)));
         sentValue = value;
-        if (!showScrubber(getIntent().getSourceBounds())) {
+        if (!showScrubber(getIntent().getSourceBounds(), size)) {
             finish();
         }
     }
@@ -108,7 +115,7 @@ public final class ScrubActivity extends Activity {
         return false;
     }
 
-    private boolean showScrubber(Rect source) {
+    private boolean showScrubber(Rect source, WidgetViews.Size size) {
         if (source == null || source.isEmpty()) {
             AppLog.warn("Widget host did not report the tapped bounds", null);
             return false;
@@ -119,7 +126,6 @@ public final class ScrubActivity extends Activity {
         config = prefs.widget(widgetId);
         model = prefs.carModel();
         ClimateState state = ClimateService.STORE.snapshot(SystemClock.elapsedRealtime());
-        WidgetViews.Size size = ClimateService.widgetSize(app, widgetId);
         plan = WidgetGeometry.plan(config, size.widthPx, size.heightPx,
                 app.getResources().getDisplayMetrics().density,
                 ClimateCommands.tempRange(state).steps());

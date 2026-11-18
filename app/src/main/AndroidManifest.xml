@@ -52,6 +52,36 @@
             android:taskAffinity=""
             android:theme="@style/Theme.AtlasClimate.Scrub" />
 
+        <!-- The climate window over any app; a second start closes it. -->
+        <activity
+            android:name=".ClimatePanelActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:label="@string/panel_shortcut"
+            android:launchMode="singleInstance"
+            android:taskAffinity="com.mmwtl.atlasclimatewidget.window"
+            android:theme="@style/Theme.AtlasClimate.Window">
+            <intent-filter>
+                <action android:name="com.mmwtl.atlasclimatewidget.action.CLIMATE_WINDOW" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- «Окно климата» in shortcut pickers: GInputBridge key bindings and launchers. -->
+        <activity
+            android:name=".PanelShortcutActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/panel_shortcut"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.intent.action.CREATE_SHORTCUT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <receiver
             android:name=".ClimateWidgetProvider"
             android:exported="true"
