@@ -298,11 +298,13 @@ final class WidgetViews {
     }
 
     static PendingIntent controlIntent(Context context, String control) {
-        Intent intent = new Intent(context, ClimateService.class)
-                .setAction(ClimateService.ACTION_CONTROL)
-                .setData(Uri.parse(CONTROL_SCHEME + "://control/" + control));
-        return PendingIntent.getForegroundService(context, 0, intent,
+        return PendingIntent.getForegroundService(context, 0, controlServiceIntent(context, control),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    static Intent controlServiceIntent(Context context, String control) {
+        return new Intent(context, ClimateService.class).setAction(ClimateService.ACTION_CONTROL)
+                .setData(Uri.parse(CONTROL_SCHEME + "://control/" + control));
     }
 
     static PendingIntent openSettings(Context context) {

@@ -25,8 +25,8 @@ import java.util.List;
  * wheel button (GInputBridge «Запуск ярлыка» → «Окно климата», see {@link PanelShortcutActivity}).
  *
  * <p>The window is a widget with its own layout ({@link Prefs#PANEL_ID}): the service draws it
- * with the same {@link WidgetViews}. This activity also handles bar drags in place, then sends
- * the final selection through the same PendingIntent as a tap. Another
+ * with the same {@link WidgetViews}. This activity handles bar drags in place and keeps the
+ * released value visible until the service has processed the selection. Another
  * start while the window is open closes it, so one button toggles it. The window closes on Back,
  * on a tap outside, when another app comes up and after the configured time without a touch.
  */
@@ -38,11 +38,14 @@ public final class ClimatePanelActivity extends Activity {
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Runnable idleClose = this::finish;
+    private final Runnable selectionTimeout = this::expireSelection;
     private final ClimateService.PanelHost host = this::show;
 
     private FrameLayout container;
     private Prefs prefs;
     private Drag activeDrag;
+    private long awaitingControl;
+    private ClimateService.PanelFrame displayedFrame;
     private ClimateService.PanelFrame pendingFrame;
 
     static Intent intent(Context context) {
@@ -101,7 +104,7 @@ public final class ClimatePanelActivity extends Activity {
                 Math.round(size.heightPx * toWindow));
         // Draw at once from the last known values; the service follows with fresh ones.
         ClimateService.PanelFrame first = ClimateService.buildPanel(
-                WidgetTheme.themed(this), prefs, state, size, null);
+                WidgetTheme.themed(this), prefs, state, size, null, 0);
         if (first != null) {
             show(first);
         }
@@ -127,6 +130,10 @@ public final class ClimatePanelActivity extends Activity {
     @Override
     protected void onStop() {
         ClimateService.setPanel(this, host, null);
+        main.removeCallbacks(selectionTimeout);
+        awaitingControl = 0;
+        pendingFrame = null;
+        displayedFrame = null;
         super.onStop();
         if (!isChangingConfigurations() && !isFinishing()) {
             finish();
@@ -150,11 +157,11 @@ public final class ClimatePanelActivity extends Activity {
         }
     }
 
-    private void show(ClimateService.PanelFrame frame) {
+    void show(ClimateService.PanelFrame frame) {
         if (isFinishing() || isDestroyed()) {
             return;
         }
-        if (activeDrag != null) {
+        if (activeDrag != null || frame.appliedControl() < awaitingControl) {
             pendingFrame = frame;
             return;
         }
@@ -164,9 +171,18 @@ public final class ClimatePanelActivity extends Activity {
             container.removeAllViews();
             container.addView(content, new FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+            displayedFrame = frame;
+            pendingFrame = null;
+            awaitingControl = 0;
+            main.removeCallbacks(selectionTimeout);
         } catch (RuntimeException error) {
             AppLog.warn("Cannot show the climate window", error);
         }
+    }
+
+    private void expireSelection() {
+        awaitingControl = 0;
+        show(pendingFrame != null ? pendingFrame : displayedFrame);
     }
 
     private void attachDrags(ViewGroup content, ClimateService.PanelFrame frame) {
@@ -265,10 +281,20 @@ public final class ClimatePanelActivity extends Activity {
             }
         }
 
-        private void end(boolean send) {
+        private void end(boolean commit) {
             activeDrag = null;
-            if (send) {
-                zones.getChildAt(strip.stepStart + step * strip.stepSpan).performClick();
+            if (commit) {
+                int cell = strip.stepStart + step * strip.stepSpan;
+                String control = WidgetViews.control(frame.config(), strip, cell, frame.auto());
+                long id = ClimateService.sendPanelControl(ClimatePanelActivity.this, control);
+                if (id != 0) {
+                    awaitingControl = id;
+                    main.removeCallbacks(selectionTimeout);
+                    main.postDelayed(selectionTimeout, ClimateStore.PENDING_TIMEOUT_MS);
+                    original = null;
+                    originalReadout = null;
+                    return;
+                }
             }
             image.setImageDrawable(original);
             original = null;
@@ -277,9 +303,7 @@ public final class ClimatePanelActivity extends Activity {
                 originalReadout = null;
             }
             if (pendingFrame != null) {
-                ClimateService.PanelFrame next = pendingFrame;
-                pendingFrame = null;
-                show(next);
+                show(pendingFrame);
             }
         }
     }
@@ -289,6 +313,7 @@ public final class ClimatePanelActivity extends Activity {
     @SuppressWarnings("deprecation") // overrideActivityTransition needs API 34.
     public void finish() {
         main.removeCallbacks(idleClose);
+        main.removeCallbacks(selectionTimeout);
         super.finish();
         overridePendingTransition(0, 0);
     }

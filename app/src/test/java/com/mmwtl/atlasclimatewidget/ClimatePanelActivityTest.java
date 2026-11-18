@@ -31,13 +31,14 @@ public final class ClimatePanelActivityTest {
     @Test
     public void firstDragPreviewsAndSendsOnlyTheReleasedStep() {
         try (ActivityController<ClimatePanelActivity> controller = open()) {
-            ViewGroup root = layout(controller.get());
-            ClimateService.PanelFrame frame = frame(controller.get());
+            ClimatePanelActivity activity = controller.get();
+            ClimateService.PanelFrame frame = frame(activity, 0);
             ShadowApplication app = Shadows.shadowOf(RuntimeEnvironment.getApplication());
             assertEquals(ClimateService.ACTION_REFRESH, app.getNextStartedService().getAction());
 
             for (WidgetGeometry.RowKind kind : new WidgetGeometry.RowKind[]{
                     WidgetGeometry.RowKind.TEMPERATURE, WidgetGeometry.RowKind.FAN}) {
+                ViewGroup root = layout(activity);
                 WidgetGeometry.Strip strip = frame.plan().strips.stream()
                         .filter(item -> item.row.kind == kind).findFirst().orElseThrow();
                 View row = root.getChildAt(frame.plan().strips.indexOf(strip));
@@ -52,6 +53,9 @@ public final class ClimatePanelActivityTest {
                 Drawable firstPreview = image.getDrawable();
                 touch(root, row, zones, last, MotionEvent.ACTION_MOVE);
                 assertNotSame(firstPreview, image.getDrawable());
+                Drawable releasedPreview = image.getDrawable();
+                activity.show(frame);
+                assertSame(root, activity.findViewById(R.id.widget_root));
                 assertNull(app.getNextStartedService());
                 assertNull(app.getNextStartedActivity());
 
@@ -61,14 +65,24 @@ public final class ClimatePanelActivityTest {
                 assertEquals(ClimateService.ACTION_CONTROL, command.getAction());
                 assertEquals("/" + WidgetViews.control(frame.config(), strip, last, frame.auto()),
                         command.getData().getPath());
+                long control = command.getLongExtra(ClimateService.EXTRA_PANEL_CONTROL, 0);
+                assertTrue(control > 0);
                 assertNull(app.getNextStartedService());
                 assertNull(app.getNextStartedActivity());
-                assertSame(original, image.getDrawable());
+                assertSame(releasedPreview, image.getDrawable());
+
+                activity.show(frame);
+                assertSame(root, activity.findViewById(R.id.widget_root));
+                assertSame(releasedPreview, image.getDrawable());
 
                 touch(root, row, zones, first, MotionEvent.ACTION_DOWN);
                 touch(root, row, zones, last, MotionEvent.ACTION_CANCEL);
-                assertSame(original, image.getDrawable());
+                assertSame(releasedPreview, image.getDrawable());
                 assertNull(app.getNextStartedService());
+
+                frame = frame(activity, control);
+                activity.show(frame);
+                assertNotSame(root, activity.findViewById(R.id.widget_root));
             }
         }
     }
@@ -78,11 +92,12 @@ public final class ClimatePanelActivityTest {
         return Robolectric.buildActivity(ClimatePanelActivity.class).setup();
     }
 
-    private ClimateService.PanelFrame frame(ClimatePanelActivity activity) {
+    private ClimateService.PanelFrame frame(ClimatePanelActivity activity, long appliedControl) {
         Prefs prefs = new Prefs(activity);
         ClimateState state = ClimateState.EMPTY;
         WidgetViews.Size size = ClimatePanelActivity.size(activity, prefs, state);
-        return ClimateService.buildPanel(WidgetTheme.themed(activity), prefs, state, size, null);
+        return ClimateService.buildPanel(WidgetTheme.themed(activity), prefs, state, size, null,
+                appliedControl);
     }
 
     private ViewGroup layout(ClimatePanelActivity activity) {

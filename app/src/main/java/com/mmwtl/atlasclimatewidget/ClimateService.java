@@ -43,6 +43,7 @@ public final class ClimateService extends Service {
     static final String ACTION_REFRESH = "com.mmwtl.atlasclimatewidget.REFRESH";
     static final String ACTION_CONTROL = "com.mmwtl.atlasclimatewidget.CONTROL";
     static final String ACTION_RENDER = "com.mmwtl.atlasclimatewidget.RENDER";
+    static final String EXTRA_PANEL_CONTROL = "panelControl";
 
     static final ClimateStore STORE = new ClimateStore();
 
@@ -99,11 +100,13 @@ public final class ClimateService extends Service {
     private static volatile boolean directActive;
     private static volatile boolean firstPushLogged;
     private static volatile Panel panel;
+    /** Main-thread sequence shared by successive panel instances. */
+    private static long nextPanelControl;
 
     private record Panel(PanelHost host, WidgetViews.Size size) {}
 
     record PanelFrame(RemoteViews views, WidgetConfig config, CarModel model,
-            WidgetGeometry.Plan plan, boolean auto) {}
+            WidgetGeometry.Plan plan, boolean auto, long appliedControl) {}
 
     /** The climate window, which applies the views drawn here on the main thread. */
     interface PanelHost {
@@ -118,6 +121,8 @@ public final class ClimateService extends Service {
     private boolean polling;
     private boolean receiverRegistered;
     private boolean lastConnected;
+    /** Last panel selection processed on the worker thread. */
+    private long appliedPanelControl;
     /** Worker-thread only: the end of the load window and when the pending render was asked. */
     private long loadingUntil;
     private long renderAskedAt;
@@ -154,11 +159,23 @@ public final class ClimateService extends Service {
     };
 
     static void start(Context context, String action) {
-        Intent intent = new Intent(context, ClimateService.class).setAction(action);
+        start(context, new Intent(context, ClimateService.class).setAction(action));
+    }
+
+    static long sendPanelControl(Context context, String control) {
+        long id = ++nextPanelControl;
+        Intent intent = WidgetViews.controlServiceIntent(context, control)
+                .putExtra(EXTRA_PANEL_CONTROL, id);
+        return start(context, intent) ? id : 0;
+    }
+
+    private static boolean start(Context context, Intent intent) {
         try {
             context.startForegroundService(intent);
+            return true;
         } catch (RuntimeException error) {
             AppLog.warn("Cannot start climate service", error);
+            return false;
         }
     }
 
@@ -202,7 +219,7 @@ public final class ClimateService extends Service {
 
     /** Draws the climate window; {@code null} after a failure. */
     static PanelFrame buildPanel(Context context, Prefs prefs, ClimateState state,
-            WidgetViews.Size size, List<Bitmap> rendered) {
+            WidgetViews.Size size, List<Bitmap> rendered, long appliedControl) {
         try {
             WidgetConfig config = prefs.widget(Prefs.PANEL_ID);
             CarModel model = prefs.carModel();
@@ -211,7 +228,7 @@ public final class ClimateService extends Service {
                     ClimateCommands.tempRange(state).steps());
             boolean auto = ClimateCommands.fanState(state).auto;
             return new PanelFrame(WidgetViews.buildPanel(context, config, state, model, plan,
-                    auto, rendered), config, model, plan, auto);
+                    auto, rendered), config, model, plan, auto, appliedControl);
         } catch (RuntimeException error) {
             AppLog.warn("Climate window render failed", error);
             return null;
@@ -272,7 +289,12 @@ public final class ClimateService extends Service {
         }
         if (ACTION_CONTROL.equals(action)) {
             Uri data = intent.getData();
-            worker.post(() -> handleControl(data));
+            long panelControl = intent.getLongExtra(EXTRA_PANEL_CONTROL, 0);
+            worker.post(() -> {
+                handleControl(data);
+                appliedPanelControl = Math.max(appliedPanelControl, panelControl);
+                renderWidgets(false);
+            });
         } else if (ACTION_RENDER.equals(action)) {
             worker.post(renderTask);
         } else if (ACTION_REFRESH.equals(action) || ACTION_START.equals(action)) {
@@ -641,7 +663,6 @@ public final class ClimateService extends Service {
             }
             worker.postDelayed(() -> execute(command, SystemClock.elapsedRealtime()), delay);
         }
-        renderWidgets(false);
     }
 
     private List<ClimateCommands.Command> commands(List<String> parts, ClimateState state,
@@ -820,12 +841,13 @@ public final class ClimateService extends Service {
         WidgetViews.Size size = open.size;
         Context context = WidgetTheme.themed(this);
         List<Bitmap> bitmaps = new ArrayList<>();
-        PanelFrame rendered = buildPanel(context, prefs, state, size, bitmaps);
+        PanelFrame rendered = buildPanel(context, prefs, state, size, bitmaps, appliedPanelControl);
         if (rendered == null) {
             return;
         }
         String key = rendered.config.toJson() + "|" + WidgetTheme.of(context).night
-                + "|" + size.widthPx + "x" + size.heightPx + "|" + rendered.auto;
+                + "|" + size.widthPx + "x" + size.heightPx + "|" + rendered.auto
+                + "|" + rendered.appliedControl;
         Frame frame = new Frame(key, bitmaps);
         synchronized (FRAMES) {
             if (panel != open || (!force && frame.sameAs(FRAMES.get(Prefs.PANEL_ID)))) {
