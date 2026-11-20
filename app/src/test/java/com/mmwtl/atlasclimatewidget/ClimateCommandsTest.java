@@ -46,6 +46,20 @@ public final class ClimateCommandsTest {
         assertEquals(Hvac.CIRCULATION_INNER, (int) command.value);
     }
 
+    @Test public void recirculationIconFollowsTheAirSource() {
+        ClimateFunction function = ClimateFunction.RECIRCULATION;
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.CIRCULATION, Gib.AREA_GLOBAL, Hvac.CIRCULATION_OUTSIDE, 0);
+        int outside = ClimateCommands.tileState(function, store.snapshot(0), CarModel.ATLAS).level;
+        assertEquals(R.drawable.ic_fn_outside_air, function.icon(WidgetConfig.IconSet.ATLAS, outside));
+        assertEquals(R.drawable.ic_oem_outside_air, function.icon(WidgetConfig.IconSet.OEM, outside));
+
+        store.putProperty(Hvac.CIRCULATION, Gib.AREA_GLOBAL, Hvac.CIRCULATION_INNER, 1);
+        int inner = ClimateCommands.tileState(function, store.snapshot(1), CarModel.ATLAS).level;
+        assertEquals(R.drawable.ic_oem_recirculation, function.icon(WidgetConfig.IconSet.ATLAS, inner));
+        assertEquals(R.drawable.ic_oem_recirculation, function.icon(WidgetConfig.IconSet.OEM, inner));
+    }
+
     @Test public void interiorLightSwitchesEveryZoneFromThePassengers() {
         ClimateStore store = store(0);
         store.putProperty(Hvac.READING_LIGHT, Hvac.ZONE_PASSENGER, 1, 0);

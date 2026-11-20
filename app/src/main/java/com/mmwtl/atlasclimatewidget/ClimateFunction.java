@@ -17,8 +17,8 @@ enum ClimateFunction {
     RECIRCULATION(R.string.fn_recirculation, R.string.fn_recirculation_short, Tone.NEUTRAL,
             Spec.toggle(Hvac.CIRCULATION, Gib.AREA_GLOBAL,
                     Hvac.CIRCULATION_INNER, Hvac.CIRCULATION_OUTSIDE)
-                    .icon(R.drawable.ic_fn_recirculation)
-                    .oem(R.drawable.ic_oem_recirculation)),
+                    .icons(R.drawable.ic_fn_outside_air, R.drawable.ic_oem_recirculation)
+                    .oem(R.drawable.ic_oem_outside_air, R.drawable.ic_oem_recirculation)),
     WINDSHIELD_HEAT(R.string.fn_windshield_heat, R.string.fn_windshield_heat_short, Tone.WARM,
             Spec.toggle(Spec.MODEL_WINDSHIELD, Gib.AREA_GLOBAL, 1, 0)
                     .icon(R.drawable.ic_fn_front_defrost)

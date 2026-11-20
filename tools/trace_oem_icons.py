@@ -25,6 +25,7 @@ PLAN = {
     'ic_oem_ac_max': 'Кондиционер/seq_0_3.png',
     'ic_oem_eco': 'Кондиционер/uM.webp',
     'ic_oem_recirculation': 'Рецеркуляция/48.png',
+    'ic_oem_outside_air': 'Рецеркуляция/3J1.png',
     'ic_oem_windshield_heat': 'Электро обогрев/wZ.png',
     'ic_oem_front_defrost': 'Обогрев обдув лобового/G9.png',
     'ic_oem_rear_defrost': 'Обогрев заднего и зеркал/seq_0_1.png',
