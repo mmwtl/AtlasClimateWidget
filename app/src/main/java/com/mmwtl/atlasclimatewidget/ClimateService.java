@@ -674,7 +674,9 @@ public final class ClimateService extends Service {
                 if (function == null) {
                     return new ArrayList<>();
                 }
-                return ClimateCommands.press(function, state, model, prefs.levelsFromMax());
+                int[] levels = parts.size() > 2
+                        ? ClimateCommands.parseLevels(function, parts.get(2)) : null;
+                return ClimateCommands.press(function, state, model, prefs.levelsFromMax(), levels);
             }
             case "off": {
                 List<ClimateFunction> targets = new ArrayList<>();

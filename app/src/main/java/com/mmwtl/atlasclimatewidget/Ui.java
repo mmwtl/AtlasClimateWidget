@@ -86,6 +86,10 @@ final class Ui {
 
     /** Choice chip of a segmented row, as in AtlasMediaWidget's widget setup. */
     static TextView segment(Context context, int value) {
+        return segment(context, context.getString(value));
+    }
+
+    static TextView segment(Context context, String value) {
         TextView segment = text(context, value, 14, TEXT);
         segment.setGravity(Gravity.CENTER);
         segment.setMaxLines(1);

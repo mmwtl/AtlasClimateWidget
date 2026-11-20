@@ -101,6 +101,7 @@ public final class MainActivity extends ScaledActivity {
     private LinearLayout tilesHost;
     private LinearLayout functionsHost;
     private LinearLayout availableHost;
+    private LinearLayout levelsHost;
     private LinearLayout offHost;
     private LinearLayout appearanceHost;
     private LinearLayout cardsHost;
@@ -365,6 +366,8 @@ public final class MainActivity extends ScaledActivity {
 
         availableHost = collapsibleCard(page, R.string.functions_available,
                 R.string.functions_available_summary);
+        levelsHost = collapsibleCard(page, R.string.tile_levels_title,
+                R.string.tile_levels_summary);
         offHost = collapsibleCard(page, R.string.off_targets_title,
                 R.string.off_targets_summary);
     }
@@ -1230,7 +1233,61 @@ public final class MainActivity extends ScaledActivity {
                 availableHost.addView(functionRow(function, false, false, false));
             }
         }
+        rebuildTileLevels();
         rebuildOffTargets();
+    }
+
+    private void rebuildTileLevels() {
+        levelsHost.removeAllViews();
+        List<ClimateFunction> leveled = new ArrayList<>();
+        CarModel model = prefs.carModel();
+        for (ClimateFunction function : config.functions) {
+            if (function.hasLevels() && function.isAvailableFor(model)) {
+                leveled.add(function);
+            }
+        }
+        if (leveled.isEmpty()) {
+            levelsHost.addView(hint(R.string.tile_levels_empty));
+            return;
+        }
+        levelsHost.addView(hint(R.string.tile_levels_hint));
+        for (ClimateFunction function : leveled) {
+            String title = getString(function.titleRes);
+            levelsHost.addView(label(function.titleRes));
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            Ui.topMargin(row, 6);
+            int count = function.levelCount();
+            for (int level = 1; level <= count; level++) {
+                int currentLevel = level;
+                String text = levelLabel(function, level);
+                TextView segment = Ui.segment(this, text);
+                segment.setContentDescription(title + ": " + text);
+                Ui.setSegmentSelected(this, segment,
+                        config.isTileLevelEnabled(function, level));
+                segment.setOnClickListener(view -> {
+                    boolean next = !config.isTileLevelEnabled(function, currentLevel);
+                    if (!config.setTileLevel(function, currentLevel, next)) {
+                        return;
+                    }
+                    Ui.setSegmentSelected(this, segment, next);
+                    changed();
+                });
+                Ui.addSegment(row, segment);
+            }
+            levelsHost.addView(row);
+        }
+    }
+
+    private String levelLabel(ClimateFunction function, int level) {
+        int nameRes = function.levelNameRes(level);
+        if (nameRes != 0) {
+            return getString(nameRes);
+        }
+        if (function.kind == ClimateFunction.Kind.POSITION) {
+            return function.levels[level] + "%";
+        }
+        return String.valueOf(level);
     }
 
     private void rebuildOffTargets() {

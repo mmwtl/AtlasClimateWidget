@@ -101,6 +101,20 @@ public final class WidgetGeometryTest {
                 plan.strips.get(plan.strips.size() - 2), 0));
     }
 
+    @Test public void customTileLevelsTravelInControlUri() {
+        WidgetConfig config = new WidgetConfig();
+        config.setTileLevels(ClimateFunction.DRIVER_HEAT, 2);
+        WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
+        WidgetGeometry.Strip firstTiles = plan.strips.get(plan.strips.size() - 2);
+        assertEquals("fn/DRIVER_HEAT/2", WidgetViews.control(config, firstTiles, 0));
+
+        config.setTileLevels(ClimateFunction.DRIVER_HEAT, 2, 3);
+        assertEquals("fn/DRIVER_HEAT/2,3", WidgetViews.control(config, firstTiles, 0));
+
+        config.setTileLevels(ClimateFunction.DRIVER_HEAT, 1, 2, 3);
+        assertEquals("fn/DRIVER_HEAT", WidgetViews.control(config, firstTiles, 0));
+    }
+
     @Test public void fanBlockStacksBarAndControlRow() {
         WidgetConfig config = new WidgetConfig();
         config.fanLayout = WidgetConfig.FanLayout.ROWS;

@@ -187,6 +187,12 @@ line, read as in AtlasAppWidget (`Fuel`).
   by default), chosen in a collapsed section of the Tiles tab. The targets travel in the
   control URI. It is lit while any target is on and sends the off value only to targets that
   are on or unknown, `ClimateCommands.OFF_SPACING_MS` apart, climate power last.
+- Multi-level tiles (`ClimateFunction.hasLevels`: heating, ventilation, sunroof, sunshade,
+  headlights) let each widget keep only chosen active levels (`WidgetConfig.tileLevels`, all
+  enabled by default, at least one kept), edited in the collapsed «Уровни плиток» section on
+  the Tiles tab. Custom level subsets travel in the `fn/<NAME>/<levels>` control URI; taps
+  cycle through the enabled levels (honouring `Prefs.levelsFromMax` on heating/ventilation,
+  never closing the sunshade under an open sunroof) and then switch off.
 - Body tiles from GInputBridge (`ClimateFunction.body`: interior light, headlights, trunk,
   mirrors, wiper service position, traction control) are never «switch off all» targets and
   their levels always step upwards. The interior light writes every `Hvac.READING_LIGHT_ZONES`

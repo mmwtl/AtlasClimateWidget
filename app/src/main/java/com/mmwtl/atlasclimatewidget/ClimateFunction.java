@@ -63,6 +63,7 @@ enum ClimateFunction {
                     .oem(R.drawable.ic_oem_rear_seat_right)),
     SUNROOF(R.string.fn_sunroof, R.string.fn_sunroof_short, Tone.NEUTRAL,
             Spec.position(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, Hvac.SUNROOF_POSITIONS)
+                    .levelNames(R.string.level_sunroof_airing, 0, 0)
                     .icon(R.drawable.ic_fn_sunroof)),
     SUNSHADE(R.string.fn_sunshade, R.string.fn_sunshade_short, Tone.NEUTRAL,
             Spec.position(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, Hvac.SUNSHADE_POSITIONS)
@@ -104,6 +105,8 @@ enum ClimateFunction {
     HEADLIGHTS(R.string.fn_headlights, R.string.fn_headlights_short, Tone.NEUTRAL,
             Spec.level(Hvac.EXTERIOR_LIGHT, Gib.AREA_GLOBAL, Hvac.EXTERIOR_LIGHT_LEVELS).body()
                     .models(CarModel.PREFACE)
+                    .levelNames(R.string.level_headlights_pos, R.string.level_headlights_low,
+                            R.string.level_headlights_auto)
                     .icons(R.drawable.ic_fn_light, R.drawable.ic_fn_light_pos,
                             R.drawable.ic_fn_light_low, R.drawable.ic_fn_light_auto)),
     TRUNK(R.string.fn_trunk, R.string.fn_trunk_short, Tone.NEUTRAL,
@@ -167,6 +170,7 @@ enum ClimateFunction {
     final String glyph;
     final int iconRes;
     final int[] levelIcons;
+    final int[] levelNames;
     private final int[] oemIcons;
     private final float oemScale;
     private final int propertyId;
@@ -190,6 +194,7 @@ enum ClimateFunction {
         this.glyph = spec.glyph;
         this.iconRes = spec.iconRes;
         this.levelIcons = spec.levelIcons;
+        this.levelNames = spec.levelNames;
         this.oemIcons = spec.oemIcons;
         this.oemScale = spec.oemScale;
     }
@@ -236,6 +241,63 @@ enum ClimateFunction {
 
     boolean isFloat() {
         return kind == Kind.POSITION;
+    }
+
+    /** Whether the tile cycles through multiple active levels above off. */
+    boolean hasLevels() {
+        return (kind == Kind.LEVEL || kind == Kind.POSITION)
+                && levels != null && levels.length > 2;
+    }
+
+    /** Number of active levels {@code 1..levelCount()}, or 0 if not multi-level. */
+    int levelCount() {
+        return hasLevels() ? levels.length - 1 : 0;
+    }
+
+    /** String resource naming {@code level} (1-based), or 0 to show the default label. */
+    int levelNameRes(int level) {
+        return levelNames != null && level >= 1 && level <= levelNames.length
+                ? levelNames[level - 1] : 0;
+    }
+
+    /** All active level indices {@code 1..levelCount()} in ascending order. */
+    int[] allLevels() {
+        int count = levelCount();
+        int[] all = new int[count];
+        for (int index = 0; index < count; index++) {
+            all[index] = index + 1;
+        }
+        return all;
+    }
+
+    /**
+     * Deduplicates and sorts valid {@code 1..levelCount()} entries in ascending order; returns
+     * {@code null} when the function has no levels or no valid entry remains.
+     */
+    int[] normalizeLevels(int[] raw) {
+        int max = levelCount();
+        if (max == 0 || raw == null || raw.length == 0) {
+            return null;
+        }
+        boolean[] present = new boolean[max + 1];
+        int count = 0;
+        for (int level : raw) {
+            if (level >= 1 && level <= max && !present[level]) {
+                present[level] = true;
+                count++;
+            }
+        }
+        if (count == 0) {
+            return null;
+        }
+        int[] normalized = new int[count];
+        int out = 0;
+        for (int level = 1; level <= max; level++) {
+            if (present[level]) {
+                normalized[out++] = level;
+            }
+        }
+        return normalized;
     }
 
     /** Number of indicator bars under the glyph. */
@@ -311,6 +373,7 @@ enum ClimateFunction {
         String glyph;
         int iconRes;
         int[] levelIcons;
+        int[] levelNames;
         int[] oemIcons;
         float oemScale = 1f;
 
@@ -394,6 +457,11 @@ enum ClimateFunction {
         Spec icons(int... res) {
             iconRes = res[0];
             levelIcons = res;
+            return this;
+        }
+
+        Spec levelNames(int... res) {
+            levelNames = res;
             return this;
         }
 
