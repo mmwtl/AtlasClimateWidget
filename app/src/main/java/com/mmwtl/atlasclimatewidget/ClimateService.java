@@ -676,6 +676,13 @@ public final class ClimateService extends Service {
                 }
                 return ClimateCommands.press(function, state, model, prefs.levelsFromMax());
             }
+            case "fnoff": {
+                ClimateFunction function = ClimateFunction.fromName(parts.get(1));
+                if (function == null) {
+                    return new ArrayList<>();
+                }
+                return ClimateCommands.switchOff(function, state, model);
+            }
             case "off": {
                 List<ClimateFunction> targets = new ArrayList<>();
                 for (String name : parts.get(1).split(",")) {

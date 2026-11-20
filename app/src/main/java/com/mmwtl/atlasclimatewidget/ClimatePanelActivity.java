@@ -26,7 +26,8 @@ import java.util.List;
  *
  * <p>The window is a widget with its own layout ({@link Prefs#PANEL_ID}): the service draws it
  * with the same {@link WidgetViews}. This activity handles bar drags in place and keeps the
- * released value visible until the service has processed the selection. Another
+ * released value visible until the service has processed the selection; a long press on an
+ * option switches it off directly. Another
  * start while the window is open closes it, so one button toggles it. The window closes on Back,
  * on a tap outside, when another app comes up and after the configured time without a touch.
  */
@@ -39,11 +40,13 @@ public final class ClimatePanelActivity extends Activity {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Runnable idleClose = this::finish;
     private final Runnable selectionTimeout = this::expireSelection;
+    private final Runnable flushPending = this::showPending;
     private final ClimateService.PanelHost host = this::show;
 
     private FrameLayout container;
     private Prefs prefs;
     private Drag activeDrag;
+    private boolean touchHeld;
     private long awaitingControl;
     private ClimateService.PanelFrame displayedFrame;
     private ClimateService.PanelFrame pendingFrame;
@@ -120,6 +123,8 @@ public final class ClimatePanelActivity extends Activity {
     @Override
     protected void onPause() {
         main.removeCallbacks(idleClose);
+        main.removeCallbacks(flushPending);
+        touchHeld = false;
         if (activeDrag != null) {
             activeDrag.end(false);
         }
@@ -131,6 +136,8 @@ public final class ClimatePanelActivity extends Activity {
     protected void onStop() {
         ClimateService.setPanel(this, host, null);
         main.removeCallbacks(selectionTimeout);
+        main.removeCallbacks(flushPending);
+        touchHeld = false;
         awaitingControl = 0;
         pendingFrame = null;
         displayedFrame = null;
@@ -142,11 +149,30 @@ public final class ClimatePanelActivity extends Activity {
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
+        int action = event.getActionMasked();
+        if (action == MotionEvent.ACTION_DOWN) {
+            touchHeld = true;
+            main.removeCallbacks(flushPending);
+        } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL
+                || action == MotionEvent.ACTION_OUTSIDE) {
+            touchHeld = false;
+        }
         boolean handled = super.dispatchTouchEvent(event);
+        if (!touchHeld && pendingFrame != null && activeDrag == null) {
+            // Defer past View's posted PerformClick on ACTION_UP, which detaching cancels.
+            main.removeCallbacks(flushPending);
+            main.post(flushPending);
+        }
         if (activeDrag == null && !isFinishing()) {
             restartIdleTimer();
         }
         return handled;
+    }
+
+    private void showPending() {
+        if (!touchHeld && pendingFrame != null && activeDrag == null) {
+            show(pendingFrame);
+        }
     }
 
     private void restartIdleTimer() {
@@ -161,13 +187,14 @@ public final class ClimatePanelActivity extends Activity {
         if (isFinishing() || isDestroyed()) {
             return;
         }
-        if (activeDrag != null || frame.appliedControl() < awaitingControl) {
+        if (activeDrag != null || touchHeld || frame.appliedControl() < awaitingControl) {
             pendingFrame = frame;
             return;
         }
         try {
             ViewGroup content = (ViewGroup) frame.views().apply(this, container);
             attachDrags(content, frame);
+            attachLongPresses(content, frame);
             container.removeAllViews();
             container.addView(content, new FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
@@ -182,7 +209,47 @@ public final class ClimatePanelActivity extends Activity {
 
     private void expireSelection() {
         awaitingControl = 0;
-        show(pendingFrame != null ? pendingFrame : displayedFrame);
+        ClimateService.PanelFrame next = pendingFrame != null ? pendingFrame : displayedFrame;
+        if (next != null) {
+            show(next);
+        }
+    }
+
+    private void attachLongPresses(ViewGroup content, ClimateService.PanelFrame frame) {
+        List<WidgetGeometry.Strip> strips = frame.plan().strips;
+        for (int index = 0; index < strips.size(); index++) {
+            WidgetGeometry.Strip strip = strips.get(index);
+            View row = content.getChildAt(index);
+            ViewGroup zones = row.findViewById(R.id.strip_zones);
+            for (int cell = 0; cell < strip.zoneCount; cell++) {
+                String control = WidgetViews.longPressControl(
+                        frame.config(), strip, cell, frame.auto());
+                if (control != null) {
+                    zones.getChildAt(cell).setOnLongClickListener(view -> {
+                        onLongPress(control);
+                        return true;
+                    });
+                }
+            }
+        }
+    }
+
+    private void onLongPress(String control) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        // Long press is complete; let the service's off-state frame draw immediately even while
+        // the finger is still down.
+        touchHeld = false;
+        restartIdleTimer();
+        long id = ClimateService.sendPanelControl(this, control);
+        if (id != 0) {
+            awaitingControl = id;
+            main.removeCallbacks(selectionTimeout);
+            main.postDelayed(selectionTimeout, ClimateStore.PENDING_TIMEOUT_MS);
+        } else if (pendingFrame != null) {
+            show(pendingFrame);
+        }
     }
 
     private void attachDrags(ViewGroup content, ClimateService.PanelFrame frame) {
@@ -314,6 +381,7 @@ public final class ClimatePanelActivity extends Activity {
     public void finish() {
         main.removeCallbacks(idleClose);
         main.removeCallbacks(selectionTimeout);
+        main.removeCallbacks(flushPending);
         super.finish();
         overridePendingTransition(0, 0);
     }

@@ -229,6 +229,12 @@ enum ClimateFunction {
         return !body && (kind == Kind.TOGGLE || kind == Kind.LEVEL);
     }
 
+    /** Whether a long press in the climate window can switch this function off directly. */
+    boolean canLongPressOff() {
+        return kind == Kind.TOGGLE || kind == Kind.LEVEL
+                || kind == Kind.POSITION || kind == Kind.BLOW;
+    }
+
     /** The value that switches this function off, see {@link #canSwitchOff}. */
     int offValue() {
         return kind == Kind.LEVEL ? levels[0] : offValue;

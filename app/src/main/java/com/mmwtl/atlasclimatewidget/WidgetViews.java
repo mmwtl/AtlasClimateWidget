@@ -145,6 +145,17 @@ final class WidgetViews {
         return control(config, strip, cell, false);
     }
 
+    /** Control sent by a long press in the climate window, or {@code null} when none applies. */
+    static String longPressControl(WidgetConfig config, WidgetGeometry.Strip strip, int cell,
+            boolean auto) {
+        String control = control(config, strip, cell, auto);
+        if (control == null || !control.startsWith("fn/")) {
+            return null;
+        }
+        ClimateFunction function = ClimateFunction.fromName(control.substring(3));
+        return function != null && function.canLongPressOff() ? "fnoff/" + function.name() : null;
+    }
+
     /**
      * Control encoded in the touch cell's URI, or {@code null} for an inert cell.
      *

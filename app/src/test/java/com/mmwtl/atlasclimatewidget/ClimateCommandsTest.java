@@ -594,4 +594,222 @@ public final class ClimateCommandsTest {
         assertFalse("the AUTO tap shows manual mode at once", fan.auto);
         assertFalse("the manual speed is not known yet", fan.known);
     }
+
+    @Test public void longPressSwitchesOffActiveAndUnknownLevels() {
+        for (int level : new int[]{Hvac.SEAT_HEAT_LEVELS[1], Hvac.SEAT_HEAT_LEVELS[2],
+                Hvac.SEAT_HEAT_LEVELS[3], 2, 0x1005020F}) {
+            ClimateStore store = store(0);
+            store.putProperty(Hvac.SEAT_HEATING, Hvac.ZONE_DRIVER, level, 0);
+            List<ClimateCommands.Command> commands = ClimateCommands.switchOff(
+                    ClimateFunction.DRIVER_HEAT, store.snapshot(0), CarModel.ATLAS);
+            assertEquals(1, commands.size());
+            assertEquals(Hvac.SEAT_HEATING, commands.get(0).id);
+            assertEquals(Hvac.ZONE_DRIVER, commands.get(0).area);
+            assertEquals(0d, commands.get(0).value, 0d);
+        }
+        ClimateStore unknown = store(0);
+        List<ClimateCommands.Command> offFromUnknown = ClimateCommands.switchOff(
+                ClimateFunction.DRIVER_HEAT, unknown.snapshot(0), CarModel.ATLAS);
+        assertEquals(1, offFromUnknown.size());
+        assertEquals(0d, offFromUnknown.get(0).value, 0d);
+
+        ClimateStore off = store(0);
+        off.putProperty(Hvac.SEAT_HEATING, Hvac.ZONE_DRIVER, 0, 0);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.DRIVER_HEAT, off.snapshot(0),
+                CarModel.ATLAS).isEmpty());
+
+        ClimateStore windshield = store(0);
+        windshield.putProperty(Hvac.WINDSHIELD_HEAT_PREFACE, Gib.AREA_GLOBAL, 1, 0);
+        assertEquals(Hvac.WINDSHIELD_HEAT_PREFACE, ClimateCommands.switchOff(
+                ClimateFunction.WINDSHIELD_HEAT, windshield.snapshot(0), CarModel.PREFACE)
+                .get(0).id);
+        assertEquals(Hvac.WINDSHIELD_HEAT_ATLAS, ClimateCommands.switchOff(
+                ClimateFunction.WINDSHIELD_HEAT, unknown.snapshot(0), CarModel.ATLAS)
+                .get(0).id);
+    }
+
+    @Test public void longPressSwitchesOffActiveAndUnknownToggles() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.AC, Gib.AREA_GLOBAL, 1, 0);
+        assertEquals(0d, ClimateCommands.switchOff(ClimateFunction.AC, store.snapshot(0),
+                CarModel.ATLAS).get(0).value, 0d);
+        assertEquals(0d, ClimateCommands.switchOff(ClimateFunction.AC, store(0).snapshot(0),
+                CarModel.ATLAS).get(0).value, 0d);
+        store.putProperty(Hvac.AC, Gib.AREA_GLOBAL, 0, 1);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.AC, store.snapshot(1),
+                CarModel.ATLAS).isEmpty());
+
+        ClimateStore circulation = store(0);
+        circulation.putProperty(Hvac.CIRCULATION, Gib.AREA_GLOBAL, Hvac.CIRCULATION_INNER, 0);
+        assertEquals(Hvac.CIRCULATION_OUTSIDE, (int) ClimateCommands.switchOff(
+                ClimateFunction.RECIRCULATION, circulation.snapshot(0), CarModel.ATLAS)
+                .get(0).value);
+        circulation.putProperty(Hvac.CIRCULATION, Gib.AREA_GLOBAL, Hvac.CIRCULATION_OUTSIDE, 1);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.RECIRCULATION,
+                circulation.snapshot(1), CarModel.ATLAS).isEmpty());
+
+        ClimateStore auto = store(0);
+        auto.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 1, 0);
+        assertEquals(0d, ClimateCommands.switchOff(ClimateFunction.AUTO, auto.snapshot(0),
+                CarModel.ATLAS).get(0).value, 0d);
+        auto.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 0, 1);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.AUTO, auto.snapshot(1),
+                CarModel.ATLAS).isEmpty());
+
+        ClimateStore power = store(0);
+        power.putProperty(Hvac.POWER, Gib.AREA_GLOBAL, 1, 0);
+        assertEquals(0d, ClimateCommands.switchOff(ClimateFunction.POWER, power.snapshot(0),
+                CarModel.ATLAS).get(0).value, 0d);
+        power.putProperty(Hvac.POWER, Gib.AREA_GLOBAL, 0, 1);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.POWER, power.snapshot(1),
+                CarModel.ATLAS).isEmpty());
+    }
+
+    @Test public void longPressSwitchesOffAvailableActiveBodyFunctionsOnly() {
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.INTERIOR_LIGHT,
+                store(0).snapshot(0), CarModel.ATLAS).isEmpty());
+        ClimateStore light = store(0);
+        light.putProperty(Hvac.READING_LIGHT, Hvac.ZONE_DRIVER, 1, 0);
+        List<ClimateCommands.Command> lightOff = ClimateCommands.switchOff(
+                ClimateFunction.INTERIOR_LIGHT, light.snapshot(0), CarModel.ATLAS);
+        assertEquals(Hvac.READING_LIGHT_ZONES.length, lightOff.size());
+        for (int index = 0; index < lightOff.size(); index++) {
+            assertEquals(Hvac.READING_LIGHT, lightOff.get(index).id);
+            assertEquals(Hvac.READING_LIGHT_ZONES[index], lightOff.get(index).area);
+            assertEquals(0d, lightOff.get(index).value, 0d);
+        }
+        light.putProperty(Hvac.READING_LIGHT, Hvac.ZONE_DRIVER, 0, 1);
+        light.putProperty(Hvac.READING_LIGHT, Hvac.ZONE_PASSENGER, 0, 1);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.INTERIOR_LIGHT, light.snapshot(1),
+                CarModel.ATLAS).isEmpty());
+
+        ClimateStore headlights = store(0);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.HEADLIGHTS, headlights.snapshot(0),
+                CarModel.PREFACE).isEmpty());
+        headlights.putProperty(Hvac.EXTERIOR_LIGHT, Gib.AREA_GLOBAL,
+                Hvac.EXTERIOR_LIGHT_LEVELS[2], 0);
+        assertEquals(0d, ClimateCommands.switchOff(ClimateFunction.HEADLIGHTS,
+                headlights.snapshot(0), CarModel.PREFACE).get(0).value, 0d);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.HEADLIGHTS, headlights.snapshot(0),
+                CarModel.ATLAS).isEmpty());
+        headlights.putProperty(Hvac.EXTERIOR_LIGHT, Gib.AREA_GLOBAL, 0, 1);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.HEADLIGHTS, headlights.snapshot(1),
+                CarModel.PREFACE).isEmpty());
+
+        ClimateStore body = store(0);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.TRUNK, body.snapshot(0),
+                CarModel.ATLAS).isEmpty());
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.MIRRORS, body.snapshot(0),
+                CarModel.ATLAS).isEmpty());
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.WIPERS, body.snapshot(0),
+                CarModel.ATLAS).isEmpty());
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.TRACTION, body.snapshot(0),
+                CarModel.ATLAS).isEmpty());
+        body.putProperty(Hvac.DOOR, Hvac.ZONE_TRUNK, 1, 0);
+        body.putProperty(Hvac.FOLD_REAR_MIRROR, Gib.AREA_GLOBAL, 1, 0);
+        body.putProperty(Hvac.WINDSCREEN_SERVICE_POSITION, Hvac.ZONE_DRIVER, 1, 0);
+        body.putProperty(Hvac.ESC_SPORT_MODE, Gib.AREA_GLOBAL, 0, 0);
+        ClimateState active = body.snapshot(0);
+        assertEquals(0d, ClimateCommands.switchOff(ClimateFunction.TRUNK, active,
+                CarModel.ATLAS).get(0).value, 0d);
+        assertEquals(0d, ClimateCommands.switchOff(ClimateFunction.MIRRORS, active,
+                CarModel.ATLAS).get(0).value, 0d);
+        assertEquals(0d, ClimateCommands.switchOff(ClimateFunction.WIPERS, active,
+                CarModel.ATLAS).get(0).value, 0d);
+        assertEquals(1d, ClimateCommands.switchOff(ClimateFunction.TRACTION, active,
+                CarModel.ATLAS).get(0).value, 0d);
+    }
+
+    @Test public void longPressClosesSunroofAndRespectsOpenSunroofForSunshade() {
+        ClimateStore airing = store(0);
+        airing.putProperty(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF, 1, 0);
+        airing.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 0, 0);
+        assertTilt(ClimateCommands.switchOff(ClimateFunction.SUNROOF, airing.snapshot(0),
+                CarModel.ATLAS), 0);
+
+        ClimateStore slid = store(0);
+        slid.putProperty(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF, 0, 0);
+        slid.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 20, 0);
+        List<ClimateCommands.Command> slidOff = ClimateCommands.switchOff(
+                ClimateFunction.SUNROOF, slid.snapshot(0), CarModel.ATLAS);
+        assertEquals(1, slidOff.size());
+        assertEquals(Hvac.WINDOW_POS, slidOff.get(0).id);
+        assertEquals(0d, slidOff.get(0).value, 0d);
+
+        ClimateStore both = store(0);
+        both.putProperty(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF, 1, 0);
+        both.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 100, 0);
+        List<ClimateCommands.Command> bothOff = ClimateCommands.switchOff(
+                ClimateFunction.SUNROOF, both.snapshot(0), CarModel.ATLAS);
+        assertEquals(3, bothOff.size());
+        assertTilt(bothOff.subList(0, 2), 0);
+        assertEquals(0d, bothOff.get(2).value, 0d);
+
+        ClimateStore closedRoof = store(0);
+        closedRoof.putProperty(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF, 0, 0);
+        closedRoof.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 0, 0);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.SUNROOF, closedRoof.snapshot(0),
+                CarModel.ATLAS).isEmpty());
+
+        ClimateStore shade = store(0);
+        shade.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 0, 0);
+        shade.putProperty(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF, 0, 0);
+        shade.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 50, 0);
+        List<ClimateCommands.Command> shadeOff = ClimateCommands.switchOff(
+                ClimateFunction.SUNSHADE, shade.snapshot(0), CarModel.ATLAS);
+        assertEquals(1, shadeOff.size());
+        assertEquals(Hvac.ZONE_SUNSHADE, shadeOff.get(0).area);
+        assertEquals(0d, shadeOff.get(0).value, 0d);
+
+        shade.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 0, 1);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.SUNSHADE, shade.snapshot(1),
+                CarModel.ATLAS).isEmpty());
+
+        shade.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 50, 2);
+        shade.putProperty(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF, 1, 2);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.SUNSHADE, shade.snapshot(2),
+                CarModel.ATLAS).isEmpty());
+
+        shade.putProperty(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF, 0, 3);
+        shade.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 20, 3);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.SUNSHADE, shade.snapshot(3),
+                CarModel.ATLAS).isEmpty());
+    }
+
+    @Test public void longPressTurnsOffCombinedBlowDirectionWithoutDroppingTheLastOne() {
+        ClimateStore store = store(0);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.BLOW_FACE, store.snapshot(0),
+                CarModel.ATLAS).isEmpty());
+
+        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 0, 0);
+        store.putProperty(Hvac.BLOWING_MODE, Hvac.ZONE_DRIVER, Hvac.BLOWING_FACE_AND_LEG, 0);
+        assertEquals(Hvac.BLOWING_LEG, (int) ClimateCommands.switchOff(
+                ClimateFunction.BLOW_FACE, store.snapshot(0), CarModel.ATLAS).get(0).value);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.BLOW_WINDOW, store.snapshot(0),
+                CarModel.ATLAS).isEmpty());
+
+        store.putProperty(Hvac.BLOWING_MODE, Hvac.ZONE_DRIVER, Hvac.BLOWING_FACE, 1);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.BLOW_FACE, store.snapshot(1),
+                CarModel.ATLAS).isEmpty());
+
+        store.putProperty(Hvac.BLOWING_MODE, Hvac.ZONE_DRIVER, Hvac.BLOWING_FACE_AND_LEG, 2);
+        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 1, 2);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.BLOW_FACE, store.snapshot(2),
+                CarModel.ATLAS).isEmpty());
+
+        store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER, 0, 3);
+        store.putProperty(Hvac.POWER, Gib.AREA_GLOBAL, 0, 3);
+        assertTrue(ClimateCommands.switchOff(ClimateFunction.BLOW_FACE, store.snapshot(3),
+                CarModel.ATLAS).isEmpty());
+    }
+
+    @Test public void nonOffFunctionsCannotBeSwitchedOffByLongPress() {
+        for (ClimateFunction fn : new ClimateFunction[]{
+                ClimateFunction.FAN_SOFT, ClimateFunction.ME_HOT,
+                ClimateFunction.SEAT_MEMORY, ClimateFunction.ALL_OFF}) {
+            assertFalse(fn.name(), fn.canLongPressOff());
+            assertTrue(fn.name(), ClimateCommands.switchOff(fn, store(0).snapshot(0),
+                    CarModel.ATLAS).isEmpty());
+        }
+    }
 }

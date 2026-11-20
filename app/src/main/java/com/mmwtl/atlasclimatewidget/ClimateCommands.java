@@ -465,15 +465,7 @@ final class ClimateCommands {
                 return single(Command.carFunction(function.carFunction));
             case TOGGLE: {
                 boolean on = current == function.onValue;
-                int value = on ? function.offValue : function.onValue;
-                if (function.writeAreas == null) {
-                    return single(Command.setInt(id, function.area, value));
-                }
-                List<Command> commands = new ArrayList<>(function.writeAreas.length);
-                for (int area : function.writeAreas) {
-                    commands.add(Command.setInt(id, area, value));
-                }
-                return commands;
+                return toggleCommands(function, id, on ? function.offValue : function.onValue);
             }
             case LEVEL: {
                 int count = function.levels.length;
@@ -498,6 +490,64 @@ final class ClimateCommands {
             case SELECT: {
                 Command select = Command.setInt(id, function.area, function.onValue);
                 return id == Hvac.AUTO_FAN_SETTING ? withAuto(state, select) : single(select);
+            }
+            default:
+                return Collections.emptyList();
+        }
+    }
+
+    private static List<Command> toggleCommands(ClimateFunction function, int id, int value) {
+        if (function.writeAreas == null) {
+            return single(Command.setInt(id, function.area, value));
+        }
+        List<Command> commands = new ArrayList<>(function.writeAreas.length);
+        for (int area : function.writeAreas) {
+            commands.add(Command.setInt(id, area, value));
+        }
+        return commands;
+    }
+
+    /**
+     * Switches off one option directly from a long press in the climate window. Body functions
+     * without a known state, inactive options, and the last active blowing direction send nothing.
+     */
+    static List<Command> switchOff(ClimateFunction function, ClimateState state, CarModel model) {
+        if (!function.isAvailableFor(model) || !function.canLongPressOff()) {
+            return Collections.emptyList();
+        }
+        int id = function.propertyId(model);
+        Double raw = value(function, state, id);
+        if (raw == null && function.body) {
+            // A blind command could trigger a moving part like the tailgate or mirrors unseen.
+            return Collections.emptyList();
+        }
+        int current = raw == null ? Integer.MIN_VALUE : (int) Math.round(raw);
+        switch (function.kind) {
+            case TOGGLE:
+                if (raw != null && current != function.onValue) {
+                    return Collections.emptyList();
+                }
+                return toggleCommands(function, id, function.offValue);
+            case LEVEL:
+                if (raw != null && levelIndex(function, current) == 0) {
+                    return Collections.emptyList();
+                }
+                return single(Command.setInt(id, function.area, function.offValue()));
+            case POSITION:
+                return roofOff(function, state, id, raw);
+            case BLOW: {
+                if (raw == null || directionsResting(state)) {
+                    return Collections.emptyList();
+                }
+                int bits = blowBits(current);
+                if ((bits & function.blowBit) == 0) {
+                    return Collections.emptyList();
+                }
+                int nextBits = bits & ~function.blowBit;
+                if (nextBits == 0) {
+                    return Collections.emptyList();
+                }
+                return single(Command.setInt(id, function.area, blowMode(nextBits)));
             }
             default:
                 return Collections.emptyList();
@@ -570,15 +620,37 @@ final class ClimateCommands {
         } else if (next > 0) {
             commands.add(Command.setFloat(id, function.area, levels[next]).after(roofDelay));
         } else {
-            // Close what is open: the airing flag, the slid position or both.
-            if (sunroofAiring(state)) {
-                addTilt(commands, 0, 0L);
-            }
-            if (raw == null || raw > POSITION_TOLERANCE || !sunroofAiring(state)) {
-                commands.add(Command.setFloat(id, function.area, 0f));
-            }
+            closeSunroof(state, id, raw, commands);
         }
         return commands;
+    }
+
+    private static List<Command> roofOff(ClimateFunction function, ClimateState state, int id,
+            Double raw) {
+        if (function == ClimateFunction.SUNROOF) {
+            Integer index = sunroofIndex(state);
+            if (index != null && index == 0) {
+                return Collections.emptyList();
+            }
+            List<Command> commands = new ArrayList<>(3);
+            closeSunroof(state, id, raw, commands);
+            return commands;
+        }
+        if (sunroofOpen(state) || (raw != null && positionIndex(function, raw) == 0)) {
+            return Collections.emptyList();
+        }
+        return single(Command.setFloat(id, function.area, function.levels[0]));
+    }
+
+    private static void closeSunroof(ClimateState state, int id, Double raw,
+            List<Command> commands) {
+        // Close what is open: the airing flag, the slid position or both.
+        if (sunroofAiring(state)) {
+            addTilt(commands, 0, 0L);
+        }
+        if (raw == null || raw > POSITION_TOLERANCE || !sunroofAiring(state)) {
+            commands.add(Command.setFloat(id, ClimateFunction.SUNROOF.area, 0f));
+        }
     }
 
     /** FX11 sets the airing flag both in the sunroof zone and globally. */
