@@ -33,8 +33,6 @@
     <string name="status_refresh">Запросить данные заново</string>
     <string name="status_refresh_sent">Запрос отправлен в GInputBridge</string>
     <string name="status_refresh_sent_direct">Запрос отправлен автомобилю</string>
-    <string name="pin_widget">Добавить виджет на главный экран</string>
-    <string name="pin_widget_manual">Добавьте виджет «Atlas Climate» через меню виджетов лаунчера.</string>
 
     <string name="edited_widget_title">Раскладка виджета</string>
     <string name="edited_widget_hint">Выберите виджет или окно климата над предпросмотром. Шаблон применяется к новым виджетам.</string>
@@ -361,7 +359,7 @@
     <string name="display_mode_widget_hint">Добавьте виджет AtlasClimateWidget через меню виджетов лаунчера.</string>
     <string name="add_android_widget">Добавить Android-виджет</string>
     <string name="overlay_title">Оверлей климата</string>
-    <string name="overlay_hint">Оверлей показывается на главном экране. Для показа разрешите наложение, доступ к статистике использования и контроль окон.</string>
+    <string name="overlay_hint">Оверлей заменяет виджет на главном экране. Для показа разрешите наложение, доступ к статистике использования и контроль окон.</string>
     <string name="overlay_allow_draw">Разрешить наложение</string>
     <string name="overlay_allow_usage">Разрешить доступ к статистике использования</string>
     <string name="overlay_allow_windows">Включить контроль окон</string>
@@ -370,6 +368,14 @@
     <string name="overlay_accessibility_description">Определяет, виден ли главный экран, чтобы вовремя показывать и скрывать оверлей климата.</string>
     <string name="overlay_app_list">Показывать только в списке приложений</string>
     <string name="overlay_hide_threshold">Скрывать, если окна закрыли эту часть экрана</string>
+    <string name="edited_overlay_hint">Выберите раскладку над предпросмотром. У оверлея и окна по ярлыку свои раскладки.</string>
+    <string name="overlay_size">Размер оверлея</string>
+    <string name="overlay_size_hint">Ширина и высота задаются в разделе «Система → Режим отображения».</string>
+    <string name="overlay_width">Ширина оверлея</string>
+    <string name="overlay_height">Высота оверлея</string>
+    <string name="overlay_height_auto">Авто</string>
+    <string name="status_overlay_ready">Оверлей включён для главного экрана</string>
+    <string name="status_overlay_permissions">Оверлей ждёт разрешений</string>
     <string name="overlay_offset_x">Отступ от бокового края</string>
     <string name="overlay_offset_y">Отступ от верхнего или нижнего края</string>
     <string name="overlay_edit">Настроить макет оверлея</string>

@@ -43,6 +43,7 @@ final class SettingsBackup {
     boolean overlayMode;
     WidgetConfig overlay;
     int overlayWidthPercent = Prefs.PANEL_WIDTH_DEFAULT;
+    int overlayHeightPercent;
     String overlayCorner = OverlayCorner.BOTTOM_START.preferenceValue;
     int overlayOffsetX;
     int overlayOffsetY = Prefs.OVERLAY_BOTTOM_OFFSET_DP;
@@ -88,6 +89,7 @@ final class SettingsBackup {
             JSONObject overlaySettings = new JSONObject();
             overlaySettings.put("enabled", overlayMode);
             overlaySettings.put("widthPercent", overlayWidthPercent);
+            overlaySettings.put("heightPercent", overlayHeightPercent);
             overlaySettings.put("corner", overlayCorner);
             overlaySettings.put("offsetX", overlayOffsetX);
             overlaySettings.put("offsetY", overlayOffsetY);
@@ -169,6 +171,7 @@ final class SettingsBackup {
             backup.overlayMode = overlaySettings.optBoolean("enabled");
             backup.overlayWidthPercent = Prefs.clampPanelWidth(
                     overlaySettings.optInt("widthPercent", backup.overlayWidthPercent));
+            backup.overlayHeightPercent = Prefs.clampOverlayHeight(overlaySettings.optInt("heightPercent"));
             OverlayCorner corner = OverlayCorner.fromPreference(overlaySettings.optString("corner"));
             if (corner != null) {
                 backup.overlayCorner = corner.preferenceValue;

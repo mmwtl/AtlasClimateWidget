@@ -27,12 +27,15 @@ final class Prefs {
 
     static final String KEY_DISPLAY_MODE = "overlay_mode";
     static final String KEY_OVERLAY_WIDTH = "overlay_width_percent";
+    static final String KEY_OVERLAY_HEIGHT = "overlay_height_percent";
     static final String KEY_OVERLAY_CORNER = "overlay_corner";
     static final String KEY_OVERLAY_X = "overlay_offset_x_dp";
     static final String KEY_OVERLAY_Y = "overlay_offset_y_dp";
     static final String KEY_FREEFORM_HIDE_THRESHOLD = "overlay_hide_threshold";
     static final String KEY_SHOW_ONLY_IN_APP_LIST = "overlay_app_list_only";
     static final int OVERLAY_ID = -3;
+    static final int OVERLAY_HEIGHT_MIN = 10;
+    static final int OVERLAY_HEIGHT_MAX = 100;
     static final int OVERLAY_OFFSET_MAX_DP = 1000;
     // The portrait OneOS climate dock occupies 124 dp and reports no window insets.
     static final int OVERLAY_BOTTOM_OFFSET_DP = 124;
@@ -129,6 +132,15 @@ final class Prefs {
 
     int overlayWidthPercent() {
         return clampPanelWidth(preferences.getInt(KEY_OVERLAY_WIDTH, PANEL_WIDTH_DEFAULT));
+    }
+
+    /** Zero sizes the overlay to its content. */
+    int overlayHeightPercent() {
+        return clampOverlayHeight(preferences.getInt(KEY_OVERLAY_HEIGHT, 0));
+    }
+
+    static int clampOverlayHeight(int value) {
+        return value <= 0 ? 0 : Math.max(OVERLAY_HEIGHT_MIN, Math.min(OVERLAY_HEIGHT_MAX, value));
     }
 
     OverlayCorner overlayCorner() {
@@ -329,6 +341,7 @@ final class Prefs {
         backup.overlayMode = !isWidgetMode();
         backup.overlay = hasWidget(OVERLAY_ID) ? widget(OVERLAY_ID) : null;
         backup.overlayWidthPercent = overlayWidthPercent();
+        backup.overlayHeightPercent = overlayHeightPercent();
         backup.overlayCorner = overlayCorner().preferenceValue;
         backup.overlayOffsetX = overlayOffsetDp(KEY_OVERLAY_X);
         backup.overlayOffsetY = overlayOffsetDp(KEY_OVERLAY_Y);
@@ -356,6 +369,7 @@ final class Prefs {
                 .putString(KEY_TEMPLATE, backup.template.toJson())
                 .putBoolean(KEY_DISPLAY_MODE, backup.overlayMode)
                 .putInt(KEY_OVERLAY_WIDTH, clampPanelWidth(backup.overlayWidthPercent))
+                .putInt(KEY_OVERLAY_HEIGHT, clampOverlayHeight(backup.overlayHeightPercent))
                 .putString(KEY_OVERLAY_CORNER, backup.overlayCorner)
                 .putInt(KEY_OVERLAY_X, clampOverlayOffset(backup.overlayOffsetX))
                 .putInt(KEY_OVERLAY_Y, clampOverlayOffset(backup.overlayOffsetY))

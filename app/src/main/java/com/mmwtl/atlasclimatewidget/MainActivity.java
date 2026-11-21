@@ -102,6 +102,8 @@ public final class MainActivity extends ScaledActivity {
     private Spinner widgetSpinner;
     private TileDragLayer previewHost;
     private TextView previewCaption;
+    private TextView heightTitle;
+    private TextView heightHint;
     private TextView heightReport;
     private LinearLayout blocksHost;
     private LinearLayout tilesHost;
@@ -345,8 +347,10 @@ public final class MainActivity extends ScaledActivity {
 
     private void buildBlocksTab(LinearLayout page) {
         widgetHeightCard = Ui.card(this);
-        widgetHeightCard.addView(Ui.heading(this, R.string.height_title, 20));
-        widgetHeightCard.addView(hint(R.string.height_fill_hint));
+        heightTitle = Ui.heading(this, R.string.height_title, 20);
+        heightHint = hint(R.string.height_fill_hint);
+        widgetHeightCard.addView(heightTitle);
+        widgetHeightCard.addView(heightHint);
         heightReport = hint(R.string.height_report_unknown);
         widgetHeightCard.addView(heightReport);
         page.addView(widgetHeightCard);
@@ -452,9 +456,18 @@ public final class MainActivity extends ScaledActivity {
                 WindowVisibilityPolicy.MAX_HIDE_THRESHOLD_PERCENT, prefs.freeformHideThresholdPercent(),
                 value -> value + "%", value -> saveOverlaySetting(Prefs.KEY_FREEFORM_HIDE_THRESHOLD, value),
                 null);
-        addSlider(card, getString(R.string.panel_width), Prefs.PANEL_WIDTH_MIN,
+        addSlider(card, getString(R.string.overlay_width), Prefs.PANEL_WIDTH_MIN,
                 Prefs.PANEL_WIDTH_MAX, prefs.overlayWidthPercent(), value -> value + "%",
                 value -> saveOverlaySetting(Prefs.KEY_OVERLAY_WIDTH, value), null);
+        // The first stop fits the content. Manual sizes start at 10%.
+        int heightOffset = Prefs.OVERLAY_HEIGHT_MIN - 1;
+        int height = prefs.overlayHeightPercent();
+        addSlider(card, getString(R.string.overlay_height), 0,
+                Prefs.OVERLAY_HEIGHT_MAX - heightOffset, height == 0 ? 0 : height - heightOffset,
+                value -> value == 0 ? getString(R.string.overlay_height_auto)
+                        : (heightOffset + value) + "%",
+                value -> saveOverlaySetting(Prefs.KEY_OVERLAY_HEIGHT,
+                        value == 0 ? 0 : heightOffset + value), null);
         card.addView(label(R.string.panel_position));
         Spinner corners = new Spinner(this);
         OverlayCorner[] choices = OverlayCorner.values();
@@ -549,17 +562,6 @@ public final class MainActivity extends ScaledActivity {
         card.addView(direct);
         card.addView(hint(R.string.direct_car_hint));
 
-        AppWidgetManager manager = AppWidgetManager.getInstance(this);
-        if (manager.isRequestPinAppWidgetSupported()) {
-            Button pin = Ui.button(this, R.string.pin_widget);
-            Ui.topMargin(pin, 8);
-            pin.setOnClickListener(view -> manager.requestPinAppWidget(
-                    new ComponentName(this, ClimateWidgetProvider.class), null, null));
-            card.addView(pin);
-        } else {
-            TextView pinHint = hint(R.string.pin_widget_manual);
-            card.addView(pinHint);
-        }
         return card;
     }
 
@@ -567,7 +569,7 @@ public final class MainActivity extends ScaledActivity {
     private LinearLayout buildLayoutCard() {
         LinearLayout card = Ui.card(this);
         card.addView(Ui.heading(this, R.string.edited_widget_title, 20));
-        card.addView(hint(R.string.edited_widget_hint));
+        card.addView(hint(prefs.isWidgetMode() ? R.string.edited_widget_hint : R.string.edited_overlay_hint));
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
         Ui.topMargin(actions, 10);
@@ -1681,7 +1683,12 @@ public final class MainActivity extends ScaledActivity {
                     : R.string.status_answer, Math.max(0, (now - last) / 1000L)));
         }
         text.append('\n');
-        text.append(getString(R.string.status_widgets, ClimateService.widgetIds(this).length));
+        if (prefs.isWidgetMode()) {
+            text.append(getString(R.string.status_widgets, ClimateService.widgetIds(this).length));
+        } else {
+            text.append(getString(ClimateOverlay.hasPermissions(this)
+                    ? R.string.status_overlay_ready : R.string.status_overlay_permissions));
+        }
         text.append('\n');
         text.append(getString(ClimateService.isRunning()
                 ? R.string.status_service_running : R.string.status_service_stopped));
@@ -1705,7 +1712,7 @@ public final class MainActivity extends ScaledActivity {
         } else if (editedWidget == Prefs.OVERLAY_ID) {
             Context app = getApplicationContext();
             size = ClimateOverlay.size(app, ClimateOverlay.availableBounds(
-                    getSystemService(WindowManager.class)), prefs.overlayWidthPercent(), config, live);
+                    getSystemService(WindowManager.class)), prefs, config, live);
         } else {
             size = ClimateService.widgetSize(getApplicationContext(), editedWidget);
         }
@@ -1730,7 +1737,12 @@ public final class MainActivity extends ScaledActivity {
                     getApplicationContext().getResources().getDisplayMetrics().density,
                     ClimateCommands.tempRange(demo ? DemoState.INSTANCE : live).steps());
             previewHost.setLayout(config, plan, editNight ? WidgetTheme.NIGHT : WidgetTheme.DAY);
-            heightReport.setText(HeightReport.describe(this, plan));
+            boolean overlay = editedWidget == Prefs.OVERLAY_ID;
+            heightTitle.setText(overlay ? R.string.overlay_size : R.string.height_title);
+            heightHint.setText(overlay ? R.string.overlay_size_hint : R.string.height_fill_hint);
+            heightReport.setText(overlay ? WidgetViews.describe(size,
+                    getApplicationContext().getResources().getDisplayMetrics().density)
+                    : HeightReport.describe(this, plan));
         } catch (RuntimeException error) {
             AppLog.warn("Preview failed", error);
         }

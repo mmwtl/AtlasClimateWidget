@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
@@ -102,6 +103,27 @@ public final class MainActivityTest {
         } finally {
             close(controller);
         }
+    }
+
+    @Test
+    public void overlayManualHeightUsesSafeDisplayWithoutResizingShortcutWindow() {
+        var context = RuntimeEnvironment.getApplication();
+        Prefs prefs = new Prefs(context);
+        WidgetConfig overlay = prefs.widget(Prefs.OVERLAY_ID);
+        Rect bounds = new Rect(0, 24, 1440, 1864);
+        WidgetViews.Size auto = ClimateOverlay.size(context, bounds, prefs, overlay, ClimateState.EMPTY);
+        assertEquals(1325, auto.widthPx);
+        assertTrue(auto.heightPx > 368);
+        int shortcutHeight = ClimatePanelActivity.size(context, prefs, ClimateState.EMPTY).heightPx;
+
+        SettingsBackup backup = prefs.exportBackup(new int[0]);
+        backup.overlayHeightPercent = 20;
+        prefs.importBackup(SettingsBackup.parse(backup.toJson("test")), new int[0]);
+        WidgetViews.Size manual = ClimateOverlay.size(context, bounds, prefs, overlay, ClimateState.EMPTY);
+        assertEquals(auto.widthPx, manual.widthPx);
+        assertEquals(368, manual.heightPx);
+        assertEquals(shortcutHeight, ClimatePanelActivity.size(context, prefs, ClimateState.EMPTY).heightPx);
+        assertEquals(20, prefs.exportBackup(new int[0]).overlayHeightPercent);
     }
 
     @Test

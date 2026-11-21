@@ -214,10 +214,15 @@ final class ClimateOverlay implements SharedPreferences.OnSharedPreferenceChange
     }
 
     /** The preview and the actual window both size the layout in the display's safe bounds. */
-    static WidgetViews.Size size(Context context, Rect bounds, int widthPercent,
+    static WidgetViews.Size size(Context context, Rect bounds, Prefs prefs,
             WidgetConfig config, ClimateState state) {
         float density = context.getResources().getDisplayMetrics().density;
-        int width = Math.max(1, Math.round(bounds.width() * widthPercent / 100f));
+        int width = Math.max(1, Math.round(bounds.width() * prefs.overlayWidthPercent() / 100f));
+        int heightPercent = prefs.overlayHeightPercent();
+        if (heightPercent > 0) {
+            int height = Math.round(bounds.height() * heightPercent / 100f);
+            return new WidgetViews.Size(width, Math.max(1, height));
+        }
         WidgetGeometry.Plan plan = WidgetGeometry.plan(config, width, 0, density,
                 ClimateCommands.tempRange(state).steps());
         int height = plan.strips.isEmpty() ? Math.round(56 * density)
@@ -246,7 +251,7 @@ final class ClimateOverlay implements SharedPreferences.OnSharedPreferenceChange
                 manager = windowContext.getSystemService(WindowManager.class);
             }
             Rect bounds = availableBounds(manager);
-            WidgetViews.Size size = size(windowContext, bounds, prefs.overlayWidthPercent(),
+            WidgetViews.Size size = size(windowContext, bounds, prefs,
                     prefs.widget(Prefs.OVERLAY_ID), ClimateService.STORE.snapshot(SystemClock.elapsedRealtime()));
             float density = windowContext.getResources().getDisplayMetrics().density;
             OverlayGeometry.Position position = OverlayGeometry.positionFor(prefs.overlayCorner(),

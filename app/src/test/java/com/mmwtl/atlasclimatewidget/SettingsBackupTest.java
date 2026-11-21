@@ -73,6 +73,7 @@ public final class SettingsBackupTest {
         backup.overlay = new WidgetConfig();
         backup.overlay.temperatureDual = true;
         backup.overlayWidthPercent = 75;
+        backup.overlayHeightPercent = 34;
         backup.overlayCorner = OverlayCorner.TOP_END.preferenceValue;
         backup.overlayOffsetX = 16;
         backup.overlayOffsetY = 32;
@@ -83,6 +84,7 @@ public final class SettingsBackupTest {
         assertTrue(copy.overlayMode);
         assertTrue(copy.overlay.temperatureDual);
         assertEquals(75, copy.overlayWidthPercent);
+        assertEquals(34, copy.overlayHeightPercent);
         assertEquals(OverlayCorner.TOP_END.preferenceValue, copy.overlayCorner);
         assertEquals(16, copy.overlayOffsetX);
         assertEquals(32, copy.overlayOffsetY);
@@ -147,6 +149,7 @@ public final class SettingsBackupTest {
         assertEquals(new WidgetConfig().columns, parsed.template.columns);
         assertFalse(parsed.overlayMode);
         assertNull(parsed.overlay);
+        assertEquals(0, parsed.overlayHeightPercent);
         assertNull(parsed.panel);
         assertEquals(Prefs.PANEL_WIDTH_DEFAULT, parsed.panelWidthPercent);
         assertFalse(parsed.panelBottom);
