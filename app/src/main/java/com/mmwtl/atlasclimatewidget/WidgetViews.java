@@ -334,6 +334,20 @@ final class WidgetViews {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
+    static RemoteViews inactive(Context context) {
+        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_empty);
+        WidgetTheme theme = WidgetTheme.of(context);
+        views.setInt(R.id.widget_empty, "setBackgroundResource",
+                theme.night ? R.drawable.widget_card_night : R.drawable.widget_card_day);
+        views.setTextColor(R.id.widget_empty_text, theme.textSecondary);
+        views.setTextViewText(R.id.widget_empty_text, context.getText(R.string.widget_overlay_inactive));
+        Intent intent = new Intent(context, MainActivity.class)
+                .putExtra(MainActivity.EXTRA_DISPLAY_SETTINGS, true);
+        views.setOnClickPendingIntent(R.id.widget_empty, PendingIntent.getActivity(context, 2,
+                intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+        return views;
+    }
+
     static String describe(Size size, float density) {
         return String.format(Locale.US, "%d×%d dp", Math.round(size.widthPx / density),
                 Math.round(size.heightPx / density));

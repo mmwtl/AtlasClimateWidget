@@ -100,6 +100,8 @@ public final class ClimateService extends Service {
     private static volatile boolean directActive;
     private static volatile boolean firstPushLogged;
     private static volatile Panel panel;
+    private static volatile Panel overlay;
+    private ClimateOverlay homeOverlay;
     /** Main-thread sequence shared by successive panel instances. */
     private static long nextPanelControl;
 
@@ -205,23 +207,52 @@ public final class ClimateService extends Service {
      * service keeps running, watches the window's functions and draws it with the widgets.
      */
     static void setPanel(Context context, PanelHost host, WidgetViews.Size size) {
-        synchronized (FRAMES) {
-            if (size == null && (panel == null || panel.host != host)) {
-                return;
-            }
-            panel = size == null ? null : new Panel(host, size);
-            FRAMES.remove(Prefs.PANEL_ID);
-        }
+        setSurface(Prefs.PANEL_ID, host, size);
         if (size != null) {
             start(context, ACTION_REFRESH);
         }
     }
 
+    void setOverlay(PanelHost host, WidgetViews.Size size) {
+        setSurface(Prefs.OVERLAY_ID, host, size);
+        if (size != null) {
+            worker.post(() -> {
+                poll();
+                renderWidgets(true);
+            });
+        }
+    }
+
+    private static void setSurface(int id, PanelHost host, WidgetViews.Size size) {
+        synchronized (FRAMES) {
+            Panel current = surface(id);
+            if (size == null && (current == null || current.host != host)) {
+                return;
+            }
+            Panel next = size == null ? null : new Panel(host, size);
+            if (id == Prefs.PANEL_ID) {
+                panel = next;
+            } else {
+                overlay = next;
+            }
+            FRAMES.remove(id);
+        }
+    }
+
+    private static Panel surface(int id) {
+        return id == Prefs.PANEL_ID ? panel : overlay;
+    }
+
     /** Draws the climate window; {@code null} after a failure. */
     static PanelFrame buildPanel(Context context, Prefs prefs, ClimateState state,
             WidgetViews.Size size, List<Bitmap> rendered, long appliedControl) {
+        return buildSurface(context, prefs, Prefs.PANEL_ID, state, size, rendered, appliedControl);
+    }
+
+    private static PanelFrame buildSurface(Context context, Prefs prefs, int id, ClimateState state,
+            WidgetViews.Size size, List<Bitmap> rendered, long appliedControl) {
         try {
-            WidgetConfig config = prefs.widget(Prefs.PANEL_ID);
+            WidgetConfig config = prefs.widget(id);
             CarModel model = prefs.carModel();
             WidgetGeometry.Plan plan = WidgetGeometry.plan(config, size.widthPx, size.heightPx,
                     context.getResources().getDisplayMetrics().density,
@@ -271,6 +302,7 @@ public final class ClimateService extends Service {
         workerThread.start();
         worker = new Handler(workerThread.getLooper());
         registerBridgeReceiver();
+        homeOverlay = new ClimateOverlay(this, prefs);
         AppLog.startup("service created");
     }
 
@@ -281,6 +313,7 @@ public final class ClimateService extends Service {
         if (ACTION_START.equals(action)) {
             keepAliveUntil = SystemClock.elapsedRealtime() + PREVIEW_KEEP_ALIVE_MS;
         }
+        homeOverlay.syncMode();
         boolean firstPoll = !polling;
         if (firstPoll) {
             // The first poll decides whether to stop, so it runs after keepAliveUntil is set.
@@ -317,6 +350,7 @@ public final class ClimateService extends Service {
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+        homeOverlay.onConfigurationChanged();
         boolean night = WidgetTheme.of(WidgetTheme.themed(this)).night;
         if (night != lastNight && worker != null) {
             lastNight = night;
@@ -328,6 +362,7 @@ public final class ClimateService extends Service {
     @Override
     public void onDestroy() {
         running = false;
+        homeOverlay.destroy();
         if (receiverRegistered) {
             try {
                 unregisterReceiver(bridgeReceiver);
@@ -610,16 +645,20 @@ public final class ClimateService extends Service {
     }
 
     private boolean shouldStop() {
-        return widgetIds(this).length == 0 && panel == null
+        return prefs.isWidgetMode() && widgetIds(this).length == 0 && panel == null
                 && SystemClock.elapsedRealtime() > keepAliveUntil;
     }
 
     private List<WidgetConfig> configs() {
         List<WidgetConfig> configs = new ArrayList<>();
-        for (int id : widgetIds(this)) {
-            configs.add(prefs.widget(id));
-        }
         boolean settingsOpen = SystemClock.elapsedRealtime() <= keepAliveUntil;
+        if (prefs.isWidgetMode()) {
+            for (int id : widgetIds(this)) {
+                configs.add(prefs.widget(id));
+            }
+        } else if (overlay != null || settingsOpen) {
+            configs.add(prefs.widget(Prefs.OVERLAY_ID));
+        }
         if (settingsOpen) {
             configs.add(prefs.template());
         }
@@ -822,7 +861,8 @@ public final class ClimateService extends Service {
         for (int widgetId : widgetIds(this)) {
             update(this, manager, prefs, state, widgetId, force);
         }
-        renderPanel(state, force);
+        renderSurface(Prefs.PANEL_ID, state, force);
+        renderSurface(Prefs.OVERLAY_ID, state, force);
         if (state.isConnected() != lastConnected) {
             lastConnected = state.isConnected();
             startInForeground();
@@ -842,15 +882,15 @@ public final class ClimateService extends Service {
      * Draws the open climate window like a widget. Unchanged content is skipped for the same
      * reason as there: replacing the views cancels a tap in progress.
      */
-    private void renderPanel(ClimateState state, boolean force) {
-        Panel open = panel;
+    private void renderSurface(int id, ClimateState state, boolean force) {
+        Panel open = surface(id);
         if (open == null) {
             return;
         }
         WidgetViews.Size size = open.size;
         Context context = WidgetTheme.themed(this);
         List<Bitmap> bitmaps = new ArrayList<>();
-        PanelFrame rendered = buildPanel(context, prefs, state, size, bitmaps, appliedPanelControl);
+        PanelFrame rendered = buildSurface(context, prefs, id, state, size, bitmaps, appliedPanelControl);
         if (rendered == null) {
             return;
         }
@@ -859,14 +899,14 @@ public final class ClimateService extends Service {
                 + "|" + rendered.appliedControl;
         Frame frame = new Frame(key, bitmaps);
         synchronized (FRAMES) {
-            if (panel != open || (!force && frame.sameAs(FRAMES.get(Prefs.PANEL_ID)))) {
+            if (surface(id) != open || (!force && frame.sameAs(FRAMES.get(id)))) {
                 return;
             }
-            FRAMES.put(Prefs.PANEL_ID, frame);
+            FRAMES.put(id, frame);
         }
         MAIN.post(() -> {
             // The window may have closed or been replaced meanwhile.
-            if (panel == open) {
+            if (surface(id) == open) {
                 open.host.show(rendered);
             }
         });
@@ -880,6 +920,15 @@ public final class ClimateService extends Service {
     static void update(Context context, AppWidgetManager manager, Prefs prefs,
             ClimateState state, int widgetId, boolean force) {
         context = WidgetTheme.themed(context);
+        if (!prefs.isWidgetMode()) {
+            synchronized (FRAMES) {
+                if (force || FRAMES.containsKey(widgetId)) {
+                    manager.updateAppWidget(widgetId, WidgetViews.inactive(context));
+                    FRAMES.remove(widgetId);
+                }
+            }
+            return;
+        }
         WidgetConfig config = prefs.widget(widgetId);
         WidgetViews.Size size = widgetSize(context, widgetId);
         String scrubbed = widgetId == scrubbedWidget ? scrubbedStrip : null;

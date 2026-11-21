@@ -14,10 +14,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.provider.Settings;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -57,6 +59,7 @@ public final class MainActivity extends ScaledActivity {
     private static final int TEMPLATE = AppWidgetManager.INVALID_APPWIDGET_ID;
     private static final long STATUS_REFRESH_MS = 3_000L;
     private static final String STATE_TAB = "settings_tab";
+    static final String EXTRA_DISPLAY_SETTINGS = "display_settings";
     static final int TAB_BLOCKS = 0;
     static final int TAB_TILES = 1;
     static final int TAB_LOOK = 2;
@@ -90,6 +93,9 @@ public final class MainActivity extends ScaledActivity {
 
     private ScrollView settingsScroll;
     private LinearLayout previewPanel;
+    private Button overlayPermission;
+    private Button usagePermission;
+    private Button windowsPermission;
     private LinearLayout widgetHeightCard;
     private TextView previewTitle;
     private TextView statusText;
@@ -113,14 +119,16 @@ public final class MainActivity extends ScaledActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = new Prefs(this);
-        widgetIds = ClimateService.widgetIds(this);
+        widgetIds = prefs.isWidgetMode() ? ClimateService.widgetIds(this) : new int[0];
         editedWidget = requestedWidget(getIntent());
-        if (editedWidget == TEMPLATE && widgetIds.length > 0) {
-            editedWidget = widgetIds[0];
+        if (editedWidget == TEMPLATE) {
+            editedWidget = !prefs.isWidgetMode() ? Prefs.OVERLAY_ID
+                    : widgetIds.length > 0 ? widgetIds[0] : TEMPLATE;
         }
         config = loadConfig(editedWidget);
         View content = buildContent(savedInstanceState == null
-                ? TAB_BLOCKS : savedInstanceState.getInt(STATE_TAB, TAB_BLOCKS));
+                ? (getIntent().getBooleanExtra(EXTRA_DISPLAY_SETTINGS, false) ? TAB_SYSTEM : TAB_BLOCKS)
+                : savedInstanceState.getInt(STATE_TAB, TAB_BLOCKS));
         setContentView(content);
         Ui.applySystemBarInsets(content);
     }
@@ -134,6 +142,9 @@ public final class MainActivity extends ScaledActivity {
     @Override
     protected void onNewIntent(android.content.Intent intent) {
         super.onNewIntent(intent);
+        if (intent != null && intent.getBooleanExtra(EXTRA_DISPLAY_SETTINGS, false)) {
+            selectTab(TAB_SYSTEM);
+        }
         int requested = requestedWidget(intent);
         if (requested != TEMPLATE && requested != editedWidget) {
             editedWidget = requested;
@@ -147,7 +158,7 @@ public final class MainActivity extends ScaledActivity {
     private int requestedWidget(android.content.Intent intent) {
         int requested = intent == null ? TEMPLATE
                 : intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, TEMPLATE);
-        if (requested == Prefs.PANEL_ID) {
+        if (requested == Prefs.PANEL_ID || (requested == Prefs.OVERLAY_ID && !prefs.isWidgetMode())) {
             return requested;
         }
         for (int id : widgetIds) {
@@ -386,6 +397,7 @@ public final class MainActivity extends ScaledActivity {
 
     private void buildSystemTab(LinearLayout page) {
         page.addView(buildStatusCard());
+        page.addView(buildDisplayModeCard());
         page.addView(buildBehaviourCard());
         page.addView(buildThemeCard());
         page.addView(buildPanelCard());
@@ -394,6 +406,122 @@ public final class MainActivity extends ScaledActivity {
         page.addView(buildBackupCard());
         page.addView(buildGStoreCard());
         page.addView(buildDonateCard());
+    }
+
+    private LinearLayout buildDisplayModeCard() {
+        LinearLayout card = Ui.card(this);
+        card.addView(Ui.heading(this, R.string.display_mode_title, 20));
+        LinearLayout modes = new LinearLayout(this);
+        Ui.topMargin(modes, 10);
+        TextView widget = Ui.segment(this, R.string.display_mode_widget);
+        TextView overlay = Ui.segment(this, R.string.display_mode_overlay);
+        Ui.addSegment(modes, widget);
+        Ui.addSegment(modes, overlay);
+        Ui.setSegmentSelected(this, widget, prefs.isWidgetMode());
+        Ui.setSegmentSelected(this, overlay, !prefs.isWidgetMode());
+        widget.setOnClickListener(view -> changeDisplayMode(true));
+        overlay.setOnClickListener(view -> changeDisplayMode(false));
+        card.addView(modes);
+        boolean widgetMode = prefs.isWidgetMode();
+        card.addView(hint(widgetMode ? R.string.display_mode_widget_hint : R.string.overlay_hint));
+        if (widgetMode) {
+            Button add = Ui.button(this, R.string.add_android_widget);
+            add.setOnClickListener(view -> {
+                AppWidgetManager manager = AppWidgetManager.getInstance(this);
+                if (!manager.isRequestPinAppWidgetSupported() || !manager.requestPinAppWidget(
+                        new ComponentName(this, ClimateWidgetProvider.class), null, null)) {
+                    Toast.makeText(this, R.string.display_mode_widget_hint, Toast.LENGTH_LONG).show();
+                }
+            });
+            card.addView(add);
+            return card;
+        }
+
+        overlayPermission = settingsButton(card, R.string.overlay_allow_draw,
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
+        usagePermission = settingsButton(card, R.string.overlay_allow_usage,
+                Settings.ACTION_USAGE_ACCESS_SETTINGS, null);
+        windowsPermission = settingsButton(card, R.string.overlay_allow_windows,
+                Settings.ACTION_ACCESSIBILITY_SETTINGS, null);
+        Switch appList = switchRow(R.string.overlay_app_list, prefs.overlayAppListOnly());
+        appList.setOnCheckedChangeListener((view, checked) -> prefs.raw().edit()
+                .putBoolean(Prefs.KEY_SHOW_ONLY_IN_APP_LIST, checked).apply());
+        card.addView(appList);
+        addSlider(card, getString(R.string.overlay_hide_threshold),
+                WindowVisibilityPolicy.MIN_HIDE_THRESHOLD_PERCENT,
+                WindowVisibilityPolicy.MAX_HIDE_THRESHOLD_PERCENT, prefs.freeformHideThresholdPercent(),
+                value -> value + "%", value -> saveOverlaySetting(Prefs.KEY_FREEFORM_HIDE_THRESHOLD, value),
+                null);
+        addSlider(card, getString(R.string.panel_width), Prefs.PANEL_WIDTH_MIN,
+                Prefs.PANEL_WIDTH_MAX, prefs.overlayWidthPercent(), value -> value + "%",
+                value -> saveOverlaySetting(Prefs.KEY_OVERLAY_WIDTH, value), null);
+        card.addView(label(R.string.panel_position));
+        Spinner corners = new Spinner(this);
+        OverlayCorner[] choices = OverlayCorner.values();
+        List<String> cornerLabels = new ArrayList<>();
+        for (OverlayCorner choice : choices) {
+            cornerLabels.add(choice.label);
+        }
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, cornerLabels);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        corners.setAdapter(adapter);
+        corners.setSelection(prefs.overlayCorner().ordinal());
+        corners.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                prefs.raw().edit().putString(Prefs.KEY_OVERLAY_CORNER,
+                        choices[position].preferenceValue).apply();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+        card.addView(corners);
+        addSlider(card, getString(R.string.overlay_offset_x), 0, Prefs.OVERLAY_OFFSET_MAX_DP,
+                prefs.overlayOffsetDp(Prefs.KEY_OVERLAY_X), value -> value + " dp",
+                value -> saveOverlaySetting(Prefs.KEY_OVERLAY_X, value), null);
+        addSlider(card, getString(R.string.overlay_offset_y), 0, Prefs.OVERLAY_OFFSET_MAX_DP,
+                prefs.overlayOffsetDp(Prefs.KEY_OVERLAY_Y), value -> value + " dp",
+                value -> saveOverlaySetting(Prefs.KEY_OVERLAY_Y, value), null);
+        Button edit = Ui.button(this, R.string.overlay_edit);
+        edit.setOnClickListener(view -> {
+            editedWidget = Prefs.OVERLAY_ID;
+            config = loadConfig(editedWidget);
+            reloadWidgetList();
+            rebuildEditor();
+            selectTab(TAB_BLOCKS);
+        });
+        card.addView(edit);
+        return card;
+    }
+
+    private void saveOverlaySetting(String key, int value) {
+        prefs.raw().edit().putInt(key, value).apply();
+        if (editedWidget == Prefs.OVERLAY_ID) {
+            refreshPreview();
+        }
+    }
+
+    private Button settingsButton(LinearLayout card, int title, String action, Uri data) {
+        Button button = Ui.button(this, title);
+        button.setOnClickListener(view -> {
+            try {
+                startActivity(new Intent(action, data));
+            } catch (ActivityNotFoundException error) {
+                startActivity(new Intent(Settings.ACTION_SETTINGS));
+            }
+        });
+        card.addView(button);
+        return button;
+    }
+
+    private void changeDisplayMode(boolean widget) {
+        if (prefs.isWidgetMode() != widget) {
+            prefs.setWidgetMode(widget);
+            ClimateService.start(this, ClimateService.ACTION_REFRESH);
+            recreate();
+        }
     }
 
     private LinearLayout buildStatusCard() {
@@ -1452,11 +1580,15 @@ public final class MainActivity extends ScaledActivity {
     }
 
     private void reloadWidgetList() {
-        widgetIds = ClimateService.widgetIds(this);
-        layoutIds = new int[widgetIds.length + 2];
+        widgetIds = prefs.isWidgetMode() ? ClimateService.widgetIds(this) : new int[0];
+        int overlayCount = prefs.isWidgetMode() ? 0 : 1;
+        layoutIds = new int[widgetIds.length + 2 + overlayCount];
         System.arraycopy(widgetIds, 0, layoutIds, 0, widgetIds.length);
-        layoutIds[widgetIds.length] = Prefs.PANEL_ID;
-        layoutIds[widgetIds.length + 1] = TEMPLATE;
+        if (overlayCount != 0) {
+            layoutIds[widgetIds.length] = Prefs.OVERLAY_ID;
+        }
+        layoutIds[layoutIds.length - 2] = Prefs.PANEL_ID;
+        layoutIds[layoutIds.length - 1] = TEMPLATE;
         float density = getApplicationContext().getResources().getDisplayMetrics().density;
         List<String> labels = new ArrayList<>();
         int selection = -1;
@@ -1465,6 +1597,9 @@ public final class MainActivity extends ScaledActivity {
                     widgetIds[index]);
             labels.add(getString(R.string.widget_item, index + 1,
                     WidgetViews.describe(size, density)));
+        }
+        if (overlayCount != 0) {
+            labels.add(getString(R.string.overlay_title));
         }
         labels.add(getString(R.string.panel_shortcut));
         labels.add(getString(R.string.widget_template));
@@ -1514,6 +1649,15 @@ public final class MainActivity extends ScaledActivity {
     }
 
     private void refreshStatus() {
+        if (overlayPermission != null) {
+            overlayPermission.setVisibility(Settings.canDrawOverlays(this) ? View.GONE : View.VISIBLE);
+            usagePermission.setVisibility(ForegroundAppDetector.hasUsageAccess(this)
+                    ? View.GONE : View.VISIBLE);
+            windowsPermission.setVisibility(AccessibilityWindowState.isEnabled(this)
+                    ? View.GONE : View.VISIBLE);
+            windowsPermission.setText(AccessibilityWindowState.isConfigured(this)
+                    ? R.string.overlay_windows_waiting : R.string.overlay_allow_windows);
+        }
         if (statusText == null) {
             return;
         }
@@ -1558,6 +1702,10 @@ public final class MainActivity extends ScaledActivity {
             size = new WidgetViews.Size(Math.round(WidgetGeometry.DEFAULT_WIDTH_DP * density), 0);
         } else if (editedWidget == Prefs.PANEL_ID) {
             size = panelSize(config);
+        } else if (editedWidget == Prefs.OVERLAY_ID) {
+            Context app = getApplicationContext();
+            size = ClimateOverlay.size(app, ClimateOverlay.availableBounds(
+                    getSystemService(WindowManager.class)), prefs.overlayWidthPercent(), config, live);
         } else {
             size = ClimateService.widgetSize(getApplicationContext(), editedWidget);
         }

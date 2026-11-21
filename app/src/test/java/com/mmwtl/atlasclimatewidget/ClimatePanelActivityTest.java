@@ -93,6 +93,44 @@ public final class ClimatePanelActivityTest {
     }
 
     @Test
+    public void autoFanBarDragsAcrossPresetsAndOnlySendsTheReleasedPreset() {
+        try (ActivityController<ClimatePanelActivity> controller = open()) {
+            ClimatePanelActivity activity = controller.get();
+            Prefs prefs = new Prefs(activity);
+            prefs.setFanPresets(Prefs.FanPresets.FIVE);
+            long now = SystemClock.elapsedRealtime();
+            ClimateService.STORE.putProperty(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL,
+                    Hvac.AUTO_FAN_NORMAL, now);
+            ClimateState state = ClimateService.STORE.snapshot(now);
+            WidgetViews.Size size = ClimatePanelActivity.size(activity, prefs, state);
+            ClimateService.PanelFrame frame = ClimateService.buildPanel(WidgetTheme.themed(activity),
+                    prefs, state, size, null, 0);
+            assertTrue(frame.auto());
+            activity.show(frame);
+
+            ShadowApplication app = Shadows.shadowOf(RuntimeEnvironment.getApplication());
+            assertEquals(ClimateService.ACTION_REFRESH, app.getNextStartedService().getAction());
+            ViewGroup root = layout(activity);
+            WidgetGeometry.Strip strip = frame.plan().strips.stream()
+                    .filter(item -> item.row.kind == WidgetGeometry.RowKind.FAN)
+                    .findFirst().orElseThrow();
+            View row = root.getChildAt(frame.plan().strips.indexOf(strip));
+            ViewGroup zones = row.findViewById(R.id.strip_zones);
+            ImageView image = row.findViewById(R.id.strip_image);
+            Drawable original = image.getDrawable();
+            int last = strip.levelStart(4, 5);
+            touch(root, row, zones, strip.stepStart, MotionEvent.ACTION_DOWN);
+            assertNotSame(original, image.getDrawable());
+            touch(root, row, zones, last, MotionEvent.ACTION_MOVE);
+            assertNull(app.getNextStartedService());
+            touch(root, row, zones, last, MotionEvent.ACTION_UP);
+            assertEquals("/fanpreset/4", app.getNextStartedService().getData().getPath());
+            assertNull(app.getNextStartedService());
+            assertNull(app.getNextStartedActivity());
+        }
+    }
+
+    @Test
     public void longPressOnOptionSwitchesOffWithoutFiringTap() {
         Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
         WidgetConfig config = prefs.widget(Prefs.PANEL_ID);

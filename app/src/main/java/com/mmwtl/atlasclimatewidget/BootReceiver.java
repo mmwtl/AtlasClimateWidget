@@ -29,7 +29,9 @@ public final class BootReceiver extends BroadcastReceiver {
             return;
         }
         int[] widgetIds = ClimateService.widgetIds(context);
-        if (widgetIds.length == 0) {
+        Prefs prefs = new Prefs(context);
+        if (widgetIds.length == 0
+                && (prefs.isWidgetMode() || !ClimateOverlay.hasPermissions(context))) {
             return;
         }
         AppLog.startup(action);

@@ -40,6 +40,15 @@ final class SettingsBackup {
     boolean panelBottom;
     int panelCloseSeconds = Prefs.PANEL_CLOSE_DEFAULT;
 
+    boolean overlayMode;
+    WidgetConfig overlay;
+    int overlayWidthPercent = Prefs.PANEL_WIDTH_DEFAULT;
+    String overlayCorner = OverlayCorner.BOTTOM_START.preferenceValue;
+    int overlayOffsetX;
+    int overlayOffsetY = Prefs.OVERLAY_BOTTOM_OFFSET_DP;
+    int overlayHideThreshold = WindowVisibilityPolicy.DEFAULT_HIDE_THRESHOLD_PERCENT;
+    boolean overlayAppListOnly;
+
     String toJson(String appVersion) {
         try {
             JSONObject json = new JSONObject();
@@ -76,6 +85,18 @@ final class SettingsBackup {
                 window.put("layout", new JSONObject(panel.toJson()));
             }
             json.put("climateWindow", window);
+            JSONObject overlaySettings = new JSONObject();
+            overlaySettings.put("enabled", overlayMode);
+            overlaySettings.put("widthPercent", overlayWidthPercent);
+            overlaySettings.put("corner", overlayCorner);
+            overlaySettings.put("offsetX", overlayOffsetX);
+            overlaySettings.put("offsetY", overlayOffsetY);
+            overlaySettings.put("hideThreshold", overlayHideThreshold);
+            overlaySettings.put("appListOnly", overlayAppListOnly);
+            if (overlay != null) {
+                overlaySettings.put("layout", new JSONObject(overlay.toJson()));
+            }
+            json.put("overlay", overlaySettings);
             return json.toString(2);
         } catch (JSONException error) {
             throw new IllegalStateException(error);
@@ -141,6 +162,25 @@ final class SettingsBackup {
             JSONObject layout = window.optJSONObject("layout");
             if (layout != null) {
                 backup.panel = WidgetConfig.fromJson(layout.toString());
+            }
+        }
+        JSONObject overlaySettings = json.optJSONObject("overlay");
+        if (overlaySettings != null) {
+            backup.overlayMode = overlaySettings.optBoolean("enabled");
+            backup.overlayWidthPercent = Prefs.clampPanelWidth(
+                    overlaySettings.optInt("widthPercent", backup.overlayWidthPercent));
+            OverlayCorner corner = OverlayCorner.fromPreference(overlaySettings.optString("corner"));
+            if (corner != null) {
+                backup.overlayCorner = corner.preferenceValue;
+            }
+            backup.overlayOffsetX = Prefs.clampOverlayOffset(overlaySettings.optInt("offsetX"));
+            backup.overlayOffsetY = Prefs.clampOverlayOffset(overlaySettings.optInt("offsetY", backup.overlayOffsetY));
+            backup.overlayHideThreshold = Prefs.clampHideThreshold(
+                    overlaySettings.optInt("hideThreshold", backup.overlayHideThreshold));
+            backup.overlayAppListOnly = overlaySettings.optBoolean("appListOnly");
+            JSONObject layout = overlaySettings.optJSONObject("layout");
+            if (layout != null) {
+                backup.overlay = WidgetConfig.fromJson(layout.toString());
             }
         }
         return backup;

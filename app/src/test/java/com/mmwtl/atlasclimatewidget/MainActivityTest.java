@@ -73,6 +73,38 @@ public final class MainActivityTest {
     }
 
     @Test
+    public void displayModeSwitchKeepsWidgetAndOverlayLayouts() {
+        Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
+        WidgetConfig placed = new WidgetConfig();
+        placed.temperatureDual = true;
+        prefs.setWidget(42, placed);
+        WidgetConfig overlay = new WidgetConfig();
+        overlay.temperatureEnabled = false;
+        prefs.setWidget(Prefs.OVERLAY_ID, overlay);
+
+        ActivityController<MainActivity> controller = open();
+        try {
+            find(root(controller), "Система").performClick();
+            assertTrue(prefs.isWidgetMode());
+            assertTrue(shown(find(root(controller), "Добавить Android-виджет")));
+
+            find(root(controller), "Оверлей").performClick();
+            ShadowLooper.runUiThreadTasks();
+            assertFalse(prefs.isWidgetMode());
+            assertTrue(shown(find(root(controller), "Настроить макет оверлея")));
+            assertFalse(shown(find(root(controller), "Добавить Android-виджет")));
+
+            find(root(controller), "Виджет").performClick();
+            ShadowLooper.runUiThreadTasks();
+            assertTrue(prefs.isWidgetMode());
+            assertTrue(prefs.widget(42).temperatureDual);
+            assertFalse(prefs.widget(Prefs.OVERLAY_ID).temperatureEnabled);
+        } finally {
+            close(controller);
+        }
+    }
+
+    @Test
     public void collapsibleSectionsStartClosedAndOpenFromHeader() {
         ActivityController<MainActivity> controller = open();
         try {

@@ -355,4 +355,23 @@
     <string name="function_unavailable">%1$s (недоступно для выбранной модели)</string>
     <string name="fn_all_off">Выключить всё</string>
     <string name="fn_all_off_short">Выкл. всё</string>
+    <string name="display_mode_title">Режим отображения</string>
+    <string name="display_mode_widget">Виджет</string>
+    <string name="display_mode_overlay">Оверлей</string>
+    <string name="display_mode_widget_hint">Добавьте виджет AtlasClimateWidget через меню виджетов лаунчера.</string>
+    <string name="add_android_widget">Добавить Android-виджет</string>
+    <string name="overlay_title">Оверлей климата</string>
+    <string name="overlay_hint">Оверлей показывается на главном экране. Для показа разрешите наложение, доступ к статистике использования и контроль окон.</string>
+    <string name="overlay_allow_draw">Разрешить наложение</string>
+    <string name="overlay_allow_usage">Разрешить доступ к статистике использования</string>
+    <string name="overlay_allow_windows">Включить контроль окон</string>
+    <string name="overlay_windows_waiting">Контроль окон ещё не подключён</string>
+    <string name="overlay_accessibility_label">AtlasClimateWidget: контроль окон</string>
+    <string name="overlay_accessibility_description">Определяет, виден ли главный экран, чтобы вовремя показывать и скрывать оверлей климата.</string>
+    <string name="overlay_app_list">Показывать только в списке приложений</string>
+    <string name="overlay_hide_threshold">Скрывать, если окна закрыли эту часть экрана</string>
+    <string name="overlay_offset_x">Отступ от бокового края</string>
+    <string name="overlay_offset_y">Отступ от верхнего или нижнего края</string>
+    <string name="overlay_edit">Настроить макет оверлея</string>
+    <string name="widget_overlay_inactive">Выбран режим «Оверлей»\nНажмите для выбора режима</string>
 </resources>

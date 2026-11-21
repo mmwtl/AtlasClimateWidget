@@ -67,6 +67,29 @@ public final class SettingsBackupTest {
         }
     }
 
+    @Test public void preservesOverlayModeLayoutAndPlacement() {
+        SettingsBackup backup = new SettingsBackup();
+        backup.overlayMode = true;
+        backup.overlay = new WidgetConfig();
+        backup.overlay.temperatureDual = true;
+        backup.overlayWidthPercent = 75;
+        backup.overlayCorner = OverlayCorner.TOP_END.preferenceValue;
+        backup.overlayOffsetX = 16;
+        backup.overlayOffsetY = 32;
+        backup.overlayHideThreshold = WindowVisibilityPolicy.MIN_HIDE_THRESHOLD_PERCENT;
+        backup.overlayAppListOnly = true;
+
+        SettingsBackup copy = SettingsBackup.parse(backup.toJson("1.6.1"));
+        assertTrue(copy.overlayMode);
+        assertTrue(copy.overlay.temperatureDual);
+        assertEquals(75, copy.overlayWidthPercent);
+        assertEquals(OverlayCorner.TOP_END.preferenceValue, copy.overlayCorner);
+        assertEquals(16, copy.overlayOffsetX);
+        assertEquals(32, copy.overlayOffsetY);
+        assertEquals(WindowVisibilityPolicy.MIN_HIDE_THRESHOLD_PERCENT, copy.overlayHideThreshold);
+        assertTrue(copy.overlayAppListOnly);
+    }
+
     @Test public void extraWidgetsTakeTheTemplate() {
         SettingsBackup backup = new SettingsBackup();
         backup.template.columns = 5;
@@ -122,6 +145,8 @@ public final class SettingsBackupTest {
         assertEquals(Fuel.MULTIPLIER, parsed.fuelMultiplier, 0f);
         assertTrue(parsed.widgets.isEmpty());
         assertEquals(new WidgetConfig().columns, parsed.template.columns);
+        assertFalse(parsed.overlayMode);
+        assertNull(parsed.overlay);
         assertNull(parsed.panel);
         assertEquals(Prefs.PANEL_WIDTH_DEFAULT, parsed.panelWidthPercent);
         assertFalse(parsed.panelBottom);

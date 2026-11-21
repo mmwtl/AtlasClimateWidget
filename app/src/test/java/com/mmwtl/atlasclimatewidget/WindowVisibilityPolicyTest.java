@@ -1,0 +1,373 @@
+package com.mmwtl.atlasclimatewidget;
+
+import static org.junit.Assert.assertEquals;
+
+import android.view.accessibility.AccessibilityWindowInfo;
+
+import org.junit.Test;
+
+import java.util.List;
+import java.util.Set;
+
+public final class WindowVisibilityPolicyTest {
+    private static final int WIDTH = 1440;
+    private static final int HEIGHT = 1920;
+    private static final Set<String> HOME_PACKAGES = Set.of("launcher", "settings");
+    private static final Set<String> HOME_COMPONENTS = Set.of(
+            "launcher/HomeActivity",
+            "settings/FallbackHome"
+    );
+
+    @Test
+    public void homeWithFocusedFreeformWindowRemainsVisible() {
+        assertDecision(
+                WindowVisibilityPolicy.Decision.HOME_VISIBLE,
+                List.of(
+                        window("launcher", "HomeActivity", true, false,
+                                0, 0, WIDTH, HEIGHT, 0),
+                        window("maps", "MapActivity", true, true,
+                                180, 300, 1180, 1450, 4)
+                ),
+                activity("maps", "MapActivity"),
+                "maps",
+                "MapActivity"
+        );
+    }
+
+    @Test
+    public void fullscreenApplicationAboveHomeHidesPanel() {
+        assertDecision(
+                WindowVisibilityPolicy.Decision.HOME_HIDDEN,
+                List.of(
+                        window("launcher", "HomeActivity", false, false,
+                                0, 0, WIDTH, HEIGHT, 0),
+                        window("video", "PlayerActivity", true, true,
+                                0, 0, WIDTH, HEIGHT, 5)
+                ),
+                activity("video", "PlayerActivity"),
+                "video",
+                "PlayerActivity"
+        );
+    }
+
+    @Test
+    public void settingsActivityIsNotMistakenForFallbackHome() {
+        assertDecision(
+                WindowVisibilityPolicy.Decision.HOME_HIDDEN,
+                List.of(window("settings", "Settings", true, true,
+                        0, 0, WIDTH, HEIGHT, 3)),
+                activity("settings", "Settings"),
+                "settings",
+                "Settings"
+        );
+    }
+
+    @Test
+    public void freeformSettingsAboveRealHomeRemainsVisible() {
+        assertDecision(
+                WindowVisibilityPolicy.Decision.HOME_VISIBLE,
+                List.of(
+                        window("launcher", "HomeActivity", false, false,
+                                0, 0, WIDTH, HEIGHT, 0),
+                        window("settings", "Settings", true, true,
+                                250, 300, 1100, 1500, 4)
+                ),
+                activity("settings", "Settings"),
+                "settings",
+                "Settings"
+        );
+    }
+
+    @Test
+    public void arbitraryFullscreenOverlayHidesPanel() {
+        assertDecision(
+                WindowVisibilityPolicy.Decision.HOME_HIDDEN,
+                List.of(
+                        window("launcher", "HomeActivity", false, false,
+                                0, 0, WIDTH, HEIGHT, 0),
+                        new WindowObservation(
+                                "third.party.overlay", "Overlay", 3,
+                                true, true, 8, 0, 0, WIDTH, HEIGHT)
+                ),
+                null,
+                "third.party.overlay",
+                "Overlay"
+        );
+    }
+
+    @Test
+    public void knownGInputBridgeLauncherEntryAlwaysHidesPanel() {
+        assertDecision(
+                WindowVisibilityPolicy.Decision.HOME_HIDDEN,
+                List.of(window("launcher", "HomeActivity", false, false,
+                        0, 0, WIDTH, HEIGHT, 0)),
+                activity("com.salat.gbinder",
+                        "com.salat.gbinder.features.launcher.LauncherEntryActivity"),
+                "com.salat.gbinder",
+                "com.salat.gbinder.features.launcher.LauncherEntryActivity"
+        );
+    }
+
+    @Test
+    public void restoredFreeformGsplitHidesPanelWithStaleLauncherEvent() {
+        assertDecision(
+                WindowVisibilityPolicy.Decision.HOME_HIDDEN,
+                List.of(
+                        window("launcher", "HomeActivity", false, false,
+                                0, 0, WIDTH, HEIGHT, 0),
+                        window("com.salat.gsplit", "com.salat.gsplit.presentation.MainActivity",
+                                true, true, 180, 300, 1180, 1450, 4)
+                ),
+                activity("launcher", "HomeActivity"),
+                "launcher",
+                "HomeActivity"
+        );
+    }
+
+    @Test
+    public void staleGsplitUsageDoesNotHideActiveHomeWindow() {
+        assertDecision(
+                WindowVisibilityPolicy.Decision.HOME_VISIBLE,
+                List.of(window("launcher", "HomeActivity", true, true,
+                        0, 0, WIDTH, HEIGHT, 0)),
+                activity("com.salat.gsplit", "com.salat.gsplit.presentation.MainActivity"),
+                "",
+                ""
+        );
+    }
+
+    @Test
+    public void twoFreeformWindowsHidePanelWhenTheirUnionReachesThreshold() {
+        assertDecision(
+                WindowVisibilityPolicy.Decision.HOME_HIDDEN,
+                List.of(
+                        window("launcher", "HomeActivity", false, false,
+                                0, 0, WIDTH, HEIGHT, 0),
+                        window("maps", "MapActivity", true, true,
+                                0, 0, WIDTH / 2, HEIGHT, 4),
+                        window("music", "MusicActivity", false, false,
+                                WIDTH / 2, 0, WIDTH, HEIGHT, 4)
+                ),
+                activity("maps", "MapActivity"),
+                "maps",
+                "MapActivity"
+        );
+    }
+
+    @Test
+    public void overlappingFreeformWindowsCountSharedAreaOnlyOnce() {
+        assertDecision(
+                WindowVisibilityPolicy.Decision.HOME_VISIBLE,
+                List.of(
+                        window("launcher", "HomeActivity", false, false,
+                                0, 0, WIDTH, HEIGHT, 0),
+                        window("maps", "MapActivity", true, true,
+                                0, 0, 864, 1536, 4),
+                        window("music", "MusicActivity", false, false,
+                                576, 0, WIDTH, 1536, 4)
+                ),
+                activity("maps", "MapActivity"),
+                "maps",
+                "MapActivity"
+        );
+    }
+
+    @Test
+    public void configuredThresholdAppliesToCombinedWindowArea() {
+        assertDecision(
+                WindowVisibilityPolicy.Decision.HOME_HIDDEN,
+                List.of(
+                        window("launcher", "HomeActivity", false, false,
+                                0, 0, WIDTH, HEIGHT, 0),
+                        window("maps", "MapActivity", true, true,
+                                0, 0, 864, 1536, 4),
+                        window("music", "MusicActivity", false, false,
+                                576, 0, WIDTH, 1536, 4)
+                ),
+                activity("maps", "MapActivity"),
+                "maps",
+                "MapActivity",
+                80
+        );
+    }
+
+    @Test
+    public void homeWithoutOtherWindowsIsVisible() {
+        assertDecision(
+                WindowVisibilityPolicy.Decision.HOME_VISIBLE,
+                List.of(window("launcher", "HomeActivity", true, true,
+                        0, 0, WIDTH, HEIGHT, 0)),
+                activity("launcher", "HomeActivity"),
+                "launcher",
+                "HomeActivity"
+        );
+    }
+
+    @Test
+    public void launcherAllAppsStateHidesPanelEvenWithinHomeActivity() {
+        assertDecision(
+                WindowVisibilityPolicy.Decision.HOME_HIDDEN,
+                List.of(new WindowObservation(
+                        "launcher",
+                        "com.android.launcher3.Launcher",
+                        AccessibilityWindowInfo.TYPE_APPLICATION,
+                        true,
+                        true,
+                        0,
+                        0,
+                        0,
+                        WIDTH,
+                        HEIGHT,
+                        true
+                )),
+                activity("launcher", "com.android.launcher3.Launcher"),
+                "launcher",
+                "com.android.launcher3.Launcher"
+        );
+    }
+
+    @Test
+    public void appListOnlyShowsPanelForFocusedLauncher3AllApps() {
+        assertAppListDecision(
+                WindowVisibilityPolicy.Decision.HOME_VISIBLE,
+                List.of(new WindowObservation(
+                        "com.android.launcher3",
+                        "com.android.launcher3.Launcher",
+                        AccessibilityWindowInfo.TYPE_APPLICATION,
+                        true,
+                        true,
+                        0,
+                        0,
+                        0,
+                        WIDTH,
+                        HEIGHT,
+                        true
+                ))
+        );
+    }
+
+    @Test
+    public void appListOnlyHidesPanelOnLauncherWorkspace() {
+        assertAppListDecision(
+                WindowVisibilityPolicy.Decision.HOME_HIDDEN,
+                List.of(window("launcher", "HomeActivity", true, true,
+                        0, 0, WIDTH, HEIGHT, 0))
+        );
+    }
+
+    private static WindowObservation window(
+            String packageName,
+            String className,
+            boolean active,
+            boolean focused,
+            int left,
+            int top,
+            int right,
+            int bottom,
+            int layer
+    ) {
+        return new WindowObservation(
+                packageName,
+                className,
+                AccessibilityWindowInfo.TYPE_APPLICATION,
+                active,
+                focused,
+                layer,
+                left,
+                top,
+                right,
+                bottom
+        );
+    }
+
+    private static ForegroundEventTracker.VisibleActivity activity(
+            String packageName,
+            String className
+    ) {
+        return new ForegroundEventTracker.VisibleActivity(packageName, className, 1L);
+    }
+
+    @Test
+    public void settingsWindowAboveRealHomeHidesPanel() {
+        assertDecision(
+                WindowVisibilityPolicy.Decision.HOME_HIDDEN,
+                List.of(
+                        window("launcher", "HomeActivity", false, false,
+                                0, 0, WIDTH, HEIGHT, 0),
+                        window("com.android.settings", "SubSettings", true, true,
+                                0, 120, WIDTH, 1680, 4)
+                ),
+                activity("com.android.settings", "SubSettings"),
+                "com.android.settings",
+                "SubSettings"
+        );
+    }
+
+    @Test
+    public void permissionControllerDialogAboveRealHomeHidesPanel() {
+        assertDecision(
+                WindowVisibilityPolicy.Decision.HOME_HIDDEN,
+                List.of(
+                        window("launcher", "HomeActivity", false, false,
+                                0, 0, WIDTH, HEIGHT, 0),
+                        window("com.android.permissioncontroller", "GrantPermissionsActivity", true, true,
+                                200, 500, 1240, 1400, 4)
+                ),
+                activity("com.android.permissioncontroller", "GrantPermissionsActivity"),
+                "com.android.permissioncontroller",
+                "GrantPermissionsActivity"
+        );
+    }
+
+    private static void assertDecision(
+            WindowVisibilityPolicy.Decision expected,
+            List<WindowObservation> windows,
+            ForegroundEventTracker.VisibleActivity foreground,
+            String eventPackage,
+            String eventClass
+    ) {
+        assertDecision(expected, windows, foreground, eventPackage, eventClass,
+                WindowVisibilityPolicy.DEFAULT_HIDE_THRESHOLD_PERCENT);
+    }
+
+    private static void assertDecision(
+            WindowVisibilityPolicy.Decision expected,
+            List<WindowObservation> windows,
+            ForegroundEventTracker.VisibleActivity foreground,
+            String eventPackage,
+            String eventClass,
+            int thresholdPercent
+    ) {
+        assertEquals(expected, WindowVisibilityPolicy.evaluate(
+                windows,
+                WIDTH,
+                HEIGHT,
+                HOME_PACKAGES,
+                HOME_COMPONENTS,
+                foreground,
+                eventPackage,
+                eventClass,
+                "com.mmwtl.atlasclimatewidget",
+                thresholdPercent
+        ));
+    }
+
+    private static void assertAppListDecision(
+            WindowVisibilityPolicy.Decision expected,
+            List<WindowObservation> windows
+    ) {
+        assertEquals(expected, WindowVisibilityPolicy.evaluate(
+                windows,
+                WIDTH,
+                HEIGHT,
+                HOME_PACKAGES,
+                HOME_COMPONENTS,
+                null,
+                "",
+                "",
+                "com.mmwtl.atlasclimatewidget",
+                WindowVisibilityPolicy.DEFAULT_HIDE_THRESHOLD_PERCENT,
+                true
+        ));
+    }
+}

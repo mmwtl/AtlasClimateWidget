@@ -6,8 +6,8 @@ These instructions apply to the entire repository.
 
 ## Project purpose
 
-AtlasClimateWidget is a real Android `AppWidget` (not an overlay) for portrait Geely OneOS head
-units on Android 11. It is a user-built climate widget: a temperature bar, a fan bar and tiles of
+AtlasClimateWidget offers a real Android `AppWidget` and a HOME overlay for portrait Geely
+OneOS head units on Android 11. The Android widget is the default. It is a user-built climate widget: a temperature bar, a fan bar and tiles of
 climate functions. Package name: `com.mmwtl.atlasclimatewidget`; do not change it without an
 explicit migration request. All car access goes through the GInputBridge broadcast API
 (`com.salat.gbinder`), except the experimental direct mode below; do not bind ECarX services
@@ -38,6 +38,13 @@ line, read as in AtlasAppWidget (`Fuel`).
   selector and live preview are pinned under the tabs on the three layout tabs and hidden on
   System. Keep fine-tuning controls (card sliders, the list of available functions) in collapsed
   sections; the selected tab survives recreation.
+- The System tab's display mode activates the placed Android widgets or the HOME overlay.
+  Placed widgets keep their layouts in overlay mode and show a link to the mode picker.
+  `ClimateOverlay` uses AtlasAppWidget's window visibility policy, accessibility snapshots,
+  usage events and screen/lock checks. The overlay has a backup-able layout slot
+  (`Prefs.OVERLAY_ID`) and configurable width, corner and offsets. It shares
+  `InteractiveClimateView` with the shortcut window for in-place bar drags and long-press
+  switch-off. Both render and send commands through `ClimateService`.
 - `TileDragLayer` hosts the settings preview and lets the finger drag tiles to reorder them
   (`WidgetConfig.dropTile`); the preview follows each step and the order is saved on release.
   Home-screen widgets cannot be dragged: `RemoteViews` only deliver clicks.

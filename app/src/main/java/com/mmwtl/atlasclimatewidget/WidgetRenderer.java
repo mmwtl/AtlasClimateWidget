@@ -56,6 +56,7 @@ final class WidgetRenderer {
     private int draggedZone = -1;
     private int previewZone;
     private int previewStep;
+    private boolean previewFanPresets;
     private int previewFanLevel;
 
     WidgetRenderer(Context context, WidgetConfig config, ClimateState state, CarModel model,
@@ -85,11 +86,16 @@ final class WidgetRenderer {
 
     /** Shows a local selection while the panel waits for the finger to lift. */
     WidgetRenderer withBarPreview(WidgetGeometry.Strip strip, int step) {
+        return withBarPreview(strip, step, false);
+    }
+
+    WidgetRenderer withBarPreview(WidgetGeometry.Strip strip, int step, boolean presets) {
         if (strip.row.kind == WidgetGeometry.RowKind.TEMPERATURE) {
             previewZone = strip.row.index == 0 ? Hvac.ZONE_DRIVER : Hvac.ZONE_PASSENGER;
             previewStep = step;
         } else {
             previewFanLevel = step + 1;
+            previewFanPresets = presets;
         }
         return this;
     }
@@ -733,7 +739,8 @@ final class WidgetRenderer {
         float start = plan.padding + cell * strip.stepStart;
         // In AUTO the bar fan layout shows the preset levels in the speeds' place.
         boolean choosing = previewFanLevel > 0;
-        boolean presets = fan.auto && !choosing && config.fanLayout == WidgetConfig.FanLayout.BAR;
+        boolean presets = choosing ? previewFanPresets
+                : fan.auto && config.fanLayout == WidgetConfig.FanLayout.BAR;
         boolean autoBadge = fan.auto && !choosing && !presets;
         int levels = presets ? ClimateCommands.fanPresets(config.fanPresetCount).length
                 : Hvac.FAN_SPEED_LEVEL_COUNT;

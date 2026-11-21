@@ -3,22 +3,14 @@ package com.mmwtl.atlasclimatewidget;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.FrameLayout;
-import android.widget.ImageView;
-
-import java.util.List;
 
 /**
  * The climate window: a large climate panel over whatever app is open, meant for a steering
@@ -39,17 +31,9 @@ public final class ClimatePanelActivity extends Activity {
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Runnable idleClose = this::finish;
-    private final Runnable selectionTimeout = this::expireSelection;
-    private final Runnable flushPending = this::showPending;
     private final ClimateService.PanelHost host = this::show;
-
-    private FrameLayout container;
+    private InteractiveClimateView content;
     private Prefs prefs;
-    private Drag activeDrag;
-    private boolean touchHeld;
-    private long awaitingControl;
-    private ClimateService.PanelFrame displayedFrame;
-    private ClimateService.PanelFrame pendingFrame;
 
     static Intent intent(Context context) {
         return new Intent(ACTION_SHOW).setClass(context, ClimatePanelActivity.class);
@@ -80,8 +64,8 @@ public final class ClimatePanelActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = new Prefs(this);
-        container = new FrameLayout(this);
-        setContentView(container);
+        content = new InteractiveClimateView(this, this::updateIdleTimer);
+        setContentView(content);
         Window window = getWindow();
         window.setGravity(prefs.panelBottom()
                 ? Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL : Gravity.CENTER);
@@ -98,6 +82,7 @@ public final class ClimatePanelActivity extends Activity {
     @Override
     protected void onStart() {
         super.onStart();
+        content.resumeControls();
         ClimateState state = ClimateService.STORE.snapshot(SystemClock.elapsedRealtime());
         WidgetViews.Size size = size(this, prefs, state);
         // The application's pixels may differ from this window's; size it in its own.
@@ -117,17 +102,14 @@ public final class ClimatePanelActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        content.resumeControls();
         restartIdleTimer();
     }
 
     @Override
     protected void onPause() {
         main.removeCallbacks(idleClose);
-        main.removeCallbacks(flushPending);
-        touchHeld = false;
-        if (activeDrag != null) {
-            activeDrag.end(false);
-        }
+        content.pauseControls();
         super.onPause();
     }
 
@@ -135,43 +117,16 @@ public final class ClimatePanelActivity extends Activity {
     @Override
     protected void onStop() {
         ClimateService.setPanel(this, host, null);
-        main.removeCallbacks(selectionTimeout);
-        main.removeCallbacks(flushPending);
-        touchHeld = false;
-        awaitingControl = 0;
-        pendingFrame = null;
-        displayedFrame = null;
         super.onStop();
         if (!isChangingConfigurations() && !isFinishing()) {
             finish();
         }
     }
 
-    @Override
-    public boolean dispatchTouchEvent(MotionEvent event) {
-        int action = event.getActionMasked();
-        if (action == MotionEvent.ACTION_DOWN) {
-            touchHeld = true;
-            main.removeCallbacks(flushPending);
-        } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL
-                || action == MotionEvent.ACTION_OUTSIDE) {
-            touchHeld = false;
-        }
-        boolean handled = super.dispatchTouchEvent(event);
-        if (!touchHeld && pendingFrame != null && activeDrag == null) {
-            // Defer past View's posted PerformClick on ACTION_UP, which detaching cancels.
-            main.removeCallbacks(flushPending);
-            main.post(flushPending);
-        }
-        if (activeDrag == null && !isFinishing()) {
+    private void updateIdleTimer() {
+        main.removeCallbacks(idleClose);
+        if (!content.isDragging() && !isFinishing()) {
             restartIdleTimer();
-        }
-        return handled;
-    }
-
-    private void showPending() {
-        if (!touchHeld && pendingFrame != null && activeDrag == null) {
-            show(pendingFrame);
         }
     }
 
@@ -184,194 +139,8 @@ public final class ClimatePanelActivity extends Activity {
     }
 
     void show(ClimateService.PanelFrame frame) {
-        if (isFinishing() || isDestroyed()) {
-            return;
-        }
-        if (activeDrag != null || touchHeld || frame.appliedControl() < awaitingControl) {
-            pendingFrame = frame;
-            return;
-        }
-        try {
-            ViewGroup content = (ViewGroup) frame.views().apply(this, container);
-            attachDrags(content, frame);
-            attachLongPresses(content, frame);
-            container.removeAllViews();
-            container.addView(content, new FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-            displayedFrame = frame;
-            pendingFrame = null;
-            awaitingControl = 0;
-            main.removeCallbacks(selectionTimeout);
-        } catch (RuntimeException error) {
-            AppLog.warn("Cannot show the climate window", error);
-        }
-    }
-
-    private void expireSelection() {
-        awaitingControl = 0;
-        ClimateService.PanelFrame next = pendingFrame != null ? pendingFrame : displayedFrame;
-        if (next != null) {
-            show(next);
-        }
-    }
-
-    private void attachLongPresses(ViewGroup content, ClimateService.PanelFrame frame) {
-        List<WidgetGeometry.Strip> strips = frame.plan().strips;
-        for (int index = 0; index < strips.size(); index++) {
-            WidgetGeometry.Strip strip = strips.get(index);
-            View row = content.getChildAt(index);
-            ViewGroup zones = row.findViewById(R.id.strip_zones);
-            for (int cell = 0; cell < strip.zoneCount; cell++) {
-                String control = WidgetViews.longPressControl(
-                        frame.config(), strip, cell, frame.auto());
-                if (control != null) {
-                    zones.getChildAt(cell).setOnLongClickListener(view -> {
-                        onLongPress(control);
-                        return true;
-                    });
-                }
-            }
-        }
-    }
-
-    private void onLongPress(String control) {
-        if (isFinishing() || isDestroyed()) {
-            return;
-        }
-        // Long press is complete; let the service's off-state frame draw immediately even while
-        // the finger is still down.
-        touchHeld = false;
-        restartIdleTimer();
-        long id = ClimateService.sendPanelControl(this, control);
-        if (id != 0) {
-            awaitingControl = id;
-            main.removeCallbacks(selectionTimeout);
-            main.postDelayed(selectionTimeout, ClimateStore.PENDING_TIMEOUT_MS);
-        } else if (pendingFrame != null) {
-            show(pendingFrame);
-        }
-    }
-
-    private void attachDrags(ViewGroup content, ClimateService.PanelFrame frame) {
-        List<WidgetGeometry.Strip> strips = frame.plan().strips;
-        for (int index = 0; index < strips.size(); index++) {
-            WidgetGeometry.Strip strip = strips.get(index);
-            boolean temperature = strip.row.kind == WidgetGeometry.RowKind.TEMPERATURE;
-            boolean speed = strip.row.kind == WidgetGeometry.RowKind.FAN
-                    && (!frame.auto() || frame.config().fanLayout == WidgetConfig.FanLayout.ROWS);
-            if (!temperature && !speed) {
-                continue;
-            }
-            View row = content.getChildAt(index);
-            ViewGroup zones = row.findViewById(R.id.strip_zones);
-            WidgetGeometry.Strip previous = index > 0 ? strips.get(index - 1) : null;
-            WidgetGeometry.Strip readout = temperature && previous != null
-                    && previous.row.kind == WidgetGeometry.RowKind.TEMP_VALUE
-                    && previous.row.index == strip.row.index ? previous : null;
-            ImageView readoutImage = readout == null ? null
-                    : content.getChildAt(index - 1).findViewById(R.id.strip_image);
-            int steps = temperature ? frame.plan().temperatureSteps : Hvac.FAN_SPEED_LEVEL_COUNT;
-            Drag drag = new Drag(frame, strip, zones, row.findViewById(R.id.strip_image),
-                    readout, readoutImage, steps);
-            int end = strip.stepStart + steps * strip.stepSpan;
-            for (int cell = strip.stepStart; cell < end; cell++) {
-                zones.getChildAt(cell).setOnTouchListener(drag);
-            }
-        }
-    }
-
-    /** Keeps the same touch targets in place until Android finishes delivering the gesture. */
-    private final class Drag implements View.OnTouchListener {
-        private final ClimateService.PanelFrame frame;
-        private final WidgetGeometry.Strip strip;
-        private final ViewGroup zones;
-        private final ImageView image;
-        private final WidgetGeometry.Strip readout;
-        private final ImageView readoutImage;
-        private final int steps;
-        private Drawable original;
-        private Drawable originalReadout;
-        private int step;
-
-        Drag(ClimateService.PanelFrame frame, WidgetGeometry.Strip strip, ViewGroup zones,
-                ImageView image, WidgetGeometry.Strip readout, ImageView readoutImage, int steps) {
-            this.frame = frame;
-            this.strip = strip;
-            this.zones = zones;
-            this.image = image;
-            this.readout = readout;
-            this.readoutImage = readoutImage;
-            this.steps = steps;
-        }
-
-        @Override
-        public boolean onTouch(View view, MotionEvent event) {
-            int action = event.getActionMasked();
-            if (action == MotionEvent.ACTION_DOWN) {
-                activeDrag = this;
-                main.removeCallbacks(idleClose);
-                original = image.getDrawable();
-                originalReadout = readoutImage == null ? null : readoutImage.getDrawable();
-                step = -1;
-            }
-            if (activeDrag != this) {
-                return true;
-            }
-            switch (action) {
-                case MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> move(view, event.getX());
-                case MotionEvent.ACTION_UP -> {
-                    move(view, event.getX());
-                    end(true);
-                }
-                case MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_POINTER_DOWN -> end(false);
-                default -> { }
-            }
-            return true;
-        }
-
-        private void move(View view, float x) {
-            int width = zones.getWidth() - zones.getPaddingLeft() - zones.getPaddingRight();
-            int local = (int) Math.floor(view.getLeft() + x) - zones.getPaddingLeft();
-            int cell = WidgetGeometry.zoneAt(width, strip.zoneCount,
-                    Math.max(0, Math.min(width - 1, local)));
-            int next = Math.max(0, Math.min(steps - 1, (cell - strip.stepStart) / strip.stepSpan));
-            if (step == next) {
-                return;
-            }
-            step = next;
-            ClimateState state = ClimateService.STORE.snapshot(SystemClock.elapsedRealtime());
-            WidgetRenderer renderer = new WidgetRenderer(WidgetTheme.themed(ClimatePanelActivity.this),
-                    frame.config(), state, frame.model(), frame.plan()).withBarPreview(strip, step);
-            image.setImageBitmap(renderer.render(strip));
-            if (readoutImage != null) {
-                readoutImage.setImageBitmap(renderer.render(readout));
-            }
-        }
-
-        private void end(boolean commit) {
-            activeDrag = null;
-            if (commit) {
-                int cell = strip.stepStart + step * strip.stepSpan;
-                String control = WidgetViews.control(frame.config(), strip, cell, frame.auto());
-                long id = ClimateService.sendPanelControl(ClimatePanelActivity.this, control);
-                if (id != 0) {
-                    awaitingControl = id;
-                    main.removeCallbacks(selectionTimeout);
-                    main.postDelayed(selectionTimeout, ClimateStore.PENDING_TIMEOUT_MS);
-                    original = null;
-                    originalReadout = null;
-                    return;
-                }
-            }
-            image.setImageDrawable(original);
-            original = null;
-            if (readoutImage != null) {
-                readoutImage.setImageDrawable(originalReadout);
-                originalReadout = null;
-            }
-            if (pendingFrame != null) {
-                show(pendingFrame);
-            }
+        if (!isFinishing() && !isDestroyed()) {
+            content.show(frame);
         }
     }
 
@@ -380,8 +149,6 @@ public final class ClimatePanelActivity extends Activity {
     @SuppressWarnings("deprecation") // overrideActivityTransition needs API 34.
     public void finish() {
         main.removeCallbacks(idleClose);
-        main.removeCallbacks(selectionTimeout);
-        main.removeCallbacks(flushPending);
         super.finish();
         overridePendingTransition(0, 0);
     }

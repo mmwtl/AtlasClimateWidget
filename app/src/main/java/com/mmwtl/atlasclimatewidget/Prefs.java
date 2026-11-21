@@ -25,6 +25,18 @@ final class Prefs {
     static final String KEY_PANEL_BOTTOM = "panel_bottom";
     static final String KEY_PANEL_CLOSE = "panel_close_seconds";
 
+    static final String KEY_DISPLAY_MODE = "overlay_mode";
+    static final String KEY_OVERLAY_WIDTH = "overlay_width_percent";
+    static final String KEY_OVERLAY_CORNER = "overlay_corner";
+    static final String KEY_OVERLAY_X = "overlay_offset_x_dp";
+    static final String KEY_OVERLAY_Y = "overlay_offset_y_dp";
+    static final String KEY_FREEFORM_HIDE_THRESHOLD = "overlay_hide_threshold";
+    static final String KEY_SHOW_ONLY_IN_APP_LIST = "overlay_app_list_only";
+    static final int OVERLAY_ID = -3;
+    static final int OVERLAY_OFFSET_MAX_DP = 1000;
+    // The portrait OneOS climate dock occupies 124 dp and reports no window insets.
+    static final int OVERLAY_BOTTOM_OFFSET_DP = 124;
+
     /**
      * Layout slot of the climate window ({@link ClimatePanelActivity}). Widget ids are never
      * negative and the template is {@code INVALID_APPWIDGET_ID} (0), so the window's layout is
@@ -105,6 +117,47 @@ final class Prefs {
 
     void setUiScaleTenths(int value) {
         preferences.edit().putInt(KEY_UI_SCALE_TENTHS, value).apply();
+    }
+
+    boolean isWidgetMode() {
+        return !preferences.getBoolean(KEY_DISPLAY_MODE, false);
+    }
+
+    void setWidgetMode(boolean widget) {
+        preferences.edit().putBoolean(KEY_DISPLAY_MODE, !widget).apply();
+    }
+
+    int overlayWidthPercent() {
+        return clampPanelWidth(preferences.getInt(KEY_OVERLAY_WIDTH, PANEL_WIDTH_DEFAULT));
+    }
+
+    OverlayCorner overlayCorner() {
+        OverlayCorner corner = OverlayCorner.fromPreference(
+                preferences.getString(KEY_OVERLAY_CORNER, null));
+        return corner == null ? OverlayCorner.BOTTOM_START : corner;
+    }
+
+    int overlayOffsetDp(String key) {
+        int fallback = KEY_OVERLAY_Y.equals(key) ? OVERLAY_BOTTOM_OFFSET_DP : 0;
+        return clampOverlayOffset(preferences.getInt(key, fallback));
+    }
+
+    boolean overlayAppListOnly() {
+        return preferences.getBoolean(KEY_SHOW_ONLY_IN_APP_LIST, false);
+    }
+
+    int freeformHideThresholdPercent() {
+        return clampHideThreshold(preferences.getInt(KEY_FREEFORM_HIDE_THRESHOLD,
+                WindowVisibilityPolicy.DEFAULT_HIDE_THRESHOLD_PERCENT));
+    }
+
+    static int clampHideThreshold(int value) {
+        return Math.max(WindowVisibilityPolicy.MIN_HIDE_THRESHOLD_PERCENT,
+                Math.min(WindowVisibilityPolicy.MAX_HIDE_THRESHOLD_PERCENT, value));
+    }
+
+    static int clampOverlayOffset(int value) {
+        return Math.max(0, Math.min(OVERLAY_OFFSET_MAX_DP, value));
     }
 
     /** Layout used for newly placed widgets. */
@@ -273,6 +326,14 @@ final class Prefs {
         for (int id : sorted(widgetIds)) {
             backup.widgets.add(widget(id));
         }
+        backup.overlayMode = !isWidgetMode();
+        backup.overlay = hasWidget(OVERLAY_ID) ? widget(OVERLAY_ID) : null;
+        backup.overlayWidthPercent = overlayWidthPercent();
+        backup.overlayCorner = overlayCorner().preferenceValue;
+        backup.overlayOffsetX = overlayOffsetDp(KEY_OVERLAY_X);
+        backup.overlayOffsetY = overlayOffsetDp(KEY_OVERLAY_Y);
+        backup.overlayHideThreshold = freeformHideThresholdPercent();
+        backup.overlayAppListOnly = overlayAppListOnly();
         backup.panel = widget(PANEL_ID);
         backup.panelWidthPercent = panelWidthPercent();
         backup.panelBottom = panelBottom();
@@ -293,9 +354,21 @@ final class Prefs {
                 .putFloat(KEY_FUEL_MULTIPLIER, backup.fuelMultiplier)
                 .putFloat(KEY_FUEL_OFFSET, backup.fuelOffset)
                 .putString(KEY_TEMPLATE, backup.template.toJson())
+                .putBoolean(KEY_DISPLAY_MODE, backup.overlayMode)
+                .putInt(KEY_OVERLAY_WIDTH, clampPanelWidth(backup.overlayWidthPercent))
+                .putString(KEY_OVERLAY_CORNER, backup.overlayCorner)
+                .putInt(KEY_OVERLAY_X, clampOverlayOffset(backup.overlayOffsetX))
+                .putInt(KEY_OVERLAY_Y, clampOverlayOffset(backup.overlayOffsetY))
+                .putInt(KEY_FREEFORM_HIDE_THRESHOLD, clampHideThreshold(backup.overlayHideThreshold))
+                .putBoolean(KEY_SHOW_ONLY_IN_APP_LIST, backup.overlayAppListOnly)
                 .putInt(KEY_PANEL_WIDTH, clampPanelWidth(backup.panelWidthPercent))
                 .putBoolean(KEY_PANEL_BOTTOM, backup.panelBottom)
                 .putInt(KEY_PANEL_CLOSE, clampPanelClose(backup.panelCloseSeconds));
+        if (backup.overlay != null) {
+            editor.putString(KEY_WIDGET_PREFIX + OVERLAY_ID, backup.overlay.toJson());
+        } else {
+            editor.remove(KEY_WIDGET_PREFIX + OVERLAY_ID);
+        }
         if (backup.panel != null) {
             editor.putString(KEY_WIDGET_PREFIX + PANEL_ID, backup.panel.toJson());
         } else {
