@@ -152,7 +152,9 @@ final class WidgetViews {
         if (control == null || !control.startsWith("fn/")) {
             return null;
         }
-        ClimateFunction function = ClimateFunction.fromName(control.substring(3));
+        int levels = control.indexOf('/', 3);
+        String name = levels < 0 ? control.substring(3) : control.substring(3, levels);
+        ClimateFunction function = ClimateFunction.fromName(name);
         return function != null && function.canLongPressOff() ? "fnoff/" + function.name() : null;
     }
 
@@ -237,7 +239,14 @@ final class WidgetViews {
                 if (function == ClimateFunction.ALL_OFF) {
                     return "off/" + offTargets(config);
                 }
-                return function == null ? null : "fn/" + function.name();
+                if (function == null) {
+                    return null;
+                }
+                if (config.hasCustomLevels(function)) {
+                    return "fn/" + function.name() + "/"
+                            + ClimateCommands.formatLevels(config.activeLevels(function));
+                }
+                return "fn/" + function.name();
             }
             default:
                 return null;

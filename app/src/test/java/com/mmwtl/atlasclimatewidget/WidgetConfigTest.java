@@ -272,4 +272,56 @@ public final class WidgetConfigTest {
         assertEquals(WidgetConfig.DEFAULT_OFF_TARGETS, broken.offTargets);
         assertEquals(WidgetConfig.DEFAULT_OFF_TARGETS, WidgetConfig.fromJson("{}").offTargets);
     }
+
+    @Test public void tileLevelsRoundTripKeepOneAndNormalize() {
+        WidgetConfig config = new WidgetConfig();
+        assertFalse(config.hasCustomLevels(ClimateFunction.DRIVER_HEAT));
+        assertTrue(java.util.Arrays.equals(new int[]{1, 2, 3},
+                config.activeLevels(ClimateFunction.DRIVER_HEAT)));
+
+        assertTrue(config.setTileLevel(ClimateFunction.DRIVER_HEAT, 1, false));
+        assertTrue(config.setTileLevel(ClimateFunction.DRIVER_HEAT, 3, false));
+        assertFalse("keeps at least one level",
+                config.setTileLevel(ClimateFunction.DRIVER_HEAT, 2, false));
+        assertTrue(config.isTileLevelEnabled(ClimateFunction.DRIVER_HEAT, 2));
+        assertTrue(java.util.Arrays.equals(new int[]{2},
+                config.activeLevels(ClimateFunction.DRIVER_HEAT)));
+
+        config.setTileLevels(ClimateFunction.WHEEL_HEAT, 3, 2, 3);
+        assertTrue(java.util.Arrays.equals(new int[]{2, 3},
+                config.activeLevels(ClimateFunction.WHEEL_HEAT)));
+
+        WidgetConfig copy = WidgetConfig.fromJson(config.toJson());
+        assertTrue(java.util.Arrays.equals(new int[]{2},
+                copy.activeLevels(ClimateFunction.DRIVER_HEAT)));
+        assertTrue(java.util.Arrays.equals(new int[]{2, 3},
+                copy.activeLevels(ClimateFunction.WHEEL_HEAT)));
+        copy.setTileLevel(ClimateFunction.DRIVER_HEAT, 1, true);
+        assertTrue("copy stays isolated",
+                java.util.Arrays.equals(new int[]{2},
+                        config.activeLevels(ClimateFunction.DRIVER_HEAT)));
+
+        // Enabling all levels clears custom entry.
+        assertTrue(copy.setTileLevel(ClimateFunction.DRIVER_HEAT, 3, true));
+        assertFalse(copy.hasCustomLevels(ClimateFunction.DRIVER_HEAT));
+        assertFalse(copy.toJson().contains("tileLevels")
+                && WidgetConfig.fromJson(copy.toJson()).hasCustomLevels(ClimateFunction.DRIVER_HEAT));
+
+        // Non-level functions are ignored.
+        assertFalse(config.setTileLevel(ClimateFunction.AC, 1, false));
+        assertFalse(config.hasCustomLevels(ClimateFunction.AC));
+
+        // Broken, out-of-range, duplicate and unknown entries in JSON are tolerated.
+        WidgetConfig parsed = WidgetConfig.fromJson("{\"tileLevels\":{"
+                + "\"NOPE\":[1],"
+                + "\"AC\":[1],"
+                + "\"DRIVER_HEAT\":[0,3,3,\"x\",9,1],"
+                + "\"PASSENGER_HEAT\":[0,9],"
+                + "\"WHEEL_HEAT\":\"bad\""
+                + "}}");
+        assertTrue(java.util.Arrays.equals(new int[]{1, 3},
+                parsed.activeLevels(ClimateFunction.DRIVER_HEAT)));
+        assertFalse(parsed.hasCustomLevels(ClimateFunction.PASSENGER_HEAT));
+        assertFalse(parsed.hasCustomLevels(ClimateFunction.WHEEL_HEAT));
+    }
 }

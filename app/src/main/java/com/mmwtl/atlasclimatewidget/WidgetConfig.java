@@ -7,7 +7,10 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 /** User-built layout of one widget instance. */
 final class WidgetConfig {
@@ -269,6 +272,12 @@ final class WidgetConfig {
      * {@link ClimateFunction} order; never empty.
      */
     final List<ClimateFunction> offTargets = new ArrayList<>(DEFAULT_OFF_TARGETS);
+    /**
+     * Active levels {@code 1..levelCount} per multi-level function; an absent entry keeps all
+     * levels enabled, and any stored array is sorted, non-empty and strictly smaller than the full
+     * range.
+     */
+    final Map<ClimateFunction, int[]> tileLevels = new EnumMap<>(ClimateFunction.class);
     int columns = 6;
     TileStyle tileStyle = TileStyle.TILE;
 
@@ -497,6 +506,81 @@ final class WidgetConfig {
         }
     }
 
+    boolean hasCustomLevels(ClimateFunction function) {
+        return function != null && tileLevels.containsKey(function);
+    }
+
+    /** Enabled active levels {@code 1..levelCount()} in ascending order. */
+    int[] activeLevels(ClimateFunction function) {
+        if (function == null || !function.hasLevels()) {
+            return new int[0];
+        }
+        int[] custom = tileLevels.get(function);
+        return custom != null ? custom.clone() : function.allLevels();
+    }
+
+    boolean isTileLevelEnabled(ClimateFunction function, int level) {
+        if (function == null || !function.hasLevels()
+                || level < 1 || level > function.levelCount()) {
+            return false;
+        }
+        int[] custom = tileLevels.get(function);
+        if (custom == null) {
+            return true;
+        }
+        for (int candidate : custom) {
+            if (candidate == level) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void setTileLevels(ClimateFunction function, int... levels) {
+        if (function == null || !function.hasLevels()) {
+            return;
+        }
+        int[] normalized = function.normalizeLevels(levels);
+        if (normalized == null) {
+            return;
+        }
+        if (normalized.length == function.levelCount()) {
+            tileLevels.remove(function);
+        } else {
+            tileLevels.put(function, normalized);
+        }
+    }
+
+    /** Enables or disables {@code level} for {@code function}, keeping at least one active. */
+    boolean setTileLevel(ClimateFunction function, int level, boolean enabled) {
+        if (function == null || !function.hasLevels()
+                || level < 1 || level > function.levelCount()) {
+            return false;
+        }
+        if (isTileLevelEnabled(function, level) == enabled) {
+            return false;
+        }
+        int[] current = activeLevels(function);
+        if (!enabled && current.length <= 1) {
+            return false;
+        }
+        int[] updated;
+        if (enabled) {
+            updated = Arrays.copyOf(current, current.length + 1);
+            updated[current.length] = level;
+        } else {
+            updated = new int[current.length - 1];
+            int out = 0;
+            for (int value : current) {
+                if (value != level) {
+                    updated[out++] = value;
+                }
+            }
+        }
+        setTileLevels(function, updated);
+        return true;
+    }
+
     WidgetConfig copy() {
         return fromJson(toJson());
     }
@@ -542,6 +626,17 @@ final class WidgetConfig {
                 off.put(function.name());
             }
             json.put("offTargets", off);
+            if (!tileLevels.isEmpty()) {
+                JSONObject levels = new JSONObject();
+                for (Map.Entry<ClimateFunction, int[]> entry : tileLevels.entrySet()) {
+                    JSONArray array = new JSONArray();
+                    for (int level : entry.getValue()) {
+                        array.put(level);
+                    }
+                    levels.put(entry.getKey().name(), array);
+                }
+                json.put("tileLevels", levels);
+            }
             json.put("columns", columns);
             json.put("tileStyle", tileStyle.name());
             json.put("palette", palette.name());
@@ -668,6 +763,33 @@ final class WidgetConfig {
                 Collections.sort(parsed);
                 config.offTargets.clear();
                 config.offTargets.addAll(parsed);
+            }
+        }
+        JSONObject levelsJson = json.optJSONObject("tileLevels");
+        if (levelsJson != null) {
+            Iterator<String> keys = levelsJson.keys();
+            while (keys.hasNext()) {
+                String name = keys.next();
+                ClimateFunction function = ClimateFunction.fromName(name);
+                if (function == null || !function.hasLevels()) {
+                    continue;
+                }
+                JSONArray array = levelsJson.optJSONArray(name);
+                if (array == null) {
+                    continue;
+                }
+                int max = function.levelCount();
+                int[] parsed = new int[array.length()];
+                int count = 0;
+                for (int index = 0; index < array.length(); index++) {
+                    int value = array.optInt(index, -1);
+                    if (value >= 1 && value <= max) {
+                        parsed[count++] = value;
+                    }
+                }
+                if (count > 0) {
+                    config.setTileLevels(function, Arrays.copyOf(parsed, count));
+                }
             }
         }
         if (config.style == Style.CONSOLE && json.optInt("version", 1) < 2) {

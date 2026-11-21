@@ -1,6 +1,7 @@
 package com.mmwtl.atlasclimatewidget;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -450,6 +451,16 @@ final class ClimateCommands {
             CarModel model,
             boolean levelsFromMax
     ) {
+        return press(function, state, model, levelsFromMax, null);
+    }
+
+    static List<Command> press(
+            ClimateFunction function,
+            ClimateState state,
+            CarModel model,
+            boolean levelsFromMax,
+            int[] allowedLevels
+    ) {
         if (!function.isAvailableFor(model)) {
             return Collections.emptyList();
         }
@@ -468,15 +479,13 @@ final class ClimateCommands {
                 return toggleCommands(function, id, on ? function.offValue : function.onValue);
             }
             case LEVEL: {
-                int count = function.levels.length;
+                int[] allowed = allowedLevels(function, allowedLevels);
                 int index = raw == null ? 0 : levelIndex(function, current);
-                int next = levelsFromMax && !function.body
-                        ? (index == 0 ? count - 1 : index - 1)
-                        : (index + 1) % count;
+                int next = nextLevel(index, allowed, levelsFromMax && !function.body, false);
                 return single(Command.setInt(id, function.area, function.levels[next]));
             }
             case POSITION:
-                return roofPress(function, state, id, raw);
+                return roofPress(function, state, id, raw, allowedLevels(function, allowedLevels));
             case BLOW: {
                 // In AUTO or with the climate off the kept directions are not in use, so a tap
                 // picks only this one.
@@ -555,6 +564,68 @@ final class ClimateCommands {
     }
 
     /**
+     * Next stop index from {@code currentIndex} within sorted {@code allowed} levels (each in
+     * {@code 1..levelCount}), cycling to {@code 0} (off) unless {@code skipOff} keeps it within
+     * {@code allowed}.
+     */
+    static int nextLevel(int currentIndex, int[] allowed, boolean fromMax, boolean skipOff) {
+        if (fromMax) {
+            if (currentIndex == 0) {
+                return allowed[allowed.length - 1];
+            }
+            for (int i = allowed.length - 1; i >= 0; i--) {
+                if (allowed[i] < currentIndex) {
+                    return allowed[i];
+                }
+            }
+            return skipOff ? allowed[allowed.length - 1] : 0;
+        }
+        for (int level : allowed) {
+            if (level > currentIndex) {
+                return level;
+            }
+        }
+        return skipOff ? allowed[0] : 0;
+    }
+
+    private static int[] allowedLevels(ClimateFunction function, int[] custom) {
+        int[] normalized = function.normalizeLevels(custom);
+        return normalized != null ? normalized : function.allLevels();
+    }
+
+    static String formatLevels(int[] levels) {
+        if (levels == null || levels.length == 0) {
+            return "";
+        }
+        StringBuilder out = new StringBuilder();
+        for (int level : levels) {
+            if (out.length() > 0) {
+                out.append(',');
+            }
+            out.append(level);
+        }
+        return out.toString();
+    }
+
+    static int[] parseLevels(ClimateFunction function, String encoded) {
+        if (function == null || !function.hasLevels()
+                || encoded == null || encoded.isEmpty()) {
+            return null;
+        }
+        String[] tokens = encoded.split(",");
+        int[] parsed = new int[tokens.length];
+        int count = 0;
+        for (String token : tokens) {
+            try {
+                parsed[count++] = Integer.parseInt(token.trim());
+            } catch (NumberFormatException ignored) {
+                // Skip malformed tokens; if nothing valid remains, fall back to all levels.
+            }
+        }
+        return count == 0 ? null : function.normalizeLevels(Arrays.copyOf(parsed, count));
+    }
+
+    /**
      * Switches off every target that is on or unknown, {@link #OFF_SPACING_MS} apart. Climate
      * power goes last, as the car may ignore the others once it is off.
      */
@@ -587,9 +658,9 @@ final class ClimateCommands {
      * sunshade to its lowest stop that uncovers the opening.
      */
     private static List<Command> roofPress(ClimateFunction function, ClimateState state,
-            int id, Double raw) {
+            int id, Double raw, int[] allowed) {
         int[] levels = function.levels;
-        int lowest = function == ClimateFunction.SUNSHADE && sunroofOpen(state) ? 1 : 0;
+        boolean skipClosed = function == ClimateFunction.SUNSHADE && sunroofOpen(state);
         int index;
         if (function == ClimateFunction.SUNROOF) {
             Integer roof = sunroofIndex(state);
@@ -597,11 +668,9 @@ final class ClimateCommands {
         } else {
             index = raw == null ? 0 : positionIndex(function, raw);
         }
-        int next;
-        if (index < lowest) {
-            next = lowest;
-        } else {
-            next = index + 1 < levels.length ? index + 1 : lowest;
+        int next = nextLevel(index, allowed, false, skipClosed);
+        if (raw != null && next == index) {
+            return Collections.emptyList();
         }
         List<Command> commands = new ArrayList<>(3);
         long roofDelay = 0L;

@@ -211,6 +211,73 @@ public final class MainActivityTest {
         assertEquals(new WidgetConfig().columns, prefs.widget(50).columns);
     }
 
+    @Test
+    public void tileLevelsCollapseExpandToggleAndPersist() {
+        ActivityController<MainActivity> controller = open();
+        try {
+            View root = root(controller);
+            find(root, "Плитки").performClick();
+
+            View level2 = findByDescription(root, "Подогрев водителя: 2");
+            assertNotNull(level2);
+            assertFalse(shown(level2));
+
+            header(find(root, "Уровни плиток")).performClick();
+            assertTrue(shown(level2));
+
+            View level1 = findByDescription(root, "Подогрев водителя: 1");
+            View level3 = findByDescription(root, "Подогрев водителя: 3");
+            level1.performClick();
+            level3.performClick();
+            Prefs prefs = new Prefs(controller.get());
+            assertTrue(java.util.Arrays.equals(new int[]{2},
+                    prefs.template().activeLevels(ClimateFunction.DRIVER_HEAT)));
+            assertFalse(level1.isSelected());
+            assertTrue(level2.isSelected());
+            assertFalse(level3.isSelected());
+
+            // Clicking the last remaining level leaves it selected.
+            level2.performClick();
+            assertTrue(level2.isSelected());
+            assertTrue(java.util.Arrays.equals(new int[]{2},
+                    prefs.template().activeLevels(ClimateFunction.DRIVER_HEAT)));
+
+            level3.performClick();
+            assertTrue(level3.isSelected());
+            assertTrue(java.util.Arrays.equals(new int[]{2, 3},
+                    prefs.template().activeLevels(ClimateFunction.DRIVER_HEAT)));
+
+            // Adding Sunroof reveals its position level labels in the expanded section.
+            header(find(root, "Доступные функции")).performClick();
+            find(root, "Люк").performClick();
+            ShadowLooper.runUiThreadTasks();
+            assertTrue(shown(findByDescription(root, "Люк: Проветр.")));
+            assertTrue(shown(findByDescription(root, "Люк: 20%")));
+            assertTrue(shown(findByDescription(root, "Люк: 100%")));
+        } finally {
+            close(controller);
+        }
+    }
+
+    @Test
+    public void tileLevelsShowsEmptyHintWhenNoMultiLevelTilesAreSelected() {
+        Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
+        WidgetConfig config = new WidgetConfig();
+        config.functions.clear();
+        config.functions.add(ClimateFunction.AC);
+        prefs.setTemplate(config);
+        ActivityController<MainActivity> controller = open();
+        try {
+            View root = root(controller);
+            find(root, "Плитки").performClick();
+            header(find(root, "Уровни плиток")).performClick();
+            assertTrue(shown(find(root,
+                    "На виджете нет плиток с несколькими уровнями — добавьте их в списке выше.")));
+        } finally {
+            close(controller);
+        }
+    }
+
     private static ActivityController<MainActivity> open() {
         return Robolectric.buildActivity(MainActivity.class).create().start().resume().visible();
     }
@@ -227,6 +294,22 @@ public final class MainActivityTest {
     /** The collapsible header is the grandparent of its title: header → title row → title. */
     private static View header(View title) {
         return (View) title.getParent().getParent();
+    }
+
+    private static View findByDescription(View view, String description) {
+        CharSequence contentDescription = view.getContentDescription();
+        if (contentDescription != null && description.contentEquals(contentDescription)) {
+            return view;
+        }
+        if (view instanceof ViewGroup group) {
+            for (int index = 0; index < group.getChildCount(); index++) {
+                View match = findByDescription(group.getChildAt(index), description);
+                if (match != null) {
+                    return match;
+                }
+            }
+        }
+        return null;
     }
 
     private static View find(View view, String text) {

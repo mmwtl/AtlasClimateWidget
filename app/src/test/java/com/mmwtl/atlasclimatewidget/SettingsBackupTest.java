@@ -22,13 +22,16 @@ public final class SettingsBackupTest {
         backup.fuelMultiplier = 0.466f;
         backup.fuelOffset = 4.4f;
         backup.template.columns = 4;
+        backup.template.setTileLevels(ClimateFunction.DRIVER_HEAT, 2);
         backup.panel = new WidgetConfig();
         backup.panel.columns = 3;
+        backup.panel.setTileLevels(ClimateFunction.PASSENGER_HEAT, 3);
         backup.panelWidthPercent = 75;
         backup.panelBottom = true;
         backup.panelCloseSeconds = 0;
         WidgetConfig first = new WidgetConfig();
         first.style = WidgetConfig.Style.CONSOLE;
+        first.setTileLevels(ClimateFunction.WHEEL_HEAT, 2, 3);
         WidgetConfig second = new WidgetConfig();
         second.setFunctionEnabled(ClimateFunction.ME_HOT, true);
         backup.widgets.add(first);
@@ -48,12 +51,18 @@ public final class SettingsBackupTest {
             assertEquals(0.466f, copy.fuelMultiplier, 1e-6f);
             assertEquals(4.4f, copy.fuelOffset, 1e-6f);
             assertEquals(4, copy.template.columns);
+            assertTrue(java.util.Arrays.equals(new int[]{2},
+                    copy.template.activeLevels(ClimateFunction.DRIVER_HEAT)));
             assertEquals(3, copy.panel.columns);
+            assertTrue(java.util.Arrays.equals(new int[]{3},
+                    copy.panel.activeLevels(ClimateFunction.PASSENGER_HEAT)));
             assertEquals(75, copy.panelWidthPercent);
             assertTrue(copy.panelBottom);
             assertEquals(0, copy.panelCloseSeconds);
             assertEquals(2, copy.widgets.size());
             assertEquals(WidgetConfig.Style.CONSOLE, copy.widgets.get(0).style);
+            assertTrue(java.util.Arrays.equals(new int[]{2, 3},
+                    copy.widgets.get(0).activeLevels(ClimateFunction.WHEEL_HEAT)));
             assertTrue(copy.widgets.get(1).functions.contains(ClimateFunction.ME_HOT));
         }
     }

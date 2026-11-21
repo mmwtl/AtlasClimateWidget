@@ -812,4 +812,158 @@ public final class ClimateCommandsTest {
                     CarModel.ATLAS).isEmpty());
         }
     }
+
+    @Test public void customSingleLevelCyclesBetweenSelectedLevelAndOff() {
+        int[] onlyTwo = {2};
+        ClimateStore store = store(0);
+        assertEquals(Hvac.SEAT_HEAT_LEVELS[2], (int) ClimateCommands.press(
+                ClimateFunction.DRIVER_HEAT, store.snapshot(0), CarModel.ATLAS, false,
+                onlyTwo).get(0).value);
+        assertEquals(Hvac.SEAT_HEAT_LEVELS[2], (int) ClimateCommands.press(
+                ClimateFunction.DRIVER_HEAT, store.snapshot(0), CarModel.ATLAS, true,
+                onlyTwo).get(0).value);
+
+        store.putProperty(Hvac.SEAT_HEATING, Hvac.ZONE_DRIVER, Hvac.SEAT_HEAT_LEVELS[2], 0);
+        assertEquals(0, (int) ClimateCommands.press(ClimateFunction.DRIVER_HEAT,
+                store.snapshot(0), CarModel.ATLAS, false, onlyTwo).get(0).value);
+        assertEquals(0, (int) ClimateCommands.press(ClimateFunction.DRIVER_HEAT,
+                store.snapshot(0), CarModel.ATLAS, true, onlyTwo).get(0).value);
+
+        store.putProperty(Hvac.SEAT_HEATING, Hvac.ZONE_DRIVER, Hvac.SEAT_HEAT_LEVELS[1], 0);
+        assertEquals(Hvac.SEAT_HEAT_LEVELS[2], (int) ClimateCommands.press(
+                ClimateFunction.DRIVER_HEAT, store.snapshot(0), CarModel.ATLAS, false,
+                onlyTwo).get(0).value);
+        assertEquals(0, (int) ClimateCommands.press(ClimateFunction.DRIVER_HEAT,
+                store.snapshot(0), CarModel.ATLAS, true, onlyTwo).get(0).value);
+
+        store.putProperty(Hvac.SEAT_HEATING, Hvac.ZONE_DRIVER, Hvac.SEAT_HEAT_LEVELS[3], 0);
+        assertEquals(0, (int) ClimateCommands.press(ClimateFunction.DRIVER_HEAT,
+                store.snapshot(0), CarModel.ATLAS, false, onlyTwo).get(0).value);
+        assertEquals(Hvac.SEAT_HEAT_LEVELS[2], (int) ClimateCommands.press(
+                ClimateFunction.DRIVER_HEAT, store.snapshot(0), CarModel.ATLAS, true,
+                onlyTwo).get(0).value);
+    }
+
+    @Test public void customLevelSubsetCyclesForwardAndFromMax() {
+        int[] twoThree = {2, 3};
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.SEAT_HEATING, Hvac.ZONE_DRIVER, 0, 0);
+        assertEquals(Hvac.SEAT_HEAT_LEVELS[2], (int) ClimateCommands.press(
+                ClimateFunction.DRIVER_HEAT, store.snapshot(0), CarModel.ATLAS, false,
+                twoThree).get(0).value);
+        store.putProperty(Hvac.SEAT_HEATING, Hvac.ZONE_DRIVER, Hvac.SEAT_HEAT_LEVELS[2], 0);
+        assertEquals(Hvac.SEAT_HEAT_LEVELS[3], (int) ClimateCommands.press(
+                ClimateFunction.DRIVER_HEAT, store.snapshot(0), CarModel.ATLAS, false,
+                twoThree).get(0).value);
+        store.putProperty(Hvac.SEAT_HEATING, Hvac.ZONE_DRIVER, Hvac.SEAT_HEAT_LEVELS[3], 0);
+        assertEquals(0, (int) ClimateCommands.press(ClimateFunction.DRIVER_HEAT,
+                store.snapshot(0), CarModel.ATLAS, false, twoThree).get(0).value);
+
+        store.putProperty(Hvac.SEAT_HEATING, Hvac.ZONE_DRIVER, 0, 0);
+        assertEquals(Hvac.SEAT_HEAT_LEVELS[3], (int) ClimateCommands.press(
+                ClimateFunction.DRIVER_HEAT, store.snapshot(0), CarModel.ATLAS, true,
+                twoThree).get(0).value);
+        store.putProperty(Hvac.SEAT_HEATING, Hvac.ZONE_DRIVER, Hvac.SEAT_HEAT_LEVELS[3], 0);
+        assertEquals(Hvac.SEAT_HEAT_LEVELS[2], (int) ClimateCommands.press(
+                ClimateFunction.DRIVER_HEAT, store.snapshot(0), CarModel.ATLAS, true,
+                twoThree).get(0).value);
+        store.putProperty(Hvac.SEAT_HEATING, Hvac.ZONE_DRIVER, Hvac.SEAT_HEAT_LEVELS[2], 0);
+        assertEquals(0, (int) ClimateCommands.press(ClimateFunction.DRIVER_HEAT,
+                store.snapshot(0), CarModel.ATLAS, true, twoThree).get(0).value);
+
+        int[] oneThree = {1, 3};
+        store.putProperty(Hvac.SEAT_HEATING, Hvac.ZONE_DRIVER, Hvac.SEAT_HEAT_LEVELS[1], 0);
+        assertEquals(Hvac.SEAT_HEAT_LEVELS[3], (int) ClimateCommands.press(
+                ClimateFunction.DRIVER_HEAT, store.snapshot(0), CarModel.ATLAS, false,
+                oneThree).get(0).value);
+        assertEquals(0, (int) ClimateCommands.press(ClimateFunction.DRIVER_HEAT,
+                store.snapshot(0), CarModel.ATLAS, true, oneThree).get(0).value);
+        store.putProperty(Hvac.SEAT_HEATING, Hvac.ZONE_DRIVER, Hvac.SEAT_HEAT_LEVELS[2], 0);
+        assertEquals(Hvac.SEAT_HEAT_LEVELS[3], (int) ClimateCommands.press(
+                ClimateFunction.DRIVER_HEAT, store.snapshot(0), CarModel.ATLAS, false,
+                oneThree).get(0).value);
+        assertEquals(Hvac.SEAT_HEAT_LEVELS[1], (int) ClimateCommands.press(
+                ClimateFunction.DRIVER_HEAT, store.snapshot(0), CarModel.ATLAS, true,
+                oneThree).get(0).value);
+    }
+
+    @Test public void bodyMultiLevelFunctionStepsUpwardsEvenFromMax() {
+        ClimateStore store = store(0);
+        store.putProperty(Hvac.EXTERIOR_LIGHT, Gib.AREA_GLOBAL, 0, 0);
+        int[] subset = {2, 3};
+        assertEquals(Hvac.EXTERIOR_LIGHT_LEVELS[2], (int) ClimateCommands.press(
+                ClimateFunction.HEADLIGHTS, store.snapshot(0), CarModel.PREFACE, true,
+                subset).get(0).value);
+        store.putProperty(Hvac.EXTERIOR_LIGHT, Gib.AREA_GLOBAL, Hvac.EXTERIOR_LIGHT_LEVELS[2], 0);
+        assertEquals(Hvac.EXTERIOR_LIGHT_LEVELS[3], (int) ClimateCommands.press(
+                ClimateFunction.HEADLIGHTS, store.snapshot(0), CarModel.PREFACE, true,
+                subset).get(0).value);
+        store.putProperty(Hvac.EXTERIOR_LIGHT, Gib.AREA_GLOBAL, Hvac.EXTERIOR_LIGHT_LEVELS[3], 0);
+        assertEquals(0, (int) ClimateCommands.press(ClimateFunction.HEADLIGHTS,
+                store.snapshot(0), CarModel.PREFACE, true, subset).get(0).value);
+    }
+
+    @Test public void sunroofAndSunshadeRespectCustomLevelSubsets() {
+        ClimateStore roofStore = store(0);
+        roofStore.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 0, 0);
+        roofStore.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 100, 0);
+        List<ClimateCommands.Command> openAiring = ClimateCommands.press(ClimateFunction.SUNROOF,
+                roofStore.snapshot(0), CarModel.ATLAS, false, new int[]{1});
+        assertTilt(openAiring, 1);
+        roofStore.putProperty(Hvac.SUNROOF_TILT, Hvac.ZONE_SUNROOF, 1, 0);
+        List<ClimateCommands.Command> closeAiring = ClimateCommands.press(ClimateFunction.SUNROOF,
+                roofStore.snapshot(0), CarModel.ATLAS, false, new int[]{1});
+        assertTilt(closeAiring.subList(0, 2), 0);
+
+        ClimateStore slideOnly = store(0);
+        slideOnly.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 0, 0);
+        slideOnly.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 0, 0);
+        List<ClimateCommands.Command> slide = ClimateCommands.press(ClimateFunction.SUNROOF,
+                slideOnly.snapshot(0), CarModel.ATLAS, false, new int[]{2, 3});
+        assertEquals(2, slide.size());
+        assertEquals(Hvac.ZONE_SUNSHADE, slide.get(0).area);
+        assertEquals(20d, slide.get(0).value, 0d);
+        assertEquals(20d, slide.get(1).value, 0d);
+        assertEquals(ClimateCommands.SUNSHADE_LEAD_MS, slide.get(1).delayMs);
+
+        // Sunshade with only [3] toggles 0 <-> 100 when closed, and never closes under open roof.
+        ClimateStore shadeClosedRoof = store(0);
+        shadeClosedRoof.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 0, 0);
+        shadeClosedRoof.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 0, 0);
+        assertEquals(100d, ClimateCommands.press(ClimateFunction.SUNSHADE,
+                shadeClosedRoof.snapshot(0), CarModel.ATLAS, false, new int[]{3}).get(0).value, 0d);
+        shadeClosedRoof.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 100, 0);
+        assertEquals(0d, ClimateCommands.press(ClimateFunction.SUNSHADE,
+                shadeClosedRoof.snapshot(0), CarModel.ATLAS, false, new int[]{3}).get(0).value, 0d);
+
+        ClimateStore shadeOpenRoof = store(0);
+        shadeOpenRoof.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNROOF, 20, 0);
+        shadeOpenRoof.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 20, 0);
+        assertEquals(100d, ClimateCommands.press(ClimateFunction.SUNSHADE,
+                shadeOpenRoof.snapshot(0), CarModel.ATLAS, false, new int[]{3}).get(0).value, 0d);
+        shadeOpenRoof.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 100, 0);
+        assertTrue(ClimateCommands.press(ClimateFunction.SUNSHADE,
+                shadeOpenRoof.snapshot(0), CarModel.ATLAS, false, new int[]{3}).isEmpty());
+
+        shadeOpenRoof.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 50, 0);
+        assertEquals(100d, ClimateCommands.press(ClimateFunction.SUNSHADE,
+                shadeOpenRoof.snapshot(0), CarModel.ATLAS, false, new int[]{2, 3}).get(0).value,
+                0d);
+        shadeOpenRoof.putProperty(Hvac.WINDOW_POS, Hvac.ZONE_SUNSHADE, 100, 0);
+        assertEquals(50d, ClimateCommands.press(ClimateFunction.SUNSHADE,
+                shadeOpenRoof.snapshot(0), CarModel.ATLAS, false, new int[]{2, 3}).get(0).value,
+                0d);
+    }
+
+    @Test public void parsesAndFormatsCustomLevelLists() {
+        assertEquals("2,3", ClimateCommands.formatLevels(new int[]{2, 3}));
+        assertEquals("", ClimateCommands.formatLevels(null));
+        assertTrue(Arrays.equals(new int[]{2},
+                ClimateCommands.parseLevels(ClimateFunction.DRIVER_HEAT, "2")));
+        assertTrue(Arrays.equals(new int[]{1, 3},
+                ClimateCommands.parseLevels(ClimateFunction.DRIVER_HEAT, "3, 1, 9, 1, bad")));
+        assertNull(ClimateCommands.parseLevels(ClimateFunction.DRIVER_HEAT, ""));
+        assertNull(ClimateCommands.parseLevels(ClimateFunction.DRIVER_HEAT, "0,4,bad"));
+        assertNull(ClimateCommands.parseLevels(ClimateFunction.AC, "1"));
+    }
 }

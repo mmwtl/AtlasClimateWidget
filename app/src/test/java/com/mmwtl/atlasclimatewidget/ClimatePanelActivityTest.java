@@ -94,6 +94,11 @@ public final class ClimatePanelActivityTest {
 
     @Test
     public void longPressOnOptionSwitchesOffWithoutFiringTap() {
+        Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
+        WidgetConfig config = prefs.widget(Prefs.PANEL_ID);
+        config.setTileLevels(ClimateFunction.DRIVER_HEAT, 2);
+        prefs.setWidget(Prefs.PANEL_ID, config);
+
         try (ActivityController<ClimatePanelActivity> controller = open()) {
             ClimatePanelActivity activity = controller.get();
             ClimateService.PanelFrame frame = frame(activity, 0);
@@ -104,6 +109,7 @@ public final class ClimatePanelActivityTest {
             WidgetGeometry.Strip tiles = frame.plan().strips.stream()
                     .filter(item -> item.row.kind == WidgetGeometry.RowKind.TILES)
                     .findFirst().orElseThrow();
+            assertEquals("fn/DRIVER_HEAT/2", WidgetViews.control(frame.config(), tiles, 0));
             View row = root.getChildAt(frame.plan().strips.indexOf(tiles));
             ViewGroup zones = row.findViewById(R.id.strip_zones);
 
