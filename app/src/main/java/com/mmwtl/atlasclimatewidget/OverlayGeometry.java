@@ -3,6 +3,8 @@ package com.mmwtl.atlasclimatewidget;
 final class OverlayGeometry {
     record Position(int x, int y) {}
 
+    record Offset(int x, int y) {}
+
     private OverlayGeometry() {}
 
     static Position positionFor(OverlayCorner corner, int left, int top, int right, int bottom,
@@ -15,6 +17,15 @@ final class OverlayGeometry {
                 ? (long) bottom - panelHeight - safeOffsetY : (long) top + safeOffsetY;
         return new Position(clamp(x, left, Math.max(left, right - panelWidth)),
                 clamp(y, top, Math.max(top, bottom - panelHeight)));
+    }
+
+    static Offset offsetsFor(OverlayCorner corner, int left, int top, int right, int bottom,
+            int panelWidth, int panelHeight, int absoluteX, int absoluteY) {
+        Position position = positionFor(OverlayCorner.TOP_START, left, top, right, bottom,
+                panelWidth, panelHeight, absoluteX - left, absoluteY - top);
+        int x = isEnd(corner) ? right - panelWidth - position.x : position.x - left;
+        int y = isBottom(corner) ? bottom - panelHeight - position.y : position.y - top;
+        return new Offset(Math.max(0, x), Math.max(0, y));
     }
 
     private static boolean isEnd(OverlayCorner corner) {

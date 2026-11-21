@@ -217,10 +217,14 @@ public final class ClimateService extends Service {
         setSurface(Prefs.OVERLAY_ID, host, size);
         if (size != null) {
             worker.post(() -> {
-                poll();
                 renderWidgets(true);
+                poll();
             });
         }
+    }
+
+    void updateNotification() {
+        startInForeground();
     }
 
     private static void setSurface(int id, PanelHost host, WidgetViews.Size size) {
@@ -247,6 +251,12 @@ public final class ClimateService extends Service {
     static PanelFrame buildPanel(Context context, Prefs prefs, ClimateState state,
             WidgetViews.Size size, List<Bitmap> rendered, long appliedControl) {
         return buildSurface(context, prefs, Prefs.PANEL_ID, state, size, rendered, appliedControl);
+    }
+
+    /** Draws the HOME overlay; {@code null} after a failure. */
+    static PanelFrame buildOverlay(Context context, Prefs prefs, ClimateState state,
+            WidgetViews.Size size, List<Bitmap> rendered, long appliedControl) {
+        return buildSurface(context, prefs, Prefs.OVERLAY_ID, state, size, rendered, appliedControl);
     }
 
     private static PanelFrame buildSurface(Context context, Prefs prefs, int id, ClimateState state,
@@ -645,7 +655,8 @@ public final class ClimateService extends Service {
     }
 
     private boolean shouldStop() {
-        return prefs.isWidgetMode() && widgetIds(this).length == 0 && panel == null
+        boolean overlayWanted = !prefs.isWidgetMode() && prefs.overlayEnabled();
+        return !overlayWanted && widgetIds(this).length == 0 && panel == null
                 && SystemClock.elapsedRealtime() > keepAliveUntil;
     }
 
@@ -656,7 +667,7 @@ public final class ClimateService extends Service {
             for (int id : widgetIds(this)) {
                 configs.add(prefs.widget(id));
             }
-        } else if (overlay != null || settingsOpen) {
+        } else if (prefs.overlayEnabled() || overlay != null || settingsOpen) {
             configs.add(prefs.widget(Prefs.OVERLAY_ID));
         }
         if (settingsOpen) {
@@ -1019,12 +1030,21 @@ public final class ClimateService extends Service {
                 new Intent(this, MainActivity.class),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         boolean connected = STORE.snapshot(SystemClock.elapsedRealtime()).isConnected();
+        boolean overlayActive = prefs != null && !prefs.isWidgetMode() && prefs.overlayEnabled();
+        int textRes;
+        if (overlayActive && !ClimateOverlay.hasPermissions(this)) {
+            textRes = R.string.notification_overlay_permissions;
+        } else if (connected) {
+            textRes = overlayActive ? R.string.notification_overlay_connected
+                    : R.string.notification_connected;
+        } else {
+            textRes = directActive ? R.string.notification_waiting_direct
+                    : R.string.notification_waiting;
+        }
         Notification notification = new Notification.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(getString(R.string.app_name))
-                .setContentText(getString(connected ? R.string.notification_connected
-                        : directActive ? R.string.notification_waiting_direct
-                        : R.string.notification_waiting))
+                .setContentText(getString(textRes))
                 .setContentIntent(open)
                 .setOngoing(true)
                 .setShowWhen(false)

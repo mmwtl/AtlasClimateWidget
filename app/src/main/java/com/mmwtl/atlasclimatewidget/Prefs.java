@@ -26,19 +26,25 @@ final class Prefs {
     static final String KEY_PANEL_CLOSE = "panel_close_seconds";
 
     static final String KEY_DISPLAY_MODE = "overlay_mode";
+    static final String KEY_OVERLAY_ENABLED = "overlay_enabled";
+    static final String KEY_OVERLAY_AUTO_START = "overlay_auto_start";
+    static final String KEY_OVERLAY_DRAG_HANDLE = "overlay_drag_handle";
     private static final String KEY_OVERLAY_WIDTH_PERCENT = "overlay_width_percent";
     private static final String KEY_OVERLAY_HEIGHT_PERCENT = "overlay_height_percent";
-    private static final String KEY_OVERLAY_WIDTH_PX = "overlay_width_px";
-    private static final String KEY_OVERLAY_HEIGHT_PX = "overlay_height_px";
+    static final String KEY_OVERLAY_WIDTH_PX = "overlay_width_px";
+    static final String KEY_OVERLAY_HEIGHT_PX = "overlay_height_px";
     static final String KEY_OVERLAY_CORNER = "overlay_corner";
     static final String KEY_OVERLAY_X = "overlay_offset_x_dp";
     static final String KEY_OVERLAY_Y = "overlay_offset_y_dp";
+    static final String KEY_OVERLAY_X_PX = "overlay_offset_x_px";
+    static final String KEY_OVERLAY_Y_PX = "overlay_offset_y_px";
     static final String KEY_FREEFORM_HIDE_THRESHOLD = "overlay_hide_threshold";
     static final String KEY_SHOW_ONLY_IN_APP_LIST = "overlay_app_list_only";
     static final int OVERLAY_ID = -3;
     static final int OVERLAY_MIN_WIDTH_PX = 160;
     static final int OVERLAY_MIN_HEIGHT_PX = 100;
     static final int OVERLAY_OFFSET_MAX_DP = 1000;
+    static final int OVERLAY_OFFSET_UNSET = -1;
     // The portrait OneOS climate dock occupies 124 dp and reports no window insets.
     static final int OVERLAY_BOTTOM_OFFSET_DP = 124;
 
@@ -132,6 +138,30 @@ final class Prefs {
         preferences.edit().putBoolean(KEY_DISPLAY_MODE, !widget).apply();
     }
 
+    boolean overlayEnabled() {
+        return preferences.getBoolean(KEY_OVERLAY_ENABLED, true);
+    }
+
+    void setOverlayEnabled(boolean enabled) {
+        preferences.edit().putBoolean(KEY_OVERLAY_ENABLED, enabled).apply();
+    }
+
+    boolean overlayAutoStart() {
+        return preferences.getBoolean(KEY_OVERLAY_AUTO_START, true);
+    }
+
+    void setOverlayAutoStart(boolean enabled) {
+        preferences.edit().putBoolean(KEY_OVERLAY_AUTO_START, enabled).apply();
+    }
+
+    boolean overlayDragHandle() {
+        return preferences.getBoolean(KEY_OVERLAY_DRAG_HANDLE, true);
+    }
+
+    void setOverlayDragHandle(boolean visible) {
+        preferences.edit().putBoolean(KEY_OVERLAY_DRAG_HANDLE, visible).apply();
+    }
+
     /** Resolve percentage settings once, using the same safe display area as the overlay. */
     void migrateOverlaySize(int width, int height) {
         int widthPx = preferences.getInt(KEY_OVERLAY_WIDTH_PX, 0);
@@ -145,15 +175,27 @@ final class Prefs {
                 heightPx >= 0 ? heightPx : Math.round(height * heightPercent / 100f));
     }
 
-    int overlayWidthPx(int availableWidth) {
+    int overlayDefaultWidthPx(int availableWidth) {
+        int min = Math.min(OVERLAY_MIN_WIDTH_PX, Math.max(1, availableWidth));
         return Math.min(availableWidth,
-                Math.max(OVERLAY_MIN_WIDTH_PX, preferences.getInt(KEY_OVERLAY_WIDTH_PX, 0)));
+                Math.max(min, Math.round(availableWidth * PANEL_WIDTH_DEFAULT / 100f)));
+    }
+
+    int overlayWidthPx(int availableWidth) {
+        int stored = preferences.getInt(KEY_OVERLAY_WIDTH_PX, 0);
+        int min = Math.min(OVERLAY_MIN_WIDTH_PX, Math.max(1, availableWidth));
+        int width = stored > 0 ? stored : overlayDefaultWidthPx(availableWidth);
+        return Math.min(availableWidth, Math.max(min, width));
     }
 
     /** Zero sizes the overlay to its content. */
     int overlayHeightPx(int availableHeight) {
         int heightPx = preferences.getInt(KEY_OVERLAY_HEIGHT_PX, 0);
-        return heightPx == 0 ? 0 : Math.min(availableHeight, Math.max(OVERLAY_MIN_HEIGHT_PX, heightPx));
+        if (heightPx <= 0) {
+            return 0;
+        }
+        int min = Math.min(OVERLAY_MIN_HEIGHT_PX, Math.max(1, availableHeight));
+        return Math.min(availableHeight, Math.max(min, heightPx));
     }
 
     void setOverlaySize(int widthPx, int heightPx) {
@@ -165,10 +207,57 @@ final class Prefs {
                 .apply();
     }
 
+    void resetOverlaySize(int availableWidth) {
+        setOverlaySize(overlayDefaultWidthPx(availableWidth), 0);
+    }
+
     OverlayCorner overlayCorner() {
         OverlayCorner corner = OverlayCorner.fromPreference(
                 preferences.getString(KEY_OVERLAY_CORNER, null));
         return corner == null ? OverlayCorner.BOTTOM_START : corner;
+    }
+
+    /** Convert legacy dp offsets once to physical pixels. */
+    void migrateOverlayOffsets(float density) {
+        int xPx = preferences.getInt(KEY_OVERLAY_X_PX, OVERLAY_OFFSET_UNSET);
+        int yPx = preferences.getInt(KEY_OVERLAY_Y_PX, OVERLAY_OFFSET_UNSET);
+        if (xPx >= 0 && yPx >= 0) {
+            return;
+        }
+        int nextX = xPx >= 0 ? xPx : Math.round(overlayOffsetDp(KEY_OVERLAY_X) * density);
+        int nextY = yPx >= 0 ? yPx : Math.round(overlayOffsetDp(KEY_OVERLAY_Y) * density);
+        preferences.edit()
+                .putInt(KEY_OVERLAY_X_PX, Math.max(0, nextX))
+                .putInt(KEY_OVERLAY_Y_PX, Math.max(0, nextY))
+                .remove(KEY_OVERLAY_X)
+                .remove(KEY_OVERLAY_Y)
+                .apply();
+    }
+
+    int overlayOffsetXPx(float density) {
+        int stored = preferences.getInt(KEY_OVERLAY_X_PX, OVERLAY_OFFSET_UNSET);
+        return stored >= 0 ? stored : Math.max(0, Math.round(overlayOffsetDp(KEY_OVERLAY_X) * density));
+    }
+
+    int overlayOffsetYPx(float density) {
+        int stored = preferences.getInt(KEY_OVERLAY_Y_PX, OVERLAY_OFFSET_UNSET);
+        return stored >= 0 ? stored : Math.max(0, Math.round(overlayOffsetDp(KEY_OVERLAY_Y) * density));
+    }
+
+    void setOverlayPosition(OverlayCorner corner, int xPx, int yPx) {
+        preferences.edit()
+                .putString(KEY_OVERLAY_CORNER,
+                        (corner == null ? OverlayCorner.BOTTOM_START : corner).preferenceValue)
+                .putInt(KEY_OVERLAY_X_PX, Math.max(0, xPx))
+                .putInt(KEY_OVERLAY_Y_PX, Math.max(0, yPx))
+                .remove(KEY_OVERLAY_X)
+                .remove(KEY_OVERLAY_Y)
+                .apply();
+    }
+
+    void resetOverlayPosition(float density) {
+        setOverlayPosition(OverlayCorner.BOTTOM_START, 0,
+                Math.round(OVERLAY_BOTTOM_OFFSET_DP * density));
     }
 
     int overlayOffsetDp(String key) {
@@ -369,6 +458,10 @@ final class Prefs {
         backup.overlayCorner = overlayCorner().preferenceValue;
         backup.overlayOffsetX = overlayOffsetDp(KEY_OVERLAY_X);
         backup.overlayOffsetY = overlayOffsetDp(KEY_OVERLAY_Y);
+        backup.overlayOffsetXPx = preferences.getInt(KEY_OVERLAY_X_PX, OVERLAY_OFFSET_UNSET);
+        backup.overlayOffsetYPx = preferences.getInt(KEY_OVERLAY_Y_PX, OVERLAY_OFFSET_UNSET);
+        backup.overlayDragHandle = overlayDragHandle();
+        backup.overlayAutoStart = overlayAutoStart();
         backup.overlayHideThreshold = freeformHideThresholdPercent();
         backup.overlayAppListOnly = overlayAppListOnly();
         backup.panel = widget(PANEL_ID);
@@ -397,13 +490,25 @@ final class Prefs {
                 .putInt(KEY_OVERLAY_WIDTH_PERCENT, backup.overlayWidthPercent)
                 .putInt(KEY_OVERLAY_HEIGHT_PERCENT, backup.overlayHeightPercent)
                 .putString(KEY_OVERLAY_CORNER, backup.overlayCorner)
-                .putInt(KEY_OVERLAY_X, clampOverlayOffset(backup.overlayOffsetX))
-                .putInt(KEY_OVERLAY_Y, clampOverlayOffset(backup.overlayOffsetY))
+                .putBoolean(KEY_OVERLAY_DRAG_HANDLE, backup.overlayDragHandle)
+                .putBoolean(KEY_OVERLAY_AUTO_START, backup.overlayAutoStart)
                 .putInt(KEY_FREEFORM_HIDE_THRESHOLD, clampHideThreshold(backup.overlayHideThreshold))
                 .putBoolean(KEY_SHOW_ONLY_IN_APP_LIST, backup.overlayAppListOnly)
                 .putInt(KEY_PANEL_WIDTH, clampPanelWidth(backup.panelWidthPercent))
                 .putBoolean(KEY_PANEL_BOTTOM, backup.panelBottom)
                 .putInt(KEY_PANEL_CLOSE, clampPanelClose(backup.panelCloseSeconds));
+        if (backup.overlayOffsetXPx >= 0) {
+            editor.putInt(KEY_OVERLAY_X_PX, backup.overlayOffsetXPx).remove(KEY_OVERLAY_X);
+        } else {
+            editor.remove(KEY_OVERLAY_X_PX)
+                    .putInt(KEY_OVERLAY_X, clampOverlayOffset(backup.overlayOffsetX));
+        }
+        if (backup.overlayOffsetYPx >= 0) {
+            editor.putInt(KEY_OVERLAY_Y_PX, backup.overlayOffsetYPx).remove(KEY_OVERLAY_Y);
+        } else {
+            editor.remove(KEY_OVERLAY_Y_PX)
+                    .putInt(KEY_OVERLAY_Y, clampOverlayOffset(backup.overlayOffsetY));
+        }
         if (backup.overlay != null) {
             editor.putString(KEY_WIDGET_PREFIX + OVERLAY_ID, backup.overlay.toJson());
         } else {

@@ -46,6 +46,20 @@ public final class OverlayGeometryTest {
         assertEquals(20, position.y());
     }
 
+    @Test public void reanchoringBetweenCornersPreservesScreenPosition() {
+        OverlayGeometry.Position initial = OverlayGeometry.positionFor(
+                OverlayCorner.BOTTOM_START, LEFT, TOP, RIGHT, BOTTOM,
+                WIDTH, HEIGHT, 45, 124);
+        for (OverlayCorner next : OverlayCorner.values()) {
+            OverlayGeometry.Offset offsets = OverlayGeometry.offsetsFor(next,
+                    LEFT, TOP, RIGHT, BOTTOM, WIDTH, HEIGHT, initial.x(), initial.y());
+            OverlayGeometry.Position recomputed = OverlayGeometry.positionFor(next,
+                    LEFT, TOP, RIGHT, BOTTOM, WIDTH, HEIGHT, offsets.x(), offsets.y());
+            assertEquals(next.name() + " x", initial.x(), recomputed.x());
+            assertEquals(next.name() + " y", initial.y(), recomputed.y());
+        }
+    }
+
     private static void assertPosition(OverlayCorner corner, int x, int y) {
         OverlayGeometry.Position position = OverlayGeometry.positionFor(corner,
                 LEFT, TOP, RIGHT, BOTTOM, WIDTH, HEIGHT, 0, 0);

@@ -17,10 +17,12 @@ public final class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent == null ? null : intent.getAction();
-        if (!Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action)
-                && !Intent.ACTION_BOOT_COMPLETED.equals(action)
-                && !"android.intent.action.QUICKBOOT_POWERON".equals(action)
-                && !Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) {
+        boolean boot = Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action)
+                || Intent.ACTION_BOOT_COMPLETED.equals(action)
+                || "android.intent.action.QUICKBOOT_POWERON".equals(action)
+                || Intent.ACTION_USER_UNLOCKED.equals(action);
+        boolean replaced = Intent.ACTION_MY_PACKAGE_REPLACED.equals(action);
+        if (!boot && !replaced) {
             return;
         }
         // Settings live in credential storage; a locked user gets BOOT_COMPLETED later.
@@ -30,10 +32,27 @@ public final class BootReceiver extends BroadcastReceiver {
         }
         int[] widgetIds = ClimateService.widgetIds(context);
         Prefs prefs = new Prefs(context);
-        if (widgetIds.length == 0
-                && (prefs.isWidgetMode() || !ClimateOverlay.hasPermissions(context))) {
+        if (prefs.isWidgetMode()) {
+            if (widgetIds.length == 0) {
+                return;
+            }
+            AppLog.startup(action);
+            ClimateWidgetProvider.draw(context, AppWidgetManager.getInstance(context), widgetIds);
+            ClimateService.start(context, ClimateService.ACTION_REFRESH);
             return;
         }
+        boolean autoStart = prefs.overlayAutoStart();
+        boolean shouldStart = replaced ? (prefs.overlayEnabled() || autoStart) : autoStart;
+        if (!shouldStart) {
+            if (boot) {
+                prefs.setOverlayEnabled(false);
+            }
+            return;
+        }
+        if (!ClimateOverlay.hasPermissions(context)) {
+            return;
+        }
+        prefs.setOverlayEnabled(true);
         AppLog.startup(action);
         ClimateWidgetProvider.draw(context, AppWidgetManager.getInstance(context), widgetIds);
         ClimateService.start(context, ClimateService.ACTION_REFRESH);

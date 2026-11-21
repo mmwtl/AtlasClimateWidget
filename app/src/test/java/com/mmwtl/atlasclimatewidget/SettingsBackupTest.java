@@ -96,9 +96,17 @@ public final class SettingsBackupTest {
         SettingsBackup backup = new SettingsBackup();
         backup.overlayWidthPx = 963;
         backup.overlayHeightPx = 481;
+        backup.overlayOffsetXPx = 72;
+        backup.overlayOffsetYPx = 188;
+        backup.overlayDragHandle = false;
+        backup.overlayAutoStart = false;
         SettingsBackup copy = SettingsBackup.parse(backup.toJson("test"));
         assertEquals(963, copy.overlayWidthPx);
         assertEquals(481, copy.overlayHeightPx);
+        assertEquals(72, copy.overlayOffsetXPx);
+        assertEquals(188, copy.overlayOffsetYPx);
+        assertFalse(copy.overlayDragHandle);
+        assertFalse(copy.overlayAutoStart);
 
         backup.overlayHeightPx = 0;
         assertEquals(0, SettingsBackup.parse(backup.toJson("test")).overlayHeightPx);

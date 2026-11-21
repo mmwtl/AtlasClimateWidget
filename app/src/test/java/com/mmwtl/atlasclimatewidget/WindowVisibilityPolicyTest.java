@@ -319,6 +319,42 @@ public final class WindowVisibilityPolicyTest {
         );
     }
 
+    @Test
+    public void ownClimateWindowDialogAboveHomeHidesOverlay() {
+        assertDecision(
+                WindowVisibilityPolicy.Decision.HOME_HIDDEN,
+                List.of(
+                        window("launcher", "HomeActivity", false, false,
+                                0, 0, WIDTH, HEIGHT, 0),
+                        window("com.mmwtl.atlasclimatewidget",
+                                "com.mmwtl.atlasclimatewidget.ClimatePanelActivity",
+                                true, true, 60, 500, 1380, 1300, 4)
+                ),
+                activity("com.mmwtl.atlasclimatewidget",
+                        "com.mmwtl.atlasclimatewidget.ClimatePanelActivity"),
+                "com.mmwtl.atlasclimatewidget",
+                "com.mmwtl.atlasclimatewidget.ClimatePanelActivity"
+        );
+    }
+
+    @Test
+    public void ownPassiveOverlayWindowDoesNotHideHome() {
+        assertDecision(
+                WindowVisibilityPolicy.Decision.HOME_VISIBLE,
+                List.of(
+                        window("launcher", "HomeActivity", true, true,
+                                0, 0, WIDTH, HEIGHT, 0),
+                        new WindowObservation(
+                                "com.mmwtl.atlasclimatewidget", "",
+                                AccessibilityWindowInfo.TYPE_SYSTEM,
+                                false, false, 6, 0, 1200, 1320, 1796)
+                ),
+                activity("launcher", "HomeActivity"),
+                "launcher",
+                "HomeActivity"
+        );
+    }
+
     private static void assertDecision(
             WindowVisibilityPolicy.Decision expected,
             List<WindowObservation> windows,

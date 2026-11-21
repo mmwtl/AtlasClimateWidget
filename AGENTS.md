@@ -39,12 +39,17 @@ line, read as in AtlasAppWidget (`Fuel`).
   System. Keep fine-tuning controls (card sliders, the list of available functions) in collapsed
   sections; the selected tab survives recreation.
 - The System tab's display mode activates the placed Android widgets or the HOME overlay.
-  Placed widgets keep their layouts in overlay mode and show a link to the mode picker.
-  `ClimateOverlay` uses AtlasAppWidget's window visibility policy, accessibility snapshots,
-  usage events and screen/lock checks. The overlay has a backup-able layout slot
-  (`Prefs.OVERLAY_ID`) and configurable width and manual height in pixels, automatic height, corner and offsets. It shares
-  `InteractiveClimateView` with the shortcut window for in-place bar drags and long-press
-  switch-off. Both render and send commands through `ClimateService`.
+  Placed widgets keep their layouts in overlay mode and show a link to the mode picker;
+  `WidgetSetupActivity` offers switching back to widget mode when opened while overlay mode is
+  active. `ClimateOverlay` uses AtlasAppWidget's window visibility policy, accessibility snapshots,
+  usage events and screen/lock checks (hiding behind our own interactive activities such as
+  `ClimatePanelActivity` as well), renders an initial frame synchronously before attaching, and
+  exposes an optional corner drag handle. The System tab owns overlay permissions, Start/Stop,
+  auto-start and visibility rules; the Look tab (under the live preview, when «Оверлей климата» is
+  selected) owns its backup-able layout slot's (`Prefs.OVERLAY_ID`) width and auto/manual height in
+  pixels, drag handle toggle, anchor corner (preserving screen position on change) and X/Y offsets
+  in pixels. It shares `InteractiveClimateView` with the shortcut window for in-place bar drags and
+  long-press switch-off. Both render and send commands through `ClimateService`.
 - `TileDragLayer` hosts the settings preview and lets the finger drag tiles to reorder them
   (`WidgetConfig.dropTile`); the preview follows each step and the order is saved on release.
   Home-screen widgets cannot be dragged: `RemoteViews` only deliver clicks.

@@ -70,6 +70,11 @@ final class Ui {
         return button(context, context.getString(value));
     }
 
+    static void setButtonAccent(Context context, Button button, boolean accent) {
+        button.setBackground(rounded(accent ? ACCENT : SURFACE_RAISED, dp(context, 8)));
+        button.setTextColor(accent ? ON_ACCENT : TEXT);
+    }
+
     static LinearLayout card(Context context) {
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);

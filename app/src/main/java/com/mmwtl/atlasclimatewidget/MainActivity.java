@@ -16,11 +16,12 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.provider.Settings;
+import android.text.Editable;
 import android.text.InputType;
+import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -71,6 +72,7 @@ public final class MainActivity extends ScaledActivity {
     private static final float PREVIEW_MAX_SCREEN_SHARE = 0.28f;
     private static final int REQUEST_IMPORT = 41;
     private static final int BACKUP_MAX_BYTES = 256 * 1024;
+    private static final long OVERLAY_INPUT_SAVE_DELAY_MS = 400L;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable statusTask = new Runnable() {
@@ -80,6 +82,8 @@ public final class MainActivity extends ScaledActivity {
             handler.postDelayed(this, STATUS_REFRESH_MS);
         }
     };
+    private final Runnable accessibilityStateRefresh = () -> handler.post(this::refreshStatus);
+    private final Runnable saveOverlayPositionTask = this::saveOverlayPosition;
 
     private final LinearLayout[] tabPages = new LinearLayout[TAB_LABELS.length];
     private final TextView[] tabButtons = new TextView[TAB_LABELS.length];
@@ -94,9 +98,29 @@ public final class MainActivity extends ScaledActivity {
 
     private ScrollView settingsScroll;
     private LinearLayout previewPanel;
+    private TextView overlayPermissionsLabel;
     private Button overlayPermission;
     private Button usagePermission;
     private Button windowsPermission;
+    private TextView overlayStatusText;
+    private Button startOverlayButton;
+    private Button stopOverlayButton;
+    private LinearLayout overlaySizeCard;
+    private SeekBar overlayWidthSlider;
+    private EditText overlayWidthInput;
+    private Switch overlayAutoHeightSwitch;
+    private LinearLayout overlayManualHeightGroup;
+    private SeekBar overlayHeightSlider;
+    private EditText overlayHeightInput;
+    private TextView overlaySizeReport;
+    private LinearLayout overlayPositionCard;
+    private Switch overlayDragHandleSwitch;
+    private Spinner overlayCornerSpinner;
+    private EditText overlayPosXInput;
+    private EditText overlayPosYInput;
+    private OverlayCorner displayedOverlayCorner;
+    private boolean updatingOverlayControls;
+    private boolean overlayPositionDirty;
     private LinearLayout widgetHeightCard;
     private TextView previewTitle;
     private TextView statusText;
@@ -177,15 +201,22 @@ public final class MainActivity extends ScaledActivity {
         super.onResume();
         ClimateService.start(this, ClimateService.ACTION_START);
         ClimateService.setStateListener(this::refreshLive);
+        AccessibilityWindowState.setStateListener(accessibilityStateRefresh);
         reloadWidgetList();
+        if (editedWidget == Prefs.OVERLAY_ID) {
+            refreshOverlayGeometryControls();
+        }
         handler.post(statusTask);
         previewHost.post(this::refreshPreview);
     }
 
     @Override
     protected void onPause() {
+        AccessibilityWindowState.clearStateListener(accessibilityStateRefresh);
         ClimateService.setStateListener(null);
         handler.removeCallbacks(statusTask);
+        handler.removeCallbacks(saveOverlayPositionTask);
+        saveOverlayPosition();
         super.onPause();
     }
 
@@ -395,6 +426,11 @@ public final class MainActivity extends ScaledActivity {
         appearance.addView(appearanceHost);
         page.addView(appearance);
 
+        overlaySizeCard = buildOverlaySizeCard();
+        page.addView(overlaySizeCard);
+        overlayPositionCard = buildOverlayPositionCard();
+        page.addView(overlayPositionCard);
+
         cardsHost = collapsibleCard(page, R.string.cards_title, R.string.cards_summary);
         editNight = WidgetTheme.of(WidgetTheme.themed(this)).night;
         colorsHost = collapsibleCard(page, R.string.colors_title, R.string.colors_summary);
@@ -403,6 +439,10 @@ public final class MainActivity extends ScaledActivity {
     private void buildSystemTab(LinearLayout page) {
         page.addView(buildStatusCard());
         page.addView(buildDisplayModeCard());
+        if (!prefs.isWidgetMode()) {
+            page.addView(buildOverlayControlCard());
+            page.addView(buildOverlayVisibilityCard());
+        }
         page.addView(buildBehaviourCard());
         page.addView(buildThemeCard());
         page.addView(buildPanelCard());
@@ -431,6 +471,7 @@ public final class MainActivity extends ScaledActivity {
         card.addView(hint(widgetMode ? R.string.display_mode_widget_hint : R.string.overlay_hint));
         if (widgetMode) {
             Button add = Ui.button(this, R.string.add_android_widget);
+            Ui.topMargin(add, 10);
             add.setOnClickListener(view -> {
                 AppWidgetManager manager = AppWidgetManager.getInstance(this);
                 if (!manager.isRequestPinAppWidgetSupported() || !manager.requestPinAppWidget(
@@ -441,56 +482,8 @@ public final class MainActivity extends ScaledActivity {
             card.addView(add);
             return card;
         }
-
-        overlayPermission = settingsButton(card, R.string.overlay_allow_draw,
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
-        usagePermission = settingsButton(card, R.string.overlay_allow_usage,
-                Settings.ACTION_USAGE_ACCESS_SETTINGS, null);
-        windowsPermission = settingsButton(card, R.string.overlay_allow_windows,
-                Settings.ACTION_ACCESSIBILITY_SETTINGS, null);
-        Switch appList = switchRow(R.string.overlay_app_list, prefs.overlayAppListOnly());
-        appList.setOnCheckedChangeListener((view, checked) -> prefs.raw().edit()
-                .putBoolean(Prefs.KEY_SHOW_ONLY_IN_APP_LIST, checked).apply());
-        card.addView(appList);
-        addSlider(card, getString(R.string.overlay_hide_threshold),
-                WindowVisibilityPolicy.MIN_HIDE_THRESHOLD_PERCENT,
-                WindowVisibilityPolicy.MAX_HIDE_THRESHOLD_PERCENT, prefs.freeformHideThresholdPercent(),
-                value -> value + "%", value -> saveOverlaySetting(Prefs.KEY_FREEFORM_HIDE_THRESHOLD, value),
-                null);
-        Button size = Ui.button(this, R.string.overlay_size);
-        Ui.topMargin(size, 10);
-        size.setOnClickListener(view -> showOverlaySizeDialog());
-        card.addView(size);
-        card.addView(label(R.string.panel_position));
-        Spinner corners = new Spinner(this);
-        OverlayCorner[] choices = OverlayCorner.values();
-        List<String> cornerLabels = new ArrayList<>();
-        for (OverlayCorner choice : choices) {
-            cornerLabels.add(choice.label);
-        }
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, cornerLabels);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        corners.setAdapter(adapter);
-        corners.setSelection(prefs.overlayCorner().ordinal());
-        corners.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                prefs.raw().edit().putString(Prefs.KEY_OVERLAY_CORNER,
-                        choices[position].preferenceValue).apply();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
-        });
-        card.addView(corners);
-        addSlider(card, getString(R.string.overlay_offset_x), 0, Prefs.OVERLAY_OFFSET_MAX_DP,
-                prefs.overlayOffsetDp(Prefs.KEY_OVERLAY_X), value -> value + " dp",
-                value -> saveOverlaySetting(Prefs.KEY_OVERLAY_X, value), null);
-        addSlider(card, getString(R.string.overlay_offset_y), 0, Prefs.OVERLAY_OFFSET_MAX_DP,
-                prefs.overlayOffsetDp(Prefs.KEY_OVERLAY_Y), value -> value + " dp",
-                value -> saveOverlaySetting(Prefs.KEY_OVERLAY_Y, value), null);
         Button edit = Ui.button(this, R.string.overlay_edit);
+        Ui.topMargin(edit, 10);
         edit.setOnClickListener(view -> {
             editedWidget = Prefs.OVERLAY_ID;
             config = loadConfig(editedWidget);
@@ -502,83 +495,620 @@ public final class MainActivity extends ScaledActivity {
         return card;
     }
 
-    private void showOverlaySizeDialog() {
-        Rect bounds = ClimateOverlay.availableBounds(getSystemService(WindowManager.class));
-        prefs.migrateOverlaySize(bounds.width(), bounds.height());
-        LinearLayout fields = vertical();
-        fields.setPadding(Ui.dp(this, 24), Ui.dp(this, 8), Ui.dp(this, 24), 0);
-        EditText width = overlayDimensionField(fields, R.string.overlay_width,
-                prefs.overlayWidthPx(bounds.width()));
-        EditText height = overlayDimensionField(fields, R.string.overlay_height,
-                prefs.overlayHeightPx(bounds.height()));
-        height.setHint(R.string.overlay_height_auto);
-        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
-                .setTitle(R.string.overlay_size)
-                .setView(fields)
-                .setNegativeButton(R.string.setup_cancel, null)
-                .setPositiveButton(R.string.setup_done, null)
-                .create();
-        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                .setOnClickListener(view -> {
-                    int widthPx = readOverlayDimension(width, Prefs.OVERLAY_MIN_WIDTH_PX,
-                            bounds.width());
-                    int heightPx = height.length() == 0 ? 0 : readOverlayDimension(height,
-                            Prefs.OVERLAY_MIN_HEIGHT_PX, bounds.height());
-                    if (widthPx < 0 || heightPx < 0) {
-                        return;
-                    }
-                    prefs.setOverlaySize(widthPx, heightPx);
-                    refreshPreview();
-                    dialog.dismiss();
-                }));
-        dialog.show();
-        sized(dialog);
+    private LinearLayout buildOverlayControlCard() {
+        LinearLayout card = Ui.card(this);
+        card.addView(Ui.heading(this, R.string.overlay_title, 20));
+        overlayPermissionsLabel = label(R.string.overlay_permissions_title);
+        card.addView(overlayPermissionsLabel);
+        overlayPermission = settingsButton(card, R.string.overlay_allow_draw,
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
+        usagePermission = settingsButton(card, R.string.overlay_allow_usage,
+                Settings.ACTION_USAGE_ACCESS_SETTINGS, null);
+        windowsPermission = settingsButton(card, R.string.overlay_allow_windows,
+                Settings.ACTION_ACCESSIBILITY_SETTINGS, null);
+
+        overlayStatusText = Ui.text(this, "", 14, Ui.TEXT_SECONDARY);
+        Ui.topMargin(overlayStatusText, 12);
+        card.addView(overlayStatusText);
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        Ui.topMargin(actions, 10);
+        startOverlayButton = Ui.button(this, R.string.overlay_start);
+        startOverlayButton.setOnClickListener(view -> startOverlay());
+        stopOverlayButton = Ui.button(this, R.string.overlay_stop);
+        stopOverlayButton.setOnClickListener(view -> stopOverlay());
+        actions.addView(startOverlayButton, weighted(0, 8));
+        actions.addView(stopOverlayButton, weighted(0, 0));
+        card.addView(actions);
+
+        Switch autoStart = switchRow(R.string.overlay_auto_start, prefs.overlayAutoStart());
+        autoStart.setOnCheckedChangeListener((view, checked) -> {
+            prefs.setOverlayAutoStart(checked);
+            if (checked && !ClimateOverlay.hasPermissions(this)) {
+                Toast.makeText(this, R.string.overlay_auto_start_permission_warning,
+                        Toast.LENGTH_LONG).show();
+            }
+        });
+        card.addView(autoStart);
+
+        LinearLayout headUnitNote = collapsible(card, R.string.head_unit_note_title,
+                R.string.head_unit_note_summary);
+        Ui.topMargin(card.getChildAt(card.getChildCount() - 2), 12);
+        headUnitNote.addView(hint(R.string.head_unit_note));
+        return card;
     }
 
-    private EditText overlayDimensionField(LinearLayout parent, int labelRes, int value) {
-        TextView label = label(labelRes);
-        parent.addView(label);
+    private LinearLayout buildOverlayVisibilityCard() {
+        LinearLayout card = Ui.card(this);
+        card.addView(Ui.heading(this, R.string.overlay_visibility_title, 20));
+        Switch appList = switchRow(R.string.overlay_app_list, prefs.overlayAppListOnly());
+        appList.setOnCheckedChangeListener((view, checked) -> prefs.raw().edit()
+                .putBoolean(Prefs.KEY_SHOW_ONLY_IN_APP_LIST, checked).apply());
+        card.addView(appList);
+        card.addView(hint(R.string.overlay_app_list_hint));
+        addSlider(card, getString(R.string.overlay_hide_threshold),
+                WindowVisibilityPolicy.MIN_HIDE_THRESHOLD_PERCENT,
+                WindowVisibilityPolicy.MAX_HIDE_THRESHOLD_PERCENT, prefs.freeformHideThresholdPercent(),
+                value -> value + "%",
+                value -> prefs.raw().edit().putInt(Prefs.KEY_FREEFORM_HIDE_THRESHOLD, value).apply(),
+                null);
+        card.addView(hint(R.string.overlay_hide_threshold_hint));
+        return card;
+    }
+
+    private LinearLayout buildOverlaySizeCard() {
+        LinearLayout card = Ui.card(this);
+        card.addView(Ui.heading(this, R.string.overlay_size, 20));
+        overlaySizeReport = hint(R.string.overlay_size);
+        card.addView(overlaySizeReport);
+
+        card.addView(label(R.string.overlay_width));
+        LinearLayout widthRow = new LinearLayout(this);
+        widthRow.setOrientation(LinearLayout.HORIZONTAL);
+        widthRow.setGravity(Gravity.CENTER_VERTICAL);
+        Ui.topMargin(widthRow, 6);
+        overlayWidthSlider = new SeekBar(this);
+        overlayWidthSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar bar, int value, boolean fromUser) {
+                if (updatingOverlayControls || !fromUser) {
+                    return;
+                }
+                overlayWidthInput.clearFocus();
+                setOverlayText(overlayWidthInput, value);
+                applyOverlayWidth(value);
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar bar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar bar) {}
+        });
+        widthRow.addView(overlayWidthSlider, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        overlayWidthInput = overlayNumberInput(R.string.overlay_width);
+        overlayWidthInput.addTextChangedListener(textWatcher(this::onOverlayWidthTextChanged));
+        overlayWidthInput.setOnFocusChangeListener((view, hasFocus) -> {
+            if (!hasFocus && !updatingOverlayControls) {
+                refreshOverlaySizeControls();
+            }
+        });
+        widthRow.addView(overlayWidthInput, new LinearLayout.LayoutParams(
+                Ui.dp(this, 78), ViewGroup.LayoutParams.WRAP_CONTENT));
+        widthRow.addView(Ui.text(this, "px", 13, Ui.TEXT_SECONDARY));
+        card.addView(widthRow);
+
+        overlayAutoHeightSwitch = switchRow(R.string.overlay_auto_height, true);
+        overlayAutoHeightSwitch.setOnCheckedChangeListener((view, checked) -> {
+            if (updatingOverlayControls) {
+                return;
+            }
+            Rect bounds = ClimateOverlay.displayBounds(this);
+            int width = prefs.overlayWidthPx(bounds.width());
+            if (checked) {
+                prefs.setOverlaySize(width, 0);
+            } else {
+                ClimateState state = ClimateService.STORE.snapshot(SystemClock.elapsedRealtime());
+                WidgetViews.Size current = ClimateOverlay.size(getApplicationContext(), bounds,
+                        prefs, config, state);
+                int min = Math.min(Prefs.OVERLAY_MIN_HEIGHT_PX, Math.max(1, bounds.height()));
+                int nextHeight = Math.max(min, Math.min(bounds.height(), current.heightPx));
+                prefs.setOverlaySize(width, nextHeight);
+            }
+            refreshOverlaySizeControls();
+            refreshPreview();
+        });
+        card.addView(overlayAutoHeightSwitch);
+
+        overlayManualHeightGroup = vertical();
+        overlayManualHeightGroup.addView(label(R.string.overlay_height));
+        LinearLayout heightRow = new LinearLayout(this);
+        heightRow.setOrientation(LinearLayout.HORIZONTAL);
+        heightRow.setGravity(Gravity.CENTER_VERTICAL);
+        Ui.topMargin(heightRow, 6);
+        overlayHeightSlider = new SeekBar(this);
+        overlayHeightSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar bar, int value, boolean fromUser) {
+                if (updatingOverlayControls || !fromUser) {
+                    return;
+                }
+                overlayHeightInput.clearFocus();
+                setOverlayText(overlayHeightInput, value);
+                applyOverlayHeight(value);
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar bar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar bar) {}
+        });
+        heightRow.addView(overlayHeightSlider, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        overlayHeightInput = overlayNumberInput(R.string.overlay_height);
+        overlayHeightInput.addTextChangedListener(textWatcher(this::onOverlayHeightTextChanged));
+        overlayHeightInput.setOnFocusChangeListener((view, hasFocus) -> {
+            if (!hasFocus && !updatingOverlayControls) {
+                refreshOverlaySizeControls();
+            }
+        });
+        heightRow.addView(overlayHeightInput, new LinearLayout.LayoutParams(
+                Ui.dp(this, 78), ViewGroup.LayoutParams.WRAP_CONTENT));
+        heightRow.addView(Ui.text(this, "px", 13, Ui.TEXT_SECONDARY));
+        overlayManualHeightGroup.addView(heightRow);
+        card.addView(overlayManualHeightGroup);
+
+        Button resetSize = Ui.button(this, R.string.overlay_reset_size);
+        Ui.topMargin(resetSize, 12);
+        resetSize.setOnClickListener(view -> {
+            Rect bounds = ClimateOverlay.displayBounds(this);
+            prefs.resetOverlaySize(bounds.width());
+            refreshOverlaySizeControls();
+            refreshPreview();
+            Toast.makeText(this, R.string.overlay_size_reset, Toast.LENGTH_SHORT).show();
+        });
+        card.addView(resetSize);
+        return card;
+    }
+
+    private LinearLayout buildOverlayPositionCard() {
+        LinearLayout card = Ui.card(this);
+        card.addView(Ui.heading(this, R.string.overlay_position_title, 20));
+
+        overlayDragHandleSwitch = switchRow(R.string.overlay_drag_handle, prefs.overlayDragHandle());
+        overlayDragHandleSwitch.setOnCheckedChangeListener((view, checked) -> {
+            if (!updatingOverlayControls) {
+                prefs.setOverlayDragHandle(checked);
+            }
+        });
+        card.addView(overlayDragHandleSwitch);
+        card.addView(hint(R.string.overlay_drag_handle_hint));
+
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        Ui.topMargin(header, 14);
+        header.addView(Ui.text(this, R.string.overlay_corner, 13, Ui.TEXT_SECONDARY),
+                positionColumnParams(1.35f, 0));
+        header.addView(Ui.text(this, R.string.overlay_pos_x, 13, Ui.TEXT_SECONDARY),
+                positionColumnParams(1f, 8));
+        header.addView(Ui.text(this, R.string.overlay_pos_y, 13, Ui.TEXT_SECONDARY),
+                positionColumnParams(1f, 8));
+        card.addView(header);
+
+        OverlayCorner[] choices = OverlayCorner.values();
+        List<String> cornerLabels = new ArrayList<>();
+        for (OverlayCorner choice : choices) {
+            cornerLabels.add(choice.label);
+        }
+        overlayCornerSpinner = new Spinner(this);
+        overlayCornerSpinner.setContentDescription(getString(R.string.overlay_corner));
+        overlayCornerSpinner.setAdapter(styledSpinnerAdapter(cornerLabels));
+        overlayCornerSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (updatingOverlayControls || position < 0 || position >= choices.length) {
+                    return;
+                }
+                OverlayCorner next = choices[position];
+                if (next != displayedOverlayCorner) {
+                    reanchorOverlayCorner(next);
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        Ui.topMargin(row, 6);
+        row.addView(dropdownField(overlayCornerSpinner), positionColumnParams(1.35f, 0));
+
+        overlayPosXInput = overlayNumberInput(R.string.overlay_pos_x_desc);
+        overlayPosXInput.setHint("X");
+        row.addView(pxInputCell(overlayPosXInput), positionColumnParams(1f, 8));
+
+        overlayPosYInput = overlayNumberInput(R.string.overlay_pos_y_desc);
+        overlayPosYInput.setHint("Y");
+        row.addView(pxInputCell(overlayPosYInput), positionColumnParams(1f, 8));
+        card.addView(row);
+
+        TextWatcher watcher = textWatcher(this::onOverlayPositionTextChanged);
+        overlayPosXInput.addTextChangedListener(watcher);
+        overlayPosYInput.addTextChangedListener(watcher);
+        View.OnFocusChangeListener focusSaver = (view, hasFocus) -> {
+            if (!hasFocus && !updatingOverlayControls) {
+                handler.removeCallbacks(saveOverlayPositionTask);
+                saveOverlayPosition();
+            }
+        };
+        overlayPosXInput.setOnFocusChangeListener(focusSaver);
+        overlayPosYInput.setOnFocusChangeListener(focusSaver);
+
+        card.addView(hint(R.string.overlay_position_hint));
+
+        Button resetPos = Ui.button(this, R.string.overlay_reset_position);
+        Ui.topMargin(resetPos, 12);
+        resetPos.setOnClickListener(view -> {
+            handler.removeCallbacks(saveOverlayPositionTask);
+            overlayPositionDirty = false;
+            float density = getApplicationContext().getResources().getDisplayMetrics().density;
+            prefs.resetOverlayPosition(density);
+            refreshOverlayPositionControls();
+            Toast.makeText(this, R.string.overlay_position_reset, Toast.LENGTH_SHORT).show();
+        });
+        card.addView(resetPos);
+        return card;
+    }
+
+    private LinearLayout pxInputCell(EditText input) {
+        LinearLayout cell = new LinearLayout(this);
+        cell.setOrientation(LinearLayout.HORIZONTAL);
+        cell.setGravity(Gravity.CENTER_VERTICAL);
+        cell.addView(input, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        cell.addView(Ui.text(this, "px", 13, Ui.TEXT_SECONDARY));
+        return cell;
+    }
+
+    private EditText overlayNumberInput(int descriptionRes) {
         EditText field = new EditText(this);
-        field.setId(View.generateViewId());
-        label.setLabelFor(field.getId());
+        field.setContentDescription(getString(descriptionRes));
         field.setInputType(InputType.TYPE_CLASS_NUMBER);
         field.setSingleLine(true);
         field.setSelectAllOnFocus(true);
-        if (value != 0) {
-            field.setText(Integer.toString(value));
-        }
-        parent.addView(field);
+        field.setTextColor(Ui.TEXT);
+        field.setHintTextColor(Ui.TEXT_SECONDARY);
+        field.setTextSize(15);
+        field.setPadding(Ui.dp(this, 10), Ui.dp(this, 8), Ui.dp(this, 10), Ui.dp(this, 8));
+        field.setBackground(Ui.rounded(Ui.SURFACE_RAISED, Ui.dp(this, 8)));
         return field;
     }
 
-    private int readOverlayDimension(EditText field, int min, int max) {
-        min = Math.min(min, max);
-        try {
-            int value = Integer.parseInt(field.getText().toString());
-            if (value >= min && value <= max) {
-                return value;
-            }
-        } catch (NumberFormatException ignored) {
-            // Use the same range message for empty, malformed and out-of-range input.
-        }
-        field.setError(getString(R.string.overlay_size_range, min, max));
-        return -1;
+    private LinearLayout.LayoutParams positionColumnParams(float weight, int leftMarginDp) {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, weight);
+        params.leftMargin = Ui.dp(this, leftMarginDp);
+        return params;
     }
 
-    private void saveOverlaySetting(String key, int value) {
-        prefs.raw().edit().putInt(key, value).apply();
-        if (editedWidget == Prefs.OVERLAY_ID) {
-            refreshPreview();
+    private FrameLayout dropdownField(Spinner spinner) {
+        FrameLayout field = new FrameLayout(this);
+        field.setBackground(Ui.rounded(Ui.SURFACE_RAISED, Ui.dp(this, 8)));
+        spinner.setBackgroundColor(0x00000000);
+        spinner.setPadding(Ui.dp(this, 6), 0, Ui.dp(this, 26), 0);
+        field.addView(spinner, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        TextView arrow = Ui.text(this, "▾", 16, Ui.ACCENT);
+        arrow.setGravity(Gravity.CENTER);
+        arrow.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        FrameLayout.LayoutParams arrowParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT,
+                Gravity.END | Gravity.CENTER_VERTICAL);
+        arrowParams.rightMargin = Ui.dp(this, 10);
+        field.addView(arrow, arrowParams);
+        field.setOnClickListener(view -> spinner.performClick());
+        return field;
+    }
+
+    private ArrayAdapter<String> styledSpinnerAdapter(List<String> labels) {
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
+                android.R.layout.simple_spinner_item, labels) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                return style(super.getView(position, convertView, parent));
+            }
+
+            @Override
+            public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                return style(super.getDropDownView(position, convertView, parent));
+            }
+
+            private View style(View view) {
+                if (view instanceof TextView) {
+                    TextView text = (TextView) view;
+                    text.setTextColor(Ui.TEXT);
+                    text.setTextSize(15);
+                    text.setPadding(Ui.dp(MainActivity.this, 12), Ui.dp(MainActivity.this, 10),
+                            Ui.dp(MainActivity.this, 12), Ui.dp(MainActivity.this, 10));
+                }
+                return view;
+            }
+        };
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        return adapter;
+    }
+
+    private static TextWatcher textWatcher(Runnable onAfterChange) {
+        return new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                onAfterChange.run();
+            }
+        };
+    }
+
+    private void refreshOverlayGeometryControls() {
+        refreshOverlaySizeControls();
+        refreshOverlayPositionControls();
+    }
+
+    private void refreshOverlaySizeControls() {
+        if (overlayWidthSlider == null) {
+            return;
         }
+        Rect bounds = ClimateOverlay.displayBounds(this);
+        prefs.migrateOverlaySize(bounds.width(), bounds.height());
+        int minWidth = Math.min(Prefs.OVERLAY_MIN_WIDTH_PX, Math.max(1, bounds.width()));
+        int maxWidth = Math.max(minWidth, bounds.width());
+        int width = prefs.overlayWidthPx(maxWidth);
+        int minHeight = Math.min(Prefs.OVERLAY_MIN_HEIGHT_PX, Math.max(1, bounds.height()));
+        int maxHeight = Math.max(minHeight, bounds.height());
+        int height = prefs.overlayHeightPx(maxHeight);
+        boolean autoHeight = height == 0;
+        boolean previous = updatingOverlayControls;
+        updatingOverlayControls = true;
+        try {
+            overlayWidthSlider.setMin(minWidth);
+            overlayWidthSlider.setMax(maxWidth);
+            overlayWidthSlider.setProgress(width);
+            if (!overlayWidthInput.hasFocus()) {
+                setOverlayText(overlayWidthInput, width);
+            }
+            overlayAutoHeightSwitch.setChecked(autoHeight);
+            overlayManualHeightGroup.setVisibility(autoHeight ? View.GONE : View.VISIBLE);
+            if (!autoHeight) {
+                overlayHeightSlider.setMin(minHeight);
+                overlayHeightSlider.setMax(maxHeight);
+                overlayHeightSlider.setProgress(height);
+                if (!overlayHeightInput.hasFocus()) {
+                    setOverlayText(overlayHeightInput, height);
+                }
+            }
+        } finally {
+            updatingOverlayControls = previous;
+        }
+    }
+
+    private void refreshOverlayPositionControls() {
+        if (overlayCornerSpinner == null) {
+            return;
+        }
+        float density = getApplicationContext().getResources().getDisplayMetrics().density;
+        prefs.migrateOverlayOffsets(density);
+        OverlayCorner corner = prefs.overlayCorner();
+        int xPx = prefs.overlayOffsetXPx(density);
+        int yPx = prefs.overlayOffsetYPx(density);
+        boolean previous = updatingOverlayControls;
+        updatingOverlayControls = true;
+        try {
+            overlayDragHandleSwitch.setChecked(prefs.overlayDragHandle());
+            displayedOverlayCorner = corner;
+            overlayCornerSpinner.setSelection(corner.ordinal(), false);
+            if (!overlayPosXInput.hasFocus()) {
+                setOverlayText(overlayPosXInput, xPx);
+            }
+            if (!overlayPosYInput.hasFocus()) {
+                setOverlayText(overlayPosYInput, yPx);
+            }
+        } finally {
+            updatingOverlayControls = previous;
+        }
+    }
+
+    private void setOverlayText(EditText field, int value) {
+        boolean previous = updatingOverlayControls;
+        updatingOverlayControls = true;
+        try {
+            field.setText(Integer.toString(value));
+            field.setError(null);
+        } finally {
+            updatingOverlayControls = previous;
+        }
+    }
+
+    private void applyOverlayWidth(int widthPx) {
+        Rect bounds = ClimateOverlay.displayBounds(this);
+        prefs.setOverlaySize(widthPx, prefs.overlayHeightPx(bounds.height()));
+        refreshPreview();
+    }
+
+    private void applyOverlayHeight(int heightPx) {
+        Rect bounds = ClimateOverlay.displayBounds(this);
+        prefs.setOverlaySize(prefs.overlayWidthPx(bounds.width()), heightPx);
+        refreshPreview();
+    }
+
+    private void onOverlayWidthTextChanged() {
+        if (updatingOverlayControls) {
+            return;
+        }
+        Rect bounds = ClimateOverlay.displayBounds(this);
+        int min = Math.min(Prefs.OVERLAY_MIN_WIDTH_PX, Math.max(1, bounds.width()));
+        int max = Math.max(min, bounds.width());
+        Integer parsed = parseIntField(overlayWidthInput);
+        if (parsed != null && parsed >= min && parsed <= max) {
+            overlayWidthInput.setError(null);
+            boolean previous = updatingOverlayControls;
+            updatingOverlayControls = true;
+            overlayWidthSlider.setProgress(parsed);
+            updatingOverlayControls = previous;
+            applyOverlayWidth(parsed);
+        } else if (overlayWidthInput.length() > 0) {
+            overlayWidthInput.setError(getString(R.string.overlay_size_range, min, max));
+        }
+    }
+
+    private void onOverlayHeightTextChanged() {
+        if (updatingOverlayControls || overlayAutoHeightSwitch.isChecked()) {
+            return;
+        }
+        Rect bounds = ClimateOverlay.displayBounds(this);
+        int min = Math.min(Prefs.OVERLAY_MIN_HEIGHT_PX, Math.max(1, bounds.height()));
+        int max = Math.max(min, bounds.height());
+        Integer parsed = parseIntField(overlayHeightInput);
+        if (parsed != null && parsed >= min && parsed <= max) {
+            overlayHeightInput.setError(null);
+            boolean previous = updatingOverlayControls;
+            updatingOverlayControls = true;
+            overlayHeightSlider.setProgress(parsed);
+            updatingOverlayControls = previous;
+            applyOverlayHeight(parsed);
+        } else if (overlayHeightInput.length() > 0) {
+            overlayHeightInput.setError(getString(R.string.overlay_size_range, min, max));
+        }
+    }
+
+    private void onOverlayPositionTextChanged() {
+        if (updatingOverlayControls) {
+            return;
+        }
+        overlayPositionDirty = true;
+        handler.removeCallbacks(saveOverlayPositionTask);
+        handler.postDelayed(saveOverlayPositionTask, OVERLAY_INPUT_SAVE_DELAY_MS);
+    }
+
+    private void saveOverlayPosition() {
+        if (!overlayPositionDirty || overlayPosXInput == null || overlayPosYInput == null) {
+            return;
+        }
+        Rect bounds = ClimateOverlay.displayBounds(this);
+        ClimateState state = ClimateService.STORE.snapshot(SystemClock.elapsedRealtime());
+        WidgetViews.Size size = ClimateOverlay.size(getApplicationContext(), bounds, prefs,
+                prefs.widget(Prefs.OVERLAY_ID), state);
+        int maxX = Math.max(0, bounds.width() - size.widthPx);
+        int maxY = Math.max(0, bounds.height() - size.heightPx);
+        Integer x = parseIntField(overlayPosXInput);
+        Integer y = parseIntField(overlayPosYInput);
+        boolean valid = true;
+        if (x == null || x < 0 || x > maxX) {
+            overlayPosXInput.setError(getString(R.string.overlay_offset_range, maxX));
+            valid = false;
+        } else {
+            overlayPosXInput.setError(null);
+        }
+        if (y == null || y < 0 || y > maxY) {
+            overlayPosYInput.setError(getString(R.string.overlay_offset_range, maxY));
+            valid = false;
+        } else {
+            overlayPosYInput.setError(null);
+        }
+        if (!valid) {
+            return;
+        }
+        overlayPositionDirty = false;
+        OverlayCorner corner = displayedOverlayCorner != null
+                ? displayedOverlayCorner : prefs.overlayCorner();
+        prefs.setOverlayPosition(corner, x, y);
+    }
+
+    private void reanchorOverlayCorner(OverlayCorner nextCorner) {
+        handler.removeCallbacks(saveOverlayPositionTask);
+        if (overlayPositionDirty) {
+            saveOverlayPosition();
+        }
+        Rect bounds = ClimateOverlay.displayBounds(this);
+        float density = getApplicationContext().getResources().getDisplayMetrics().density;
+        ClimateState state = ClimateService.STORE.snapshot(SystemClock.elapsedRealtime());
+        WidgetViews.Size size = ClimateOverlay.size(getApplicationContext(), bounds, prefs,
+                prefs.widget(Prefs.OVERLAY_ID), state);
+        OverlayCorner previous = displayedOverlayCorner != null
+                ? displayedOverlayCorner : prefs.overlayCorner();
+        OverlayGeometry.Position absolute = OverlayGeometry.positionFor(previous,
+                bounds.left, bounds.top, bounds.right, bounds.bottom, size.widthPx, size.heightPx,
+                prefs.overlayOffsetXPx(density), prefs.overlayOffsetYPx(density));
+        OverlayGeometry.Offset offsets = OverlayGeometry.offsetsFor(nextCorner,
+                bounds.left, bounds.top, bounds.right, bounds.bottom, size.widthPx, size.heightPx,
+                absolute.x(), absolute.y());
+        displayedOverlayCorner = nextCorner;
+        prefs.setOverlayPosition(nextCorner, offsets.x(), offsets.y());
+        overlayPositionDirty = false;
+        setOverlayText(overlayPosXInput, offsets.x());
+        setOverlayText(overlayPosYInput, offsets.y());
+    }
+
+    private static Integer parseIntField(EditText field) {
+        String text = field.getText().toString().trim();
+        if (text.isEmpty()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(text);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private void startOverlay() {
+        if (!Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, R.string.overlay_allow_draw_first, Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (!ForegroundAppDetector.hasUsageAccess(this)) {
+            Toast.makeText(this, R.string.overlay_allow_usage_first, Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (!AccessibilityWindowState.isEnabled(this)) {
+            Toast.makeText(this, R.string.overlay_allow_windows_first, Toast.LENGTH_LONG).show();
+            return;
+        }
+        prefs.setOverlayEnabled(true);
+        ClimateService.start(this, ClimateService.ACTION_REFRESH);
+        refreshStatus();
+        Toast.makeText(this, R.string.overlay_started, Toast.LENGTH_SHORT).show();
+    }
+
+    private void stopOverlay() {
+        prefs.setOverlayEnabled(false);
+        ClimateService.start(this, ClimateService.ACTION_RENDER);
+        refreshStatus();
+        Toast.makeText(this, R.string.overlay_stopped, Toast.LENGTH_SHORT).show();
     }
 
     private Button settingsButton(LinearLayout card, int title, String action, Uri data) {
         Button button = Ui.button(this, title);
+        Ui.topMargin(button, 8);
         button.setOnClickListener(view -> {
             try {
                 startActivity(new Intent(action, data));
             } catch (ActivityNotFoundException error) {
-                startActivity(new Intent(Settings.ACTION_SETTINGS));
+                Toast.makeText(this, R.string.overlay_settings_unavailable,
+                        Toast.LENGTH_LONG).show();
+                try {
+                    startActivity(new Intent(Settings.ACTION_SETTINGS));
+                } catch (ActivityNotFoundException ignored) {
+                    // No system settings screen available.
+                }
             }
         });
         card.addView(button);
@@ -588,6 +1118,9 @@ public final class MainActivity extends ScaledActivity {
     private void changeDisplayMode(boolean widget) {
         if (prefs.isWidgetMode() != widget) {
             prefs.setWidgetMode(widget);
+            if (!widget) {
+                prefs.setOverlayEnabled(true);
+            }
             ClimateService.start(this, ClimateService.ACTION_REFRESH);
             recreate();
         }
@@ -629,15 +1162,6 @@ public final class MainActivity extends ScaledActivity {
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
         Ui.topMargin(actions, 10);
-        Button applyAll = Ui.button(this, R.string.apply_to_all);
-        applyAll.setOnClickListener(view -> {
-            prefs.setTemplate(config);
-            for (int id : widgetIds) {
-                prefs.setWidget(id, config);
-            }
-            ClimateService.start(this, ClimateService.ACTION_REFRESH);
-            Toast.makeText(this, R.string.applied_to_all, Toast.LENGTH_SHORT).show();
-        });
         Button reset = Ui.button(this, R.string.reset_layout);
         reset.setOnClickListener(view -> {
             config = prefs.resolved(new WidgetConfig());
@@ -645,7 +1169,18 @@ public final class MainActivity extends ScaledActivity {
             rebuildEditor();
             refreshPreview();
         });
-        actions.addView(applyAll, weighted(0, 8));
+        if (prefs.isWidgetMode()) {
+            Button applyAll = Ui.button(this, R.string.apply_to_all);
+            applyAll.setOnClickListener(view -> {
+                prefs.setTemplate(config);
+                for (int id : widgetIds) {
+                    prefs.setWidget(id, config);
+                }
+                ClimateService.start(this, ClimateService.ACTION_REFRESH);
+                Toast.makeText(this, R.string.applied_to_all, Toast.LENGTH_SHORT).show();
+            });
+            actions.addView(applyAll, weighted(0, 8));
+        }
         actions.addView(reset, weighted(0, 0));
         card.addView(actions);
         return card;
@@ -1188,7 +1723,18 @@ public final class MainActivity extends ScaledActivity {
         if (blocksHost == null) {
             return;
         }
-        widgetHeightCard.setVisibility(editedWidget == Prefs.PANEL_ID ? View.GONE : View.VISIBLE);
+        boolean isOverlay = editedWidget == Prefs.OVERLAY_ID;
+        widgetHeightCard.setVisibility(
+                editedWidget == Prefs.PANEL_ID || isOverlay ? View.GONE : View.VISIBLE);
+        if (overlaySizeCard != null) {
+            overlaySizeCard.setVisibility(isOverlay ? View.VISIBLE : View.GONE);
+        }
+        if (overlayPositionCard != null) {
+            overlayPositionCard.setVisibility(isOverlay ? View.VISIBLE : View.GONE);
+        }
+        if (isOverlay) {
+            refreshOverlayGeometryControls();
+        }
         rebuildBlocks();
         rebuildTiles();
         rebuildFunctions();
@@ -1668,36 +2214,12 @@ public final class MainActivity extends ScaledActivity {
         }
         if (selection < 0) {
             // The edited widget was removed from the screen.
-            selection = layoutIds.length - 1;
-            editedWidget = TEMPLATE;
-            config = loadConfig(TEMPLATE);
+            selection = overlayCount != 0 ? widgetIds.length : layoutIds.length - 1;
+            editedWidget = layoutIds[selection];
+            config = loadConfig(editedWidget);
             rebuildEditor();
         }
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
-                android.R.layout.simple_spinner_item, labels) {
-            @Override
-            public View getView(int position, View convertView, ViewGroup parent) {
-                return style(super.getView(position, convertView, parent));
-            }
-
-            @Override
-            public View getDropDownView(int position, View convertView, ViewGroup parent) {
-                return style(super.getDropDownView(position, convertView, parent));
-            }
-
-            private View style(View view) {
-                if (view instanceof TextView) {
-                    TextView text = (TextView) view;
-                    text.setTextColor(Ui.TEXT);
-                    text.setTextSize(15);
-                    text.setPadding(Ui.dp(MainActivity.this, 14), Ui.dp(MainActivity.this, 10),
-                            Ui.dp(MainActivity.this, 14), Ui.dp(MainActivity.this, 10));
-                }
-                return view;
-            }
-        };
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        widgetSpinner.setAdapter(adapter);
+        widgetSpinner.setAdapter(styledSpinnerAdapter(labels));
         widgetSpinner.setSelection(selection, false);
     }
 
@@ -1707,14 +2229,33 @@ public final class MainActivity extends ScaledActivity {
     }
 
     private void refreshStatus() {
+        boolean hasOverlay = Settings.canDrawOverlays(this);
+        boolean hasUsage = ForegroundAppDetector.hasUsageAccess(this);
+        boolean hasWindows = AccessibilityWindowState.isEnabled(this);
+        boolean allPermissions = hasOverlay && hasUsage && hasWindows;
         if (overlayPermission != null) {
-            overlayPermission.setVisibility(Settings.canDrawOverlays(this) ? View.GONE : View.VISIBLE);
-            usagePermission.setVisibility(ForegroundAppDetector.hasUsageAccess(this)
-                    ? View.GONE : View.VISIBLE);
-            windowsPermission.setVisibility(AccessibilityWindowState.isEnabled(this)
-                    ? View.GONE : View.VISIBLE);
+            overlayPermission.setVisibility(hasOverlay ? View.GONE : View.VISIBLE);
+            usagePermission.setVisibility(hasUsage ? View.GONE : View.VISIBLE);
+            windowsPermission.setVisibility(hasWindows ? View.GONE : View.VISIBLE);
             windowsPermission.setText(AccessibilityWindowState.isConfigured(this)
                     ? R.string.overlay_windows_waiting : R.string.overlay_allow_windows);
+            if (overlayPermissionsLabel != null) {
+                overlayPermissionsLabel.setVisibility(allPermissions ? View.GONE : View.VISIBLE);
+            }
+        }
+        if (overlayStatusText != null) {
+            boolean enabled = prefs.overlayEnabled();
+            boolean running = enabled && allPermissions;
+            overlayStatusText.setText(!enabled ? R.string.overlay_status_stopped
+                    : allPermissions ? R.string.overlay_status_running
+                    : R.string.overlay_status_waiting);
+            if (startOverlayButton != null) {
+                Ui.setButtonAccent(this, startOverlayButton, !running);
+            }
+            if (stopOverlayButton != null) {
+                stopOverlayButton.setEnabled(enabled);
+                stopOverlayButton.setAlpha(enabled ? 1f : 0.45f);
+            }
         }
         if (statusText == null) {
             return;
@@ -1741,8 +2282,10 @@ public final class MainActivity extends ScaledActivity {
         text.append('\n');
         if (prefs.isWidgetMode()) {
             text.append(getString(R.string.status_widgets, ClimateService.widgetIds(this).length));
+        } else if (!prefs.overlayEnabled()) {
+            text.append(getString(R.string.status_overlay_stopped));
         } else {
-            text.append(getString(ClimateOverlay.hasPermissions(this)
+            text.append(getString(allPermissions
                     ? R.string.status_overlay_ready : R.string.status_overlay_permissions));
         }
         text.append('\n');
@@ -1767,8 +2310,7 @@ public final class MainActivity extends ScaledActivity {
             size = panelSize(config);
         } else if (editedWidget == Prefs.OVERLAY_ID) {
             Context app = getApplicationContext();
-            size = ClimateOverlay.size(app, ClimateOverlay.availableBounds(
-                    getSystemService(WindowManager.class)), prefs, config, live);
+            size = ClimateOverlay.size(app, ClimateOverlay.displayBounds(this), prefs, config, live);
         } else {
             size = ClimateService.widgetSize(getApplicationContext(), editedWidget);
         }
@@ -1793,11 +2335,18 @@ public final class MainActivity extends ScaledActivity {
                     getApplicationContext().getResources().getDisplayMetrics().density,
                     ClimateCommands.tempRange(demo ? DemoState.INSTANCE : live).steps());
             previewHost.setLayout(config, plan, editNight ? WidgetTheme.NIGHT : WidgetTheme.DAY);
-            boolean overlay = editedWidget == Prefs.OVERLAY_ID;
-            heightTitle.setText(overlay ? R.string.overlay_size : R.string.height_title);
-            heightHint.setText(overlay ? R.string.overlay_size_hint : R.string.height_fill_hint);
-            heightReport.setText(overlay ? getString(R.string.overlay_size_px, size.widthPx, size.heightPx)
-                    : HeightReport.describe(this, plan));
+            if (editedWidget == Prefs.OVERLAY_ID) {
+                if (overlaySizeReport != null) {
+                    overlaySizeReport.setText(plan.verticalScale < 1f
+                            ? getString(R.string.overlay_size_squeezed, size.widthPx, size.heightPx,
+                                    HeightReport.describe(this, plan))
+                            : getString(R.string.overlay_size_px, size.widthPx, size.heightPx));
+                }
+            } else {
+                heightTitle.setText(R.string.height_title);
+                heightHint.setText(R.string.height_fill_hint);
+                heightReport.setText(HeightReport.describe(this, plan));
+            }
         } catch (RuntimeException error) {
             AppLog.warn("Preview failed", error);
         }

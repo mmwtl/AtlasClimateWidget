@@ -19,6 +19,7 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.RemoteViews;
 import android.widget.ScrollView;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ public final class WidgetSetupActivity extends ScaledActivity {
     private FrameLayout previewHost;
     private TextView previewCaption;
     private TextView heightReport;
+    private Switch widgetModeSwitch;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -243,6 +245,19 @@ public final class WidgetSetupActivity extends ScaledActivity {
                 config.fanLayout == WidgetConfig.FanLayout.ROWS ? View.VISIBLE : View.GONE));
         card.addView(fan, fullWrap(8));
 
+        if (!prefs.isWidgetMode()) {
+            widgetModeSwitch = new Switch(this);
+            widgetModeSwitch.setText(R.string.setup_switch_widget_mode);
+            widgetModeSwitch.setTextColor(Ui.TEXT);
+            widgetModeSwitch.setTextSize(15);
+            widgetModeSwitch.setChecked(true);
+            card.addView(widgetModeSwitch, fullWrap(16));
+            TextView modeHint = Ui.text(this, R.string.setup_switch_widget_mode_hint,
+                    13, Ui.TEXT_SECONDARY);
+            modeHint.setLineSpacing(0, 1.15f);
+            card.addView(modeHint, fullWrap(4));
+        }
+
         Button confirm = Ui.button(this, reconfigure ? R.string.setup_done : R.string.setup_add);
         confirm.setTextSize(17);
         confirm.setTypeface(Typeface.DEFAULT_BOLD);
@@ -307,6 +322,9 @@ public final class WidgetSetupActivity extends ScaledActivity {
         if (!owns(widgetId)) {
             finish();
             return;
+        }
+        if (widgetModeSwitch != null && widgetModeSwitch.isChecked()) {
+            prefs.setWidgetMode(true);
         }
         prefs.setWidget(widgetId, config);
         setResult(RESULT_OK, resultIntent());

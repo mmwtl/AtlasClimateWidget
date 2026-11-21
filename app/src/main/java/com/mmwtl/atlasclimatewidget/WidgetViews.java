@@ -342,7 +342,8 @@ final class WidgetViews {
         views.setTextColor(R.id.widget_empty_text, theme.textSecondary);
         views.setTextViewText(R.id.widget_empty_text, context.getText(R.string.widget_overlay_inactive));
         Intent intent = new Intent(context, MainActivity.class)
-                .putExtra(MainActivity.EXTRA_DISPLAY_SETTINGS, true);
+                .putExtra(MainActivity.EXTRA_DISPLAY_SETTINGS, true)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         views.setOnClickPendingIntent(R.id.widget_empty, PendingIntent.getActivity(context, 2,
                 intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
         return views;

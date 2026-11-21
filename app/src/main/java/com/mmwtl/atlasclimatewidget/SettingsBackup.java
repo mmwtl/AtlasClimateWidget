@@ -49,6 +49,10 @@ final class SettingsBackup {
     String overlayCorner = OverlayCorner.BOTTOM_START.preferenceValue;
     int overlayOffsetX;
     int overlayOffsetY = Prefs.OVERLAY_BOTTOM_OFFSET_DP;
+    int overlayOffsetXPx = Prefs.OVERLAY_OFFSET_UNSET;
+    int overlayOffsetYPx = Prefs.OVERLAY_OFFSET_UNSET;
+    boolean overlayDragHandle = true;
+    boolean overlayAutoStart = true;
     int overlayHideThreshold = WindowVisibilityPolicy.DEFAULT_HIDE_THRESHOLD_PERCENT;
     boolean overlayAppListOnly;
 
@@ -101,8 +105,18 @@ final class SettingsBackup {
                 overlaySettings.put("heightPercent", overlayHeightPercent);
             }
             overlaySettings.put("corner", overlayCorner);
-            overlaySettings.put("offsetX", overlayOffsetX);
-            overlaySettings.put("offsetY", overlayOffsetY);
+            if (overlayOffsetXPx >= 0) {
+                overlaySettings.put("offsetXPx", overlayOffsetXPx);
+            } else {
+                overlaySettings.put("offsetX", overlayOffsetX);
+            }
+            if (overlayOffsetYPx >= 0) {
+                overlaySettings.put("offsetYPx", overlayOffsetYPx);
+            } else {
+                overlaySettings.put("offsetY", overlayOffsetY);
+            }
+            overlaySettings.put("dragHandle", overlayDragHandle);
+            overlaySettings.put("autoStart", overlayAutoStart);
             overlaySettings.put("hideThreshold", overlayHideThreshold);
             overlaySettings.put("appListOnly", overlayAppListOnly);
             if (overlay != null) {
@@ -190,6 +204,12 @@ final class SettingsBackup {
             }
             backup.overlayOffsetX = Prefs.clampOverlayOffset(overlaySettings.optInt("offsetX"));
             backup.overlayOffsetY = Prefs.clampOverlayOffset(overlaySettings.optInt("offsetY", backup.overlayOffsetY));
+            int xPx = overlaySettings.optInt("offsetXPx", Prefs.OVERLAY_OFFSET_UNSET);
+            int yPx = overlaySettings.optInt("offsetYPx", Prefs.OVERLAY_OFFSET_UNSET);
+            backup.overlayOffsetXPx = xPx >= 0 ? xPx : Prefs.OVERLAY_OFFSET_UNSET;
+            backup.overlayOffsetYPx = yPx >= 0 ? yPx : Prefs.OVERLAY_OFFSET_UNSET;
+            backup.overlayDragHandle = overlaySettings.optBoolean("dragHandle", true);
+            backup.overlayAutoStart = overlaySettings.optBoolean("autoStart", true);
             backup.overlayHideThreshold = Prefs.clampHideThreshold(
                     overlaySettings.optInt("hideThreshold", backup.overlayHideThreshold));
             backup.overlayAppListOnly = overlaySettings.optBoolean("appListOnly");

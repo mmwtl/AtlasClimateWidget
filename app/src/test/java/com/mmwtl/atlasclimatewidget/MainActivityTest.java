@@ -93,8 +93,19 @@ public final class MainActivityTest {
             ShadowLooper.runUiThreadTasks();
             assertFalse(prefs.isWidgetMode());
             assertTrue(shown(find(root(controller), "Настроить макет оверлея")));
+            assertTrue(shown(find(root(controller), "Запустить оверлей")));
+            assertTrue(shown(find(root(controller), "Видимость оверлея")));
             assertFalse(shown(find(root(controller), "Добавить Android-виджет")));
 
+            find(root(controller), "Вид").performClick();
+            assertTrue(shown(find(root(controller), "Размер оверлея")));
+            assertTrue(shown(find(root(controller), "Положение и перемещение")));
+
+            find(root(controller), "Блоки").performClick();
+            assertFalse(shown(find(root(controller), "Высота виджета")));
+            assertTrue(find(root(controller), "Применить ко всем") == null);
+
+            find(root(controller), "Система").performClick();
             find(root(controller), "Виджет").performClick();
             ShadowLooper.runUiThreadTasks();
             assertTrue(prefs.isWidgetMode());
@@ -103,6 +114,43 @@ public final class MainActivityTest {
         } finally {
             close(controller);
         }
+    }
+
+    @Test
+    public void overlayGeometryCardsHideForShortcutWindowLayout() {
+        Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
+        prefs.setWidgetMode(false);
+        ActivityController<MainActivity> controller = open();
+        try {
+            View root = root(controller);
+            find(root, "Вид").performClick();
+            assertTrue(shown(find(root, "Размер оверлея")));
+            assertTrue(shown(find(root, "Положение и перемещение")));
+
+            find(root, "Система").performClick();
+            find(root, "Настроить раскладку окна").performClick();
+            find(root, "Вид").performClick();
+            assertFalse(shown(find(root, "Размер оверлея")));
+            assertFalse(shown(find(root, "Положение и перемещение")));
+        } finally {
+            close(controller);
+        }
+    }
+
+    @Test
+    public void overlayOffsetsMigrateFromLegacyDpToPixels() {
+        Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
+        prefs.raw().edit()
+                .putInt(Prefs.KEY_OVERLAY_X, 20)
+                .putInt(Prefs.KEY_OVERLAY_Y, 124)
+                .remove(Prefs.KEY_OVERLAY_X_PX)
+                .remove(Prefs.KEY_OVERLAY_Y_PX)
+                .apply();
+        prefs.migrateOverlayOffsets(2f);
+        assertEquals(40, prefs.overlayOffsetXPx(2f));
+        assertEquals(248, prefs.overlayOffsetYPx(2f));
+        assertEquals(40, prefs.exportBackup(new int[0]).overlayOffsetXPx);
+        assertEquals(248, prefs.exportBackup(new int[0]).overlayOffsetYPx);
     }
 
     @Test

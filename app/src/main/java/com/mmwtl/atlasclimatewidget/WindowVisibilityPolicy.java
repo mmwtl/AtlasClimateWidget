@@ -165,9 +165,12 @@ final class WindowVisibilityPolicy {
             // GSplit restores its singleTask activity after moveTaskToBack() without reliably
             // emitting a fresh window-state event on this head unit. Trust the current focused
             // application window even when the stale event still points at HOME and the restored
-            // task uses freeform bounds.
+            // task uses freeform bounds. Own interactive activities (such as the shortcut climate
+            // window or widget setup dialog over HOME) must also hide the HOME overlay so it
+            // never draws above them.
             if (applicationWindow && (window.active || window.focused)
-                    && HeadUnitWindowRules.forceHide(window.packageName, window.className)) {
+                    && (HeadUnitWindowRules.forceHide(window.packageName, window.className)
+                    || (!ownPackage.isEmpty() && ownPackage.equals(window.packageName)))) {
                 return Decision.HOME_HIDDEN;
             }
             if (fullScreen && aboveLauncher && foregroundWindow

@@ -37,12 +37,17 @@ public final class WindowAccessibilityService extends AccessibilityService {
     /** Held as a field: SharedPreferences keeps its change listeners weakly. */
     private final SharedPreferences.OnSharedPreferenceChangeListener displayModeListener =
             (values, key) -> {
-                if (Prefs.KEY_DISPLAY_MODE.equals(key) && !destroyed) {
+                if ((Prefs.KEY_DISPLAY_MODE.equals(key) || Prefs.KEY_OVERLAY_ENABLED.equals(key))
+                        && !destroyed) {
                     applyEventSubscription();
                     requestWindowRefresh();
                 }
             };
     private Boolean subscribedForOverlay;
+
+    private boolean overlayTrackingActive() {
+        return prefs != null && !prefs.isWidgetMode() && prefs.overlayEnabled();
+    }
 
     @Override
     protected void onServiceConnected() {
@@ -62,7 +67,7 @@ public final class WindowAccessibilityService extends AccessibilityService {
      * the event traffic both in other apps and in this process until overlay mode returns.
      */
     private void applyEventSubscription() {
-        boolean overlay = !prefs.isWidgetMode();
+        boolean overlay = overlayTrackingActive();
         if (subscribedForOverlay != null && subscribedForOverlay == overlay) {
             return;
         }
@@ -94,7 +99,7 @@ public final class WindowAccessibilityService extends AccessibilityService {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        if (event == null || prefs == null || prefs.isWidgetMode()) {
+        if (event == null || !overlayTrackingActive()) {
             return;
         }
         if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
@@ -130,7 +135,7 @@ public final class WindowAccessibilityService extends AccessibilityService {
 
     @SuppressWarnings("deprecation")
     private void requestWindowRefresh() {
-        if (destroyed || prefs == null || prefs.isWidgetMode()) {
+        if (destroyed || !overlayTrackingActive()) {
             return;
         }
         if (refreshInFlight) {
@@ -154,7 +159,7 @@ public final class WindowAccessibilityService extends AccessibilityService {
         boolean eventWindowPresent = false;
         boolean launcherAppListVisible = false;
         try {
-            if (destroyed || prefs.isWidgetMode()) {
+            if (destroyed || !overlayTrackingActive()) {
                 return;
             }
             List<AccessibilityWindowInfo> windows = getWindows();
@@ -213,7 +218,7 @@ public final class WindowAccessibilityService extends AccessibilityService {
             WindowManager manager = getSystemService(WindowManager.class);
             WindowMetrics metrics = manager.getCurrentWindowMetrics();
             Rect display = metrics.getBounds();
-            if (destroyed || prefs.isWidgetMode()) {
+            if (destroyed || !overlayTrackingActive()) {
                 return;
             }
             AccessibilityWindowState.update(
@@ -254,7 +259,7 @@ public final class WindowAccessibilityService extends AccessibilityService {
     }
 
     private void startOverlayIfNeeded() {
-        if (!prefs.isWidgetMode() && ClimateOverlay.hasPermissions(this)) {
+        if (overlayTrackingActive() && ClimateOverlay.hasPermissions(this)) {
             ClimateService.start(this, ClimateService.ACTION_REFRESH);
         }
     }
