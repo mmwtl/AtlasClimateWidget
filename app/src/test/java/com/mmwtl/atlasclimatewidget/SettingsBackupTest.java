@@ -16,6 +16,7 @@ public final class SettingsBackupTest {
         backup.levelsFromMax = true;
         backup.keptWhenOff = true;
         backup.themeMode = WidgetTheme.FIXED_NIGHT;
+        backup.directCar = true;
         backup.fanPresets = "FIVE";
         backup.uiScaleTenths = 17;
         backup.fuelCustomFormula = true;
@@ -45,6 +46,7 @@ public final class SettingsBackupTest {
             assertTrue(copy.levelsFromMax);
             assertTrue(copy.keptWhenOff);
             assertEquals(WidgetTheme.FIXED_NIGHT, copy.themeMode);
+            assertTrue(copy.directCar);
             assertEquals("FIVE", copy.fanPresets);
             assertEquals(17, copy.uiScaleTenths);
             assertTrue(copy.fuelCustomFormula);
@@ -163,6 +165,7 @@ public final class SettingsBackupTest {
         assertEquals(CarModel.ATLAS.name(), parsed.carModel);
         assertEquals(5, parsed.tempStepTenths);
         assertEquals(0, parsed.uiScaleTenths);
+        assertFalse(parsed.directCar);
         assertFalse(parsed.fuelCustomFormula);
         assertEquals(Fuel.MULTIPLIER, parsed.fuelMultiplier, 0f);
         assertTrue(parsed.widgets.isEmpty());

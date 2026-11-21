@@ -25,6 +25,7 @@ final class SettingsBackup {
     boolean keptWhenOff;
     /** Widget theme, {@link WidgetTheme#AUTO} by default and in older backups. */
     int themeMode = WidgetTheme.AUTO;
+    boolean directCar;
     String fanPresets = "AUTO";
     /** Settings screen scale; 0 when the backup does not carry one. */
     int uiScaleTenths;
@@ -68,6 +69,7 @@ final class SettingsBackup {
             settings.put("levelsFromMax", levelsFromMax);
             settings.put("keptWhenOff", keptWhenOff);
             settings.put("themeMode", themeMode);
+            settings.put("directCar", directCar);
             settings.put("fanPresets", fanPresets);
             if (uiScaleTenths > 0) {
                 settings.put("uiScaleTenths", uiScaleTenths);
@@ -151,6 +153,7 @@ final class SettingsBackup {
             backup.levelsFromMax = settings.optBoolean("levelsFromMax", false);
             backup.keptWhenOff = settings.optBoolean("keptWhenOff", false);
             backup.themeMode = WidgetTheme.validMode(settings.optInt("themeMode", WidgetTheme.AUTO));
+            backup.directCar = settings.optBoolean("directCar", false);
             backup.fanPresets = settings.optString("fanPresets", backup.fanPresets);
             backup.uiScaleTenths = settings.optInt("uiScaleTenths", 0);
             JSONObject fuel = settings.optJSONObject("fuel");

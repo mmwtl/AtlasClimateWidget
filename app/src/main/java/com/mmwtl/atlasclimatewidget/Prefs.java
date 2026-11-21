@@ -440,6 +440,7 @@ final class Prefs {
         backup.levelsFromMax = levelsFromMax();
         backup.keptWhenOff = keptWhenOff();
         backup.themeMode = themeMode();
+        backup.directCar = directCar();
         backup.fanPresets = fanPresets().name();
         backup.uiScaleTenths = preferences.getInt(KEY_UI_SCALE_TENTHS, 0);
         backup.fuelCustomFormula = fuelCustomFormula();
@@ -479,6 +480,7 @@ final class Prefs {
                 .putBoolean(KEY_LEVELS_FROM_MAX, backup.levelsFromMax)
                 .putBoolean(KEY_KEPT_WHEN_OFF, backup.keptWhenOff)
                 .putInt(KEY_THEME_MODE, WidgetTheme.validMode(backup.themeMode))
+                .putBoolean(KEY_DIRECT_CAR, backup.directCar)
                 .putString(KEY_FAN_PRESETS, backup.fanPresets)
                 .putBoolean(KEY_FUEL_CUSTOM_FORMULA, backup.fuelCustomFormula)
                 .putFloat(KEY_FUEL_MULTIPLIER, backup.fuelMultiplier)

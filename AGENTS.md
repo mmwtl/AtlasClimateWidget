@@ -23,7 +23,7 @@ line, read as in AtlasAppWidget (`Fuel`).
   bitmap, stretched (`fitXY`) to the full width even when the host rounds its height; `WidgetViews` stacks the strips with an overlay row of equal-weight touch cells. Android 11
   `RemoteViews` cannot set weights, margins or positions dynamically, so every touch target must sit
   on the equal-cell grid computed by `WidgetGeometry`.
-- Direct mode (experimental, off by default, global, not in the backup): the System tab's
+- Direct mode (experimental, off by default, global, in the backup): the System tab's
   «Работать без GInputBridge» switch (`Prefs.directCar`) makes the service read and write
   properties and sensors through `Ecarx`, the head unit's `com.ecarx.xui.adaptapi` reached by
   reflection as FX11 calls it, behind the same `CarLink` as the bridge. The bridge's own car
