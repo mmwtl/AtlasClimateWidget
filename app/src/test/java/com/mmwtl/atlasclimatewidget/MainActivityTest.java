@@ -116,14 +116,23 @@ public final class MainActivityTest {
         assertTrue(auto.heightPx > 368);
         int shortcutHeight = ClimatePanelActivity.size(context, prefs, ClimateState.EMPTY).heightPx;
 
-        SettingsBackup backup = prefs.exportBackup(new int[0]);
+        SettingsBackup backup = new SettingsBackup();
         backup.overlayHeightPercent = 20;
         prefs.importBackup(SettingsBackup.parse(backup.toJson("test")), new int[0]);
         WidgetViews.Size manual = ClimateOverlay.size(context, bounds, prefs, overlay, ClimateState.EMPTY);
         assertEquals(auto.widthPx, manual.widthPx);
         assertEquals(368, manual.heightPx);
         assertEquals(shortcutHeight, ClimatePanelActivity.size(context, prefs, ClimateState.EMPTY).heightPx);
-        assertEquals(20, prefs.exportBackup(new int[0]).overlayHeightPercent);
+        assertEquals(368, prefs.exportBackup(new int[0]).overlayHeightPx);
+
+        prefs.setOverlaySize(960, 480);
+        WidgetViews.Size exact = ClimateOverlay.size(context, bounds, prefs, overlay, ClimateState.EMPTY);
+        assertEquals(960, exact.widthPx);
+        assertEquals(480, exact.heightPx);
+        WidgetViews.Size otherDisplay = ClimateOverlay.size(context, new Rect(0, 0, 1280, 720),
+                prefs, overlay, ClimateState.EMPTY);
+        assertEquals(exact.widthPx, otherDisplay.widthPx);
+        assertEquals(exact.heightPx, otherDisplay.heightPx);
     }
 
     @Test

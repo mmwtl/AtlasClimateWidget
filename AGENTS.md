@@ -42,7 +42,7 @@ line, read as in AtlasAppWidget (`Fuel`).
   Placed widgets keep their layouts in overlay mode and show a link to the mode picker.
   `ClimateOverlay` uses AtlasAppWidget's window visibility policy, accessibility snapshots,
   usage events and screen/lock checks. The overlay has a backup-able layout slot
-  (`Prefs.OVERLAY_ID`) and configurable width, automatic or manual height, corner and offsets. It shares
+  (`Prefs.OVERLAY_ID`) and configurable width and manual height in pixels, automatic height, corner and offsets. It shares
   `InteractiveClimateView` with the shortcut window for in-place bar drags and long-press
   switch-off. Both render and send commands through `ClimateService`.
 - `TileDragLayer` hosts the settings preview and lets the finger drag tiles to reorder them

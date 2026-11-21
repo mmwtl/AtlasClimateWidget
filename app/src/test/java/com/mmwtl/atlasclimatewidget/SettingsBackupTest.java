@@ -92,6 +92,18 @@ public final class SettingsBackupTest {
         assertTrue(copy.overlayAppListOnly);
     }
 
+    @Test public void preservesPixelSizesAndAutomaticHeight() {
+        SettingsBackup backup = new SettingsBackup();
+        backup.overlayWidthPx = 963;
+        backup.overlayHeightPx = 481;
+        SettingsBackup copy = SettingsBackup.parse(backup.toJson("test"));
+        assertEquals(963, copy.overlayWidthPx);
+        assertEquals(481, copy.overlayHeightPx);
+
+        backup.overlayHeightPx = 0;
+        assertEquals(0, SettingsBackup.parse(backup.toJson("test")).overlayHeightPx);
+    }
+
     @Test public void extraWidgetsTakeTheTemplate() {
         SettingsBackup backup = new SettingsBackup();
         backup.template.columns = 5;

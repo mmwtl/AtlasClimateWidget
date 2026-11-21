@@ -42,6 +42,8 @@ final class SettingsBackup {
 
     boolean overlayMode;
     WidgetConfig overlay;
+    int overlayWidthPx;
+    int overlayHeightPx = -1;
     int overlayWidthPercent = Prefs.PANEL_WIDTH_DEFAULT;
     int overlayHeightPercent;
     String overlayCorner = OverlayCorner.BOTTOM_START.preferenceValue;
@@ -88,8 +90,16 @@ final class SettingsBackup {
             json.put("climateWindow", window);
             JSONObject overlaySettings = new JSONObject();
             overlaySettings.put("enabled", overlayMode);
-            overlaySettings.put("widthPercent", overlayWidthPercent);
-            overlaySettings.put("heightPercent", overlayHeightPercent);
+            if (overlayWidthPx > 0) {
+                overlaySettings.put("widthPx", overlayWidthPx);
+            } else {
+                overlaySettings.put("widthPercent", overlayWidthPercent);
+            }
+            if (overlayHeightPx >= 0) {
+                overlaySettings.put("heightPx", overlayHeightPx);
+            } else {
+                overlaySettings.put("heightPercent", overlayHeightPercent);
+            }
             overlaySettings.put("corner", overlayCorner);
             overlaySettings.put("offsetX", overlayOffsetX);
             overlaySettings.put("offsetY", overlayOffsetY);
@@ -169,9 +179,11 @@ final class SettingsBackup {
         JSONObject overlaySettings = json.optJSONObject("overlay");
         if (overlaySettings != null) {
             backup.overlayMode = overlaySettings.optBoolean("enabled");
+            backup.overlayWidthPx = Math.max(0, overlaySettings.optInt("widthPx"));
+            backup.overlayHeightPx = Math.max(-1, overlaySettings.optInt("heightPx", -1));
             backup.overlayWidthPercent = Prefs.clampPanelWidth(
                     overlaySettings.optInt("widthPercent", backup.overlayWidthPercent));
-            backup.overlayHeightPercent = Prefs.clampOverlayHeight(overlaySettings.optInt("heightPercent"));
+            backup.overlayHeightPercent = Math.max(0, Math.min(100, overlaySettings.optInt("heightPercent")));
             OverlayCorner corner = OverlayCorner.fromPreference(overlaySettings.optString("corner"));
             if (corner != null) {
                 backup.overlayCorner = corner.preferenceValue;

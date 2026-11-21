@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -456,18 +457,10 @@ public final class MainActivity extends ScaledActivity {
                 WindowVisibilityPolicy.MAX_HIDE_THRESHOLD_PERCENT, prefs.freeformHideThresholdPercent(),
                 value -> value + "%", value -> saveOverlaySetting(Prefs.KEY_FREEFORM_HIDE_THRESHOLD, value),
                 null);
-        addSlider(card, getString(R.string.overlay_width), Prefs.PANEL_WIDTH_MIN,
-                Prefs.PANEL_WIDTH_MAX, prefs.overlayWidthPercent(), value -> value + "%",
-                value -> saveOverlaySetting(Prefs.KEY_OVERLAY_WIDTH, value), null);
-        // The first stop fits the content. Manual sizes start at 10%.
-        int heightOffset = Prefs.OVERLAY_HEIGHT_MIN - 1;
-        int height = prefs.overlayHeightPercent();
-        addSlider(card, getString(R.string.overlay_height), 0,
-                Prefs.OVERLAY_HEIGHT_MAX - heightOffset, height == 0 ? 0 : height - heightOffset,
-                value -> value == 0 ? getString(R.string.overlay_height_auto)
-                        : (heightOffset + value) + "%",
-                value -> saveOverlaySetting(Prefs.KEY_OVERLAY_HEIGHT,
-                        value == 0 ? 0 : heightOffset + value), null);
+        Button size = Ui.button(this, R.string.overlay_size);
+        Ui.topMargin(size, 10);
+        size.setOnClickListener(view -> showOverlaySizeDialog());
+        card.addView(size);
         card.addView(label(R.string.panel_position));
         Spinner corners = new Spinner(this);
         OverlayCorner[] choices = OverlayCorner.values();
@@ -507,6 +500,69 @@ public final class MainActivity extends ScaledActivity {
         });
         card.addView(edit);
         return card;
+    }
+
+    private void showOverlaySizeDialog() {
+        Rect bounds = ClimateOverlay.availableBounds(getSystemService(WindowManager.class));
+        prefs.migrateOverlaySize(bounds.width(), bounds.height());
+        LinearLayout fields = vertical();
+        fields.setPadding(Ui.dp(this, 24), Ui.dp(this, 8), Ui.dp(this, 24), 0);
+        EditText width = overlayDimensionField(fields, R.string.overlay_width,
+                prefs.overlayWidthPx(bounds.width()));
+        EditText height = overlayDimensionField(fields, R.string.overlay_height,
+                prefs.overlayHeightPx(bounds.height()));
+        height.setHint(R.string.overlay_height_auto);
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                .setTitle(R.string.overlay_size)
+                .setView(fields)
+                .setNegativeButton(R.string.setup_cancel, null)
+                .setPositiveButton(R.string.setup_done, null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(view -> {
+                    int widthPx = readOverlayDimension(width, Prefs.OVERLAY_MIN_WIDTH_PX,
+                            bounds.width());
+                    int heightPx = height.length() == 0 ? 0 : readOverlayDimension(height,
+                            Prefs.OVERLAY_MIN_HEIGHT_PX, bounds.height());
+                    if (widthPx < 0 || heightPx < 0) {
+                        return;
+                    }
+                    prefs.setOverlaySize(widthPx, heightPx);
+                    refreshPreview();
+                    dialog.dismiss();
+                }));
+        dialog.show();
+        sized(dialog);
+    }
+
+    private EditText overlayDimensionField(LinearLayout parent, int labelRes, int value) {
+        TextView label = label(labelRes);
+        parent.addView(label);
+        EditText field = new EditText(this);
+        field.setId(View.generateViewId());
+        label.setLabelFor(field.getId());
+        field.setInputType(InputType.TYPE_CLASS_NUMBER);
+        field.setSingleLine(true);
+        field.setSelectAllOnFocus(true);
+        if (value != 0) {
+            field.setText(Integer.toString(value));
+        }
+        parent.addView(field);
+        return field;
+    }
+
+    private int readOverlayDimension(EditText field, int min, int max) {
+        min = Math.min(min, max);
+        try {
+            int value = Integer.parseInt(field.getText().toString());
+            if (value >= min && value <= max) {
+                return value;
+            }
+        } catch (NumberFormatException ignored) {
+            // Use the same range message for empty, malformed and out-of-range input.
+        }
+        field.setError(getString(R.string.overlay_size_range, min, max));
+        return -1;
     }
 
     private void saveOverlaySetting(String key, int value) {
@@ -1740,8 +1796,7 @@ public final class MainActivity extends ScaledActivity {
             boolean overlay = editedWidget == Prefs.OVERLAY_ID;
             heightTitle.setText(overlay ? R.string.overlay_size : R.string.height_title);
             heightHint.setText(overlay ? R.string.overlay_size_hint : R.string.height_fill_hint);
-            heightReport.setText(overlay ? WidgetViews.describe(size,
-                    getApplicationContext().getResources().getDisplayMetrics().density)
+            heightReport.setText(overlay ? getString(R.string.overlay_size_px, size.widthPx, size.heightPx)
                     : HeightReport.describe(this, plan));
         } catch (RuntimeException error) {
             AppLog.warn("Preview failed", error);

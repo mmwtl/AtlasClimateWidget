@@ -217,11 +217,11 @@ final class ClimateOverlay implements SharedPreferences.OnSharedPreferenceChange
     static WidgetViews.Size size(Context context, Rect bounds, Prefs prefs,
             WidgetConfig config, ClimateState state) {
         float density = context.getResources().getDisplayMetrics().density;
-        int width = Math.max(1, Math.round(bounds.width() * prefs.overlayWidthPercent() / 100f));
-        int heightPercent = prefs.overlayHeightPercent();
-        if (heightPercent > 0) {
-            int height = Math.round(bounds.height() * heightPercent / 100f);
-            return new WidgetViews.Size(width, Math.max(1, height));
+        prefs.migrateOverlaySize(bounds.width(), bounds.height());
+        int width = prefs.overlayWidthPx(bounds.width());
+        int heightPx = prefs.overlayHeightPx(bounds.height());
+        if (heightPx > 0) {
+            return new WidgetViews.Size(width, heightPx);
         }
         WidgetGeometry.Plan plan = WidgetGeometry.plan(config, width, 0, density,
                 ClimateCommands.tempRange(state).steps());

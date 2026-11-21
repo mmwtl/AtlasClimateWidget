@@ -26,16 +26,18 @@ final class Prefs {
     static final String KEY_PANEL_CLOSE = "panel_close_seconds";
 
     static final String KEY_DISPLAY_MODE = "overlay_mode";
-    static final String KEY_OVERLAY_WIDTH = "overlay_width_percent";
-    static final String KEY_OVERLAY_HEIGHT = "overlay_height_percent";
+    private static final String KEY_OVERLAY_WIDTH_PERCENT = "overlay_width_percent";
+    private static final String KEY_OVERLAY_HEIGHT_PERCENT = "overlay_height_percent";
+    private static final String KEY_OVERLAY_WIDTH_PX = "overlay_width_px";
+    private static final String KEY_OVERLAY_HEIGHT_PX = "overlay_height_px";
     static final String KEY_OVERLAY_CORNER = "overlay_corner";
     static final String KEY_OVERLAY_X = "overlay_offset_x_dp";
     static final String KEY_OVERLAY_Y = "overlay_offset_y_dp";
     static final String KEY_FREEFORM_HIDE_THRESHOLD = "overlay_hide_threshold";
     static final String KEY_SHOW_ONLY_IN_APP_LIST = "overlay_app_list_only";
     static final int OVERLAY_ID = -3;
-    static final int OVERLAY_HEIGHT_MIN = 10;
-    static final int OVERLAY_HEIGHT_MAX = 100;
+    static final int OVERLAY_MIN_WIDTH_PX = 160;
+    static final int OVERLAY_MIN_HEIGHT_PX = 100;
     static final int OVERLAY_OFFSET_MAX_DP = 1000;
     // The portrait OneOS climate dock occupies 124 dp and reports no window insets.
     static final int OVERLAY_BOTTOM_OFFSET_DP = 124;
@@ -130,17 +132,37 @@ final class Prefs {
         preferences.edit().putBoolean(KEY_DISPLAY_MODE, !widget).apply();
     }
 
-    int overlayWidthPercent() {
-        return clampPanelWidth(preferences.getInt(KEY_OVERLAY_WIDTH, PANEL_WIDTH_DEFAULT));
+    /** Resolve percentage settings once, using the same safe display area as the overlay. */
+    void migrateOverlaySize(int width, int height) {
+        int widthPx = preferences.getInt(KEY_OVERLAY_WIDTH_PX, 0);
+        int heightPx = preferences.getInt(KEY_OVERLAY_HEIGHT_PX, -1);
+        if (widthPx > 0 && heightPx >= 0) {
+            return;
+        }
+        int widthPercent = preferences.getInt(KEY_OVERLAY_WIDTH_PERCENT, PANEL_WIDTH_DEFAULT);
+        int heightPercent = preferences.getInt(KEY_OVERLAY_HEIGHT_PERCENT, 0);
+        setOverlaySize(widthPx > 0 ? widthPx : Math.round(width * widthPercent / 100f),
+                heightPx >= 0 ? heightPx : Math.round(height * heightPercent / 100f));
+    }
+
+    int overlayWidthPx(int availableWidth) {
+        return Math.min(availableWidth,
+                Math.max(OVERLAY_MIN_WIDTH_PX, preferences.getInt(KEY_OVERLAY_WIDTH_PX, 0)));
     }
 
     /** Zero sizes the overlay to its content. */
-    int overlayHeightPercent() {
-        return clampOverlayHeight(preferences.getInt(KEY_OVERLAY_HEIGHT, 0));
+    int overlayHeightPx(int availableHeight) {
+        int heightPx = preferences.getInt(KEY_OVERLAY_HEIGHT_PX, 0);
+        return heightPx == 0 ? 0 : Math.min(availableHeight, Math.max(OVERLAY_MIN_HEIGHT_PX, heightPx));
     }
 
-    static int clampOverlayHeight(int value) {
-        return value <= 0 ? 0 : Math.max(OVERLAY_HEIGHT_MIN, Math.min(OVERLAY_HEIGHT_MAX, value));
+    void setOverlaySize(int widthPx, int heightPx) {
+        preferences.edit()
+                .putInt(KEY_OVERLAY_WIDTH_PX, widthPx)
+                .putInt(KEY_OVERLAY_HEIGHT_PX, heightPx)
+                .remove(KEY_OVERLAY_WIDTH_PERCENT)
+                .remove(KEY_OVERLAY_HEIGHT_PERCENT)
+                .apply();
     }
 
     OverlayCorner overlayCorner() {
@@ -340,8 +362,10 @@ final class Prefs {
         }
         backup.overlayMode = !isWidgetMode();
         backup.overlay = hasWidget(OVERLAY_ID) ? widget(OVERLAY_ID) : null;
-        backup.overlayWidthPercent = overlayWidthPercent();
-        backup.overlayHeightPercent = overlayHeightPercent();
+        backup.overlayWidthPx = preferences.getInt(KEY_OVERLAY_WIDTH_PX, 0);
+        backup.overlayHeightPx = preferences.getInt(KEY_OVERLAY_HEIGHT_PX, -1);
+        backup.overlayWidthPercent = preferences.getInt(KEY_OVERLAY_WIDTH_PERCENT, PANEL_WIDTH_DEFAULT);
+        backup.overlayHeightPercent = preferences.getInt(KEY_OVERLAY_HEIGHT_PERCENT, 0);
         backup.overlayCorner = overlayCorner().preferenceValue;
         backup.overlayOffsetX = overlayOffsetDp(KEY_OVERLAY_X);
         backup.overlayOffsetY = overlayOffsetDp(KEY_OVERLAY_Y);
@@ -368,8 +392,10 @@ final class Prefs {
                 .putFloat(KEY_FUEL_OFFSET, backup.fuelOffset)
                 .putString(KEY_TEMPLATE, backup.template.toJson())
                 .putBoolean(KEY_DISPLAY_MODE, backup.overlayMode)
-                .putInt(KEY_OVERLAY_WIDTH, clampPanelWidth(backup.overlayWidthPercent))
-                .putInt(KEY_OVERLAY_HEIGHT, clampOverlayHeight(backup.overlayHeightPercent))
+                .putInt(KEY_OVERLAY_WIDTH_PX, backup.overlayWidthPx)
+                .putInt(KEY_OVERLAY_HEIGHT_PX, backup.overlayHeightPx)
+                .putInt(KEY_OVERLAY_WIDTH_PERCENT, backup.overlayWidthPercent)
+                .putInt(KEY_OVERLAY_HEIGHT_PERCENT, backup.overlayHeightPercent)
                 .putString(KEY_OVERLAY_CORNER, backup.overlayCorner)
                 .putInt(KEY_OVERLAY_X, clampOverlayOffset(backup.overlayOffsetX))
                 .putInt(KEY_OVERLAY_Y, clampOverlayOffset(backup.overlayOffsetY))

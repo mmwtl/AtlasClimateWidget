@@ -371,9 +371,11 @@
     <string name="edited_overlay_hint">Выберите раскладку над предпросмотром. У оверлея и окна по ярлыку свои раскладки.</string>
     <string name="overlay_size">Размер оверлея</string>
     <string name="overlay_size_hint">Ширина и высота задаются в разделе «Система → Режим отображения».</string>
-    <string name="overlay_width">Ширина оверлея</string>
-    <string name="overlay_height">Высота оверлея</string>
-    <string name="overlay_height_auto">Авто</string>
+    <string name="overlay_width">Ширина, px</string>
+    <string name="overlay_height">Высота, px</string>
+    <string name="overlay_height_auto">Авто, если поле пустое</string>
+    <string name="overlay_size_px">%1$d × %2$d px</string>
+    <string name="overlay_size_range">Введите от %1$d до %2$d px</string>
     <string name="status_overlay_ready">Оверлей включён для главного экрана</string>
     <string name="status_overlay_permissions">Оверлей ждёт разрешений</string>
     <string name="overlay_offset_x">Отступ от бокового края</string>
