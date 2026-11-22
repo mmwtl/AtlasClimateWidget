@@ -14,25 +14,28 @@ import com.geely.lib.oneosapi.IServiceManagerCallback;
 import com.geely.lib.oneosapi.input.IInputListener;
 import com.geely.lib.oneosapi.input.IInputManager;
 
-import java.util.function.IntConsumer;
-
-/** OneOS input events for one focused session of the large climate window. */
+/** OneOS steering-wheel input events for one focused session of the large climate window. */
 final class OneOsPanelKeys implements ServiceConnection {
     private static final String PACKAGE = "com.geely.service.oneosapi";
     private static final int INPUT_SERVICE = 8;
-    static final int VOLUME_UP = 200024;
-    static final int VOLUME_DOWN = 200025;
-    static final int KNOB_VOLUME_UP = 210007;
-    static final int KNOB_VOLUME_DOWN = 210008;
+    static final int MEDIA_PLAY_PAUSE = 200085;
     static final int MEDIA_NEXT = 200087;
     static final int MEDIA_PREVIOUS = 200088;
-    private static final int[] KEYS = {
-            VOLUME_UP, VOLUME_DOWN, KNOB_VOLUME_UP, KNOB_VOLUME_DOWN, MEDIA_NEXT, MEDIA_PREVIOUS
-    };
+
+    interface Listener {
+        void onShortClick(int keyCode);
+
+        void onLongPress(int keyCode);
+
+        void onHoldStop(int keyCode);
+
+        default void onSubscriptionChanged(boolean active) {
+        }
+    }
 
     private final Context context;
     private final int[] keyCodes;
-    private IntConsumer onClick;
+    private Listener listener;
     private final Handler main = new Handler(Looper.getMainLooper());
     private boolean bound;
     private IServiceManager manager;
@@ -63,9 +66,9 @@ final class OneOsPanelKeys implements ServiceConnection {
                         + " soft=" + softKeyFunction);
             }
             main.post(() -> {
-                IntConsumer listener = onClick;
-                if (input != null && listener != null) {
-                    listener.accept(keyCode);
+                Listener target = listener;
+                if (input != null && target != null) {
+                    target.onShortClick(keyCode);
                 }
             });
         }
@@ -84,6 +87,12 @@ final class OneOsPanelKeys implements ServiceConnection {
                 AppLog.debug("OneOS panel holdStop key=" + keyCode
                         + " soft=" + softKeyFunction);
             }
+            main.post(() -> {
+                Listener target = listener;
+                if (input != null && target != null) {
+                    target.onHoldStop(keyCode);
+                }
+            });
         }
 
         @Override
@@ -92,6 +101,12 @@ final class OneOsPanelKeys implements ServiceConnection {
                 AppLog.debug("OneOS panel longPress key=" + keyCode
                         + " soft=" + softKeyFunction);
             }
+            main.post(() -> {
+                Listener target = listener;
+                if (input != null && target != null) {
+                    target.onLongPress(keyCode);
+                }
+            });
         }
 
         @Override
@@ -103,23 +118,20 @@ final class OneOsPanelKeys implements ServiceConnection {
         }
     };
 
-    static int[] keys(boolean temperature, boolean fan) {
-        if (temperature && fan) {
-            return KEYS.clone();
+    static int[] keys(boolean canStep, boolean canSwitch) {
+        if (!canStep) {
+            return new int[0];
         }
-        if (temperature) {
-            return new int[]{VOLUME_UP, VOLUME_DOWN, KNOB_VOLUME_UP, KNOB_VOLUME_DOWN};
+        if (canSwitch) {
+            return new int[]{MEDIA_NEXT, MEDIA_PREVIOUS, MEDIA_PLAY_PAUSE};
         }
-        if (fan) {
-            return new int[]{MEDIA_NEXT, MEDIA_PREVIOUS};
-        }
-        return new int[0];
+        return new int[]{MEDIA_NEXT, MEDIA_PREVIOUS};
     }
 
-    OneOsPanelKeys(Context context, int[] keyCodes, IntConsumer onClick) {
+    OneOsPanelKeys(Context context, int[] keyCodes, Listener listener) {
         this.context = context.getApplicationContext();
         this.keyCodes = keyCodes.clone();
-        this.onClick = onClick;
+        this.listener = listener;
     }
 
     void open() {
@@ -137,7 +149,7 @@ final class OneOsPanelKeys implements ServiceConnection {
 
     void close() {
         // Release the activity callback even if the remote process keeps the Binder stubs alive.
-        onClick = null;
+        listener = null;
         main.removeCallbacksAndMessages(null);
         if (!bound) {
             return;
@@ -205,6 +217,10 @@ final class OneOsPanelKeys implements ServiceConnection {
                 next.registerListener(keys, context.getPackageName(), keyCodes);
                 input = next;
                 AppLog.info("OneOS panel steering keys subscribed");
+                Listener target = listener;
+                if (target != null) {
+                    target.onSubscriptionChanged(true);
+                }
             }
         } catch (RemoteException | RuntimeException error) {
             AppLog.warn("OneOS panel key subscription failed", error);
@@ -219,6 +235,10 @@ final class OneOsPanelKeys implements ServiceConnection {
                 AppLog.warn("OneOS panel key removal failed", error);
             }
             input = null;
+            Listener target = listener;
+            if (target != null) {
+                target.onSubscriptionChanged(false);
+            }
         }
     }
 }

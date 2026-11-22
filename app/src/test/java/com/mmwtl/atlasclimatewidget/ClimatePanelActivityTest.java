@@ -51,43 +51,70 @@ public final class ClimatePanelActivityTest {
                 new Intent().setComponent(component), component, oneOs);
 
         try (ActivityController<ClimatePanelActivity> controller = open()) {
+            InteractiveClimateView view = panelView(controller.get());
             controller.windowFocusChanged(true);
             ShadowLooper.idleMainLooper();
             assertEquals(ClimateService.ACTION_REFRESH, app.getNextStartedService().getAction());
             assertEquals(component, app.getNextStartedService().getComponent());
             assertNotNull(oneOs.services);
             assertNull(oneOs.listener);
+            assertNull(view.steeringFocus());
 
             oneOs.ready = true;
             oneOs.services.onServiceChanged(8);
             ShadowLooper.idleMainLooper();
-            int[] codes = {200024, 200025, 210007, 210008, 200087, 200088};
+            int[] codes = {200087, 200088, 200085};
             assertArrayEquals(codes, oneOs.codes);
+            assertEquals(WidgetConfig.Block.TEMPERATURE, view.steeringFocus());
             IInputListener listener = oneOs.listener;
             assertNotNull(listener);
             listener.onKeyCodeEvent(200087, 0, 0);
             listener.onKeyCodeEvent(200087, 1, 0);
-            listener.onShortClick(200085, 0);
+            listener.onShortClick(200024, 0);
             ShadowLooper.idleMainLooper();
             assertNull(app.getNextStartedService());
 
+            // Default target is driver temperature.
             String temperature = "/tempstep/" + Hvac.ZONE_DRIVER;
-            String[] paths = {temperature + "/1", temperature + "/-1",
-                    temperature + "/1", temperature + "/-1", "/fanstep/1", "/fanstep/-1"};
-            for (int i = 0; i < codes.length; i++) {
-                listener.onShortClick(codes[i], 0);
-                ShadowLooper.idleMainLooper();
-                Intent control = app.getNextStartedService();
-                assertNotNull(control);
-                assertEquals(ClimateService.ACTION_CONTROL, control.getAction());
-                assertEquals(paths[i], control.getData().getPath());
-                assertNull(app.getNextStartedService());
-            }
+            listener.onShortClick(OneOsPanelKeys.MEDIA_NEXT, 0);
+            ShadowLooper.idleMainLooper();
+            assertControl(app.getNextStartedService(), temperature + "/1");
+            listener.onShortClick(OneOsPanelKeys.MEDIA_PREVIOUS, 0);
+            ShadowLooper.idleMainLooper();
+            assertControl(app.getNextStartedService(), temperature + "/-1");
+
+            // Play/Pause toggles focus to fan and back without sending a car command.
+            listener.onShortClick(OneOsPanelKeys.MEDIA_PLAY_PAUSE, 0);
+            ShadowLooper.idleMainLooper();
+            assertNull(app.getNextStartedService());
+            assertEquals(WidgetConfig.Block.FAN, view.steeringFocus());
+            listener.onShortClick(OneOsPanelKeys.MEDIA_NEXT, 0);
+            ShadowLooper.idleMainLooper();
+            assertControl(app.getNextStartedService(), "/fanstep/1");
+            listener.onShortClick(OneOsPanelKeys.MEDIA_PREVIOUS, 0);
+            ShadowLooper.idleMainLooper();
+            assertControl(app.getNextStartedService(), "/fanstep/-1");
+
+            listener.onShortClick(OneOsPanelKeys.MEDIA_PLAY_PAUSE, 0);
+            ShadowLooper.idleMainLooper();
+            assertNull(app.getNextStartedService());
+            assertEquals(WidgetConfig.Block.TEMPERATURE, view.steeringFocus());
+
+            // Holding an arrow repeats steps until released.
+            listener.onLongPressTriggered(OneOsPanelKeys.MEDIA_NEXT, 0);
+            ShadowLooper.idleMainLooper();
+            assertControl(app.getNextStartedService(), temperature + "/1");
+            ShadowLooper.idleMainLooper(400, TimeUnit.MILLISECONDS);
+            assertControl(app.getNextStartedService(), temperature + "/1");
+            listener.onHoldingPressStopped(OneOsPanelKeys.MEDIA_NEXT, 0);
+            ShadowLooper.idleMainLooper(1000, TimeUnit.MILLISECONDS);
+            assertNull(app.getNextStartedService());
 
             controller.windowFocusChanged(false);
             assertNull(oneOs.listener);
             assertNull(oneOs.services);
-            listener.onShortClick(200087, 0);
+            assertNull(view.steeringFocus());
+            listener.onShortClick(OneOsPanelKeys.MEDIA_NEXT, 0);
             ShadowLooper.idleMainLooper();
             assertNull(app.getNextStartedService());
 
@@ -96,10 +123,12 @@ public final class ClimatePanelActivityTest {
             assertEquals(component, app.getNextStartedService().getComponent());
             assertNotNull(oneOs.listener);
             assertNotSame(listener, oneOs.listener);
-            oneOs.listener.onShortClick(200087, 0);
+            assertEquals(WidgetConfig.Block.TEMPERATURE, view.steeringFocus());
+            oneOs.listener.onShortClick(OneOsPanelKeys.MEDIA_NEXT, 0);
             controller.get().finish();
             assertNull(oneOs.listener);
             assertNull(oneOs.services);
+            assertNull(view.steeringFocus());
             ShadowLooper.idleMainLooper();
             assertNull(app.getNextStartedService());
         }
@@ -112,7 +141,7 @@ public final class ClimatePanelActivityTest {
                 "com.geely.service.oneosapi.OneOSApiService");
         Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
 
-        // Temperature only: subscribes only to volume/knob keys and ignores media keys.
+        // Temperature only: subscribes only to arrows (no Play/Pause) and steps temperature.
         TestOneOs tempOnly = new TestOneOs();
         tempOnly.ready = true;
         app.setComponentNameAndServiceForBindServiceForIntent(
@@ -122,17 +151,23 @@ public final class ClimatePanelActivityTest {
         config.fanEnabled = false;
         prefs.setWidget(Prefs.PANEL_ID, config);
         try (ActivityController<ClimatePanelActivity> controller = open()) {
+            InteractiveClimateView view = panelView(controller.get());
             controller.windowFocusChanged(true);
             ShadowLooper.idleMainLooper();
             assertEquals(ClimateService.ACTION_REFRESH, app.getNextStartedService().getAction());
             assertEquals(component, app.getNextStartedService().getComponent());
-            assertArrayEquals(new int[]{200024, 200025, 210007, 210008}, tempOnly.codes);
-            tempOnly.listener.onShortClick(OneOsPanelKeys.MEDIA_NEXT, 0);
+            assertArrayEquals(new int[]{200087, 200088}, tempOnly.codes);
+            assertEquals(WidgetConfig.Block.TEMPERATURE, view.steeringFocus());
+            tempOnly.listener.onShortClick(OneOsPanelKeys.MEDIA_PLAY_PAUSE, 0);
             ShadowLooper.idleMainLooper();
             assertNull(app.getNextStartedService());
+            assertEquals(WidgetConfig.Block.TEMPERATURE, view.steeringFocus());
+            tempOnly.listener.onShortClick(OneOsPanelKeys.MEDIA_NEXT, 0);
+            ShadowLooper.idleMainLooper();
+            assertControl(app.getNextStartedService(), "/tempstep/" + Hvac.ZONE_DRIVER + "/1");
         }
 
-        // Fan only: subscribes only to media keys and ignores volume keys.
+        // Fan only: subscribes only to arrows, focuses fan, and steps fan.
         TestOneOs fanOnly = new TestOneOs();
         fanOnly.ready = true;
         app.setComponentNameAndServiceForBindServiceForIntent(
@@ -142,14 +177,16 @@ public final class ClimatePanelActivityTest {
         config.fanEnabled = true;
         prefs.setWidget(Prefs.PANEL_ID, config);
         try (ActivityController<ClimatePanelActivity> controller = open()) {
+            InteractiveClimateView view = panelView(controller.get());
             controller.windowFocusChanged(true);
             ShadowLooper.idleMainLooper();
             assertEquals(ClimateService.ACTION_REFRESH, app.getNextStartedService().getAction());
             assertEquals(component, app.getNextStartedService().getComponent());
             assertArrayEquals(new int[]{200087, 200088}, fanOnly.codes);
-            fanOnly.listener.onShortClick(OneOsPanelKeys.VOLUME_UP, 0);
+            assertEquals(WidgetConfig.Block.FAN, view.steeringFocus());
+            fanOnly.listener.onShortClick(OneOsPanelKeys.MEDIA_NEXT, 0);
             ShadowLooper.idleMainLooper();
-            assertNull(app.getNextStartedService());
+            assertControl(app.getNextStartedService(), "/fanstep/1");
         }
 
         // Neither block enabled: does not bind OneOS at all.
@@ -195,7 +232,11 @@ public final class ClimatePanelActivityTest {
         TestOneOs oneOs = new TestOneOs();
         oneOs.ready = true;
         OneOsPanelKeys keys = new OneOsPanelKeys(failingUnbind, OneOsPanelKeys.keys(true, true),
-                code -> received[0] = code);
+                new OneOsPanelKeys.Listener() {
+                    @Override public void onShortClick(int keyCode) { received[0] = keyCode; }
+                    @Override public void onLongPress(int keyCode) { received[0] = keyCode; }
+                    @Override public void onHoldStop(int keyCode) { received[0] = keyCode; }
+                });
         keys.open();
         keys.onServiceConnected(new ComponentName("com.geely.service.oneosapi",
                 "com.geely.service.oneosapi.OneOSApiService"), oneOs);
@@ -206,7 +247,8 @@ public final class ClimatePanelActivityTest {
         assertNull(oneOs.listener);
         assertNull(oneOs.services);
         try {
-            registered.onShortClick(OneOsPanelKeys.VOLUME_UP, 0);
+            registered.onShortClick(OneOsPanelKeys.MEDIA_NEXT, 0);
+            registered.onLongPressTriggered(OneOsPanelKeys.MEDIA_NEXT, 0);
         } catch (Exception error) {
             throw new AssertionError(error);
         }
@@ -215,67 +257,40 @@ public final class ClimatePanelActivityTest {
     }
 
     @Test
-    public void volumeChangesStepDriverTemperatureAndRestoreBaseline() {
-        android.media.AudioManager audio = RuntimeEnvironment.getApplication()
-                .getSystemService(android.media.AudioManager.class);
-        audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, 6, 0);
-        ShadowApplication app = Shadows.shadowOf(RuntimeEnvironment.getApplication());
-
-        try (ActivityController<ClimatePanelActivity> controller = open()) {
-            controller.windowFocusChanged(true);
-            ShadowLooper.idleMainLooper();
-            app.clearStartedServices();
-
-            // Volume up steps temperature +1 and restores stream volume back to 6.
-            audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, 7, 0);
-            RuntimeEnvironment.getApplication().sendBroadcast(
-                    volumeIntent(android.media.AudioManager.STREAM_MUSIC, 7, 6));
-            ShadowLooper.idleMainLooper();
-            Intent up = app.getNextStartedService();
-            assertNotNull(up);
-            assertEquals(ClimateService.ACTION_CONTROL, up.getAction());
-            assertEquals("/tempstep/" + Hvac.ZONE_DRIVER + "/1", up.getData().getPath());
-            assertEquals(6, audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC));
-
-            // Self-triggered rollback broadcast returning to baseline (6) is ignored.
-            RuntimeEnvironment.getApplication().sendBroadcast(
-                    volumeIntent(android.media.AudioManager.STREAM_MUSIC, 6, 7));
-            ShadowLooper.idleMainLooper();
-            assertNull(app.getNextStartedService());
-
-            // Volume down steps temperature -1 and restores stream volume back to 6.
-            audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, 5, 0);
-            RuntimeEnvironment.getApplication().sendBroadcast(
-                    volumeIntent(android.media.AudioManager.STREAM_MUSIC, 5, 6));
-            ShadowLooper.idleMainLooper();
-            Intent down = app.getNextStartedService();
-            assertNotNull(down);
-            assertEquals(ClimateService.ACTION_CONTROL, down.getAction());
-            assertEquals("/tempstep/" + Hvac.ZONE_DRIVER + "/-1", down.getData().getPath());
-            assertEquals(6, audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC));
-
-            // Non-music stream changes are ignored.
-            RuntimeEnvironment.getApplication().sendBroadcast(
-                    volumeIntent(android.media.AudioManager.STREAM_RING, 4, 3));
-            ShadowLooper.idleMainLooper();
-            assertNull(app.getNextStartedService());
-
-            // After losing focus, volume changes are no longer intercepted.
-            controller.windowFocusChanged(false);
-            audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, 7, 0);
-            RuntimeEnvironment.getApplication().sendBroadcast(
-                    volumeIntent(android.media.AudioManager.STREAM_MUSIC, 7, 6));
-            ShadowLooper.idleMainLooper();
-            assertNull(app.getNextStartedService());
-            assertEquals(7, audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC));
+    public void steeringFocusDrawsInSeparateAndSingleCardLayouts() {
+        Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
+        for (WidgetConfig.CardLayout cardLayout : WidgetConfig.CardLayout.values()) {
+            WidgetConfig config = new WidgetConfig();
+            config.cardLayout = cardLayout;
+            prefs.setWidget(Prefs.PANEL_ID, config);
+            try (ActivityController<ClimatePanelActivity> controller = open()) {
+                ClimatePanelActivity activity = controller.get();
+                InteractiveClimateView view = panelView(activity);
+                int width = activity.getWindow().getAttributes().width;
+                int height = activity.getWindow().getAttributes().height;
+                view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
+                view.layout(0, 0, width, height);
+                for (WidgetConfig.Block focus : new WidgetConfig.Block[]{
+                        WidgetConfig.Block.TEMPERATURE, WidgetConfig.Block.FAN}) {
+                    view.setSteeringFocus(focus);
+                    android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
+                            width, height, android.graphics.Bitmap.Config.ARGB_8888);
+                    view.draw(new android.graphics.Canvas(bitmap));
+                    bitmap.recycle();
+                }
+            }
         }
     }
 
-    private static Intent volumeIntent(int stream, int value, int prev) {
-        return new Intent(PanelVolumeKeys.ACTION_VOLUME_CHANGED)
-                .putExtra(PanelVolumeKeys.EXTRA_VOLUME_STREAM_TYPE, stream)
-                .putExtra(PanelVolumeKeys.EXTRA_VOLUME_STREAM_VALUE, value)
-                .putExtra(PanelVolumeKeys.EXTRA_PREV_VOLUME_STREAM_VALUE, prev);
+    private static InteractiveClimateView panelView(ClimatePanelActivity activity) {
+        return (InteractiveClimateView) activity.findViewById(R.id.widget_root).getParent();
+    }
+
+    private static void assertControl(Intent intent, String expectedPath) {
+        assertNotNull(intent);
+        assertEquals(ClimateService.ACTION_CONTROL, intent.getAction());
+        assertEquals(expectedPath, intent.getData().getPath());
     }
 
     private static final class TestOneOs extends IServiceManager.Stub {

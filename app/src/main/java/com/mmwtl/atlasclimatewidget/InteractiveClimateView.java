@@ -2,6 +2,9 @@ package com.mmwtl.atlasclimatewidget;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
@@ -16,9 +19,13 @@ import java.util.List;
 
 /** Local touch handling for the HOME overlay and the shortcut's climate window. */
 final class InteractiveClimateView extends FrameLayout {
+    private static final float FOCUS_STROKE_DP = 2.5f;
+
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Runnable selectionTimeout = this::expireSelection;
     private final Runnable flushPending = this::showPending;
+    private final Paint focusPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF focusRect = new RectF();
 
     private final Runnable onInteraction;
     private boolean acceptsControls = true;
@@ -27,6 +34,7 @@ final class InteractiveClimateView extends FrameLayout {
     private long awaitingControl;
     private ClimateService.PanelFrame displayedFrame;
     private ClimateService.PanelFrame pendingFrame;
+    private WidgetConfig.Block steeringFocus;
 
     InteractiveClimateView(Context context) {
         this(context, () -> {});
@@ -35,10 +43,101 @@ final class InteractiveClimateView extends FrameLayout {
     InteractiveClimateView(Context context, Runnable onInteraction) {
         super(context);
         this.onInteraction = onInteraction;
+        setWillNotDraw(false);
     }
 
     boolean isDragging() {
         return activeDrag != null;
+    }
+
+    WidgetConfig.Block steeringFocus() {
+        return steeringFocus;
+    }
+
+    void setSteeringFocus(WidgetConfig.Block block) {
+        if (steeringFocus != block) {
+            steeringFocus = block;
+            invalidate();
+        }
+    }
+
+    @Override
+    protected void dispatchDraw(Canvas canvas) {
+        super.dispatchDraw(canvas);
+        drawSteeringFocus(canvas);
+    }
+
+    /** Outlines the block currently driven by steering-wheel arrows in the climate window. */
+    private void drawSteeringFocus(Canvas canvas) {
+        WidgetConfig.Block target = steeringFocus;
+        ClimateService.PanelFrame frame = displayedFrame;
+        if (target == null || frame == null || getChildCount() == 0) {
+            return;
+        }
+        View child = getChildAt(0);
+        if (!(child instanceof ViewGroup root)) {
+            return;
+        }
+        List<WidgetGeometry.Strip> strips = frame.plan().strips;
+        int first = -1;
+        int last = -1;
+        for (int i = 0; i < strips.size(); i++) {
+            if (strips.get(i).block == target) {
+                if (first < 0) {
+                    first = i;
+                }
+                last = i;
+            }
+        }
+        if (first < 0 || last >= root.getChildCount()) {
+            return;
+        }
+        WidgetGeometry.Plan plan = frame.plan();
+        WidgetGeometry.Strip firstStrip = strips.get(first);
+        WidgetGeometry.Strip lastStrip = strips.get(last);
+        View firstRow = root.getChildAt(first);
+        View lastRow = root.getChildAt(last);
+        if (firstRow.getWidth() <= 0 || firstRow.getHeight() <= 0 || lastRow.getHeight() <= 0
+                || plan.fullWidth <= 0f || firstStrip.height <= 0f || lastStrip.height <= 0f) {
+            return;
+        }
+        float scaleX = firstRow.getWidth() / plan.fullWidth;
+        float firstScaleY = firstRow.getHeight() / firstStrip.height;
+        float lastScaleY = lastRow.getHeight() / lastStrip.height;
+        float density = getResources().getDisplayMetrics().density;
+        float stroke = Math.max(1f, FOCUS_STROKE_DP * density);
+        float cardLeft = root.getLeft() + firstRow.getLeft() + plan.offsetX() * scaleX;
+        float cardRight = cardLeft + plan.width * scaleX;
+        float radius;
+        if (firstStrip.firstInCard && lastStrip.lastInCard) {
+            float inset = stroke / 2f;
+            float top = root.getTop() + firstRow.getTop() + inset;
+            float bottom = root.getTop() + lastRow.getBottom()
+                    - lastStrip.trailingGap * lastScaleY - inset;
+            focusRect.set(cardLeft + inset, top, cardRight - inset, bottom);
+            radius = Math.max(0f, plan.cardRadius * scaleX - inset);
+        } else {
+            float padX = Math.max(stroke, plan.padding * scaleX * 0.45f);
+            float padY = Math.max(stroke, plan.padding * firstScaleY * 0.35f);
+            float top = root.getTop() + firstRow.getTop()
+                    + Math.max(stroke / 2f, firstStrip.contentTop * firstScaleY - padY);
+            float bottom = root.getTop() + lastRow.getTop()
+                    + Math.min(lastRow.getHeight() - stroke / 2f,
+                            (lastStrip.contentTop + lastStrip.contentHeight) * lastScaleY + padY);
+            focusRect.set(cardLeft + padX, top, cardRight - padX, bottom);
+            radius = Math.max(0f, Math.min(plan.cardRadius * scaleX * 0.65f,
+                    focusRect.height() / 2f));
+        }
+        if (focusRect.width() <= 0f || focusRect.height() <= 0f) {
+            return;
+        }
+        WidgetTheme mode = WidgetTheme.of(WidgetTheme.themed(getContext()));
+        WidgetTheme cardTheme = WidgetTheme.forCard(frame.config(), mode);
+        Palette palette = frame.config().palette(mode.night);
+        focusPaint.setStyle(Paint.Style.STROKE);
+        focusPaint.setStrokeWidth(stroke);
+        focusPaint.setColor(cardTheme.litIcon(palette, ClimateFunction.Tone.NEUTRAL));
+        canvas.drawRoundRect(focusRect, radius, radius, focusPaint);
     }
 
     void resumeControls() {
