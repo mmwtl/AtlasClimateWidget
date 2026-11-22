@@ -21,7 +21,7 @@ enum ClimateFunction {
                     .oem(R.drawable.ic_oem_outside_air, R.drawable.ic_oem_recirculation)),
     WINDSHIELD_HEAT(R.string.fn_windshield_heat, R.string.fn_windshield_heat_short, Tone.WARM,
             Spec.toggle(Spec.MODEL_WINDSHIELD, Gib.AREA_GLOBAL, 1, 0)
-                    .icon(R.drawable.ic_fn_front_defrost)
+                    .icon(R.drawable.ic_fn_windshield_heat)
                     .oem(R.drawable.ic_oem_windshield_heat)),
     DEFROST_MAX(R.string.fn_defrost_max, R.string.fn_defrost_max_short, Tone.NEUTRAL,
             Spec.toggle(Hvac.DEFROST_FRONT_MAX, Gib.AREA_GLOBAL, 1, 0)
