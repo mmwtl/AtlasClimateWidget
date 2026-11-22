@@ -117,6 +117,32 @@ public final class MainActivityTest {
     }
 
     @Test
+    public void usagePermissionButtonOpensPackageUsageSettings() {
+        android.app.Application app = RuntimeEnvironment.getApplication();
+        android.app.AppOpsManager appOps = app.getSystemService(android.app.AppOpsManager.class);
+        Shadows.shadowOf(appOps).setMode(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                android.os.Process.myUid(), app.getPackageName(),
+                android.app.AppOpsManager.MODE_IGNORED);
+        Prefs prefs = new Prefs(app);
+        prefs.setWidgetMode(false);
+        ActivityController<MainActivity> controller = open();
+        try {
+            find(root(controller), "Система").performClick();
+            View usageButton = find(root(controller),
+                    controller.get().getString(R.string.overlay_allow_usage));
+            assertTrue(shown(usageButton));
+            usageButton.performClick();
+            Intent started = Shadows.shadowOf(controller.get()).getNextStartedActivity();
+            assertNotNull(started);
+            assertEquals(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS, started.getAction());
+            assertEquals("package:" + controller.get().getPackageName(),
+                    started.getDataString());
+        } finally {
+            close(controller);
+        }
+    }
+
+    @Test
     public void overlayGeometryCardsHideForShortcutWindowLayout() {
         Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
         prefs.setWidgetMode(false);

@@ -500,12 +500,16 @@ public final class MainActivity extends ScaledActivity {
         card.addView(Ui.heading(this, R.string.overlay_title, 20));
         overlayPermissionsLabel = label(R.string.overlay_permissions_title);
         card.addView(overlayPermissionsLabel);
+        Uri packageUri = Uri.parse("package:" + getPackageName());
         overlayPermission = settingsButton(card, R.string.overlay_allow_draw,
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
+                new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, packageUri),
+                new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION));
         usagePermission = settingsButton(card, R.string.overlay_allow_usage,
-                Settings.ACTION_USAGE_ACCESS_SETTINGS, null);
+                new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS, packageUri),
+                new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
         windowsPermission = settingsButton(card, R.string.overlay_allow_windows,
-                Settings.ACTION_ACCESSIBILITY_SETTINGS, null);
+                new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),
+                new Intent(Settings.ACTION_SETTINGS));
 
         overlayStatusText = Ui.text(this, "", 14, Ui.TEXT_SECONDARY);
         Ui.topMargin(overlayStatusText, 12);
@@ -1095,24 +1099,27 @@ public final class MainActivity extends ScaledActivity {
         Toast.makeText(this, R.string.overlay_stopped, Toast.LENGTH_SHORT).show();
     }
 
-    private Button settingsButton(LinearLayout card, int title, String action, Uri data) {
+    private Button settingsButton(LinearLayout card, int title, Intent preferred, Intent fallback) {
         Button button = Ui.button(this, title);
         Ui.topMargin(button, 8);
-        button.setOnClickListener(view -> {
-            try {
-                startActivity(new Intent(action, data));
-            } catch (ActivityNotFoundException error) {
-                Toast.makeText(this, R.string.overlay_settings_unavailable,
-                        Toast.LENGTH_LONG).show();
-                try {
-                    startActivity(new Intent(Settings.ACTION_SETTINGS));
-                } catch (ActivityNotFoundException ignored) {
-                    // No system settings screen available.
-                }
-            }
-        });
+        button.setOnClickListener(view -> openSettingsWithFallback(preferred, fallback));
         card.addView(button);
         return button;
+    }
+
+    private void openSettingsWithFallback(Intent preferred, Intent fallback) {
+        try {
+            startActivity(preferred);
+            return;
+        } catch (ActivityNotFoundException | SecurityException error) {
+            AppLog.warn("Preferred system settings screen is unavailable", error);
+        }
+        try {
+            startActivity(fallback);
+        } catch (ActivityNotFoundException | SecurityException error) {
+            AppLog.warn("Fallback system settings screen is unavailable", error);
+            Toast.makeText(this, R.string.overlay_settings_unavailable, Toast.LENGTH_LONG).show();
+        }
     }
 
     private void changeDisplayMode(boolean widget) {
