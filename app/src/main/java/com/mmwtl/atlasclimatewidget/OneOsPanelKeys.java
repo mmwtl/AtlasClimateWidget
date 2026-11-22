@@ -31,7 +31,8 @@ final class OneOsPanelKeys implements ServiceConnection {
     };
 
     private final Context context;
-    private final IntConsumer onClick;
+    private final int[] keyCodes;
+    private IntConsumer onClick;
     private final Handler main = new Handler(Looper.getMainLooper());
     private boolean bound;
     private IServiceManager manager;
@@ -50,27 +51,74 @@ final class OneOsPanelKeys implements ServiceConnection {
         @Override
         public void onKeyCodeEvent(int keyCode, int event, int softKeyFunction) {
             if (AppLog.debugEnabled()) {
-                AppLog.debug("OneOS panel key=" + keyCode + " event=" + event);
+                AppLog.debug("OneOS panel key=" + keyCode + " event=" + event
+                        + " soft=" + softKeyFunction);
             }
         }
 
         @Override
         public void onShortClick(int keyCode, int softKeyFunction) {
+            if (AppLog.debugEnabled()) {
+                AppLog.debug("OneOS panel shortClick key=" + keyCode
+                        + " soft=" + softKeyFunction);
+            }
             main.post(() -> {
-                if (input != null) {
-                    onClick.accept(keyCode);
+                IntConsumer listener = onClick;
+                if (input != null && listener != null) {
+                    listener.accept(keyCode);
                 }
             });
         }
 
-        @Override public void onHoldingPressStarted(int keyCode, int softKeyFunction) { }
-        @Override public void onHoldingPressStopped(int keyCode, int softKeyFunction) { }
-        @Override public void onLongPressTriggered(int keyCode, int softKeyFunction) { }
-        @Override public void onDoubleClick(int keyCode, int softKeyFunction) { }
+        @Override
+        public void onHoldingPressStarted(int keyCode, int softKeyFunction) {
+            if (AppLog.debugEnabled()) {
+                AppLog.debug("OneOS panel holdStart key=" + keyCode
+                        + " soft=" + softKeyFunction);
+            }
+        }
+
+        @Override
+        public void onHoldingPressStopped(int keyCode, int softKeyFunction) {
+            if (AppLog.debugEnabled()) {
+                AppLog.debug("OneOS panel holdStop key=" + keyCode
+                        + " soft=" + softKeyFunction);
+            }
+        }
+
+        @Override
+        public void onLongPressTriggered(int keyCode, int softKeyFunction) {
+            if (AppLog.debugEnabled()) {
+                AppLog.debug("OneOS panel longPress key=" + keyCode
+                        + " soft=" + softKeyFunction);
+            }
+        }
+
+        @Override
+        public void onDoubleClick(int keyCode, int softKeyFunction) {
+            if (AppLog.debugEnabled()) {
+                AppLog.debug("OneOS panel doubleClick key=" + keyCode
+                        + " soft=" + softKeyFunction);
+            }
+        }
     };
 
-    OneOsPanelKeys(Context context, IntConsumer onClick) {
+    static int[] keys(boolean temperature, boolean fan) {
+        if (temperature && fan) {
+            return KEYS.clone();
+        }
+        if (temperature) {
+            return new int[]{VOLUME_UP, VOLUME_DOWN, KNOB_VOLUME_UP, KNOB_VOLUME_DOWN};
+        }
+        if (fan) {
+            return new int[]{MEDIA_NEXT, MEDIA_PREVIOUS};
+        }
+        return new int[0];
+    }
+
+    OneOsPanelKeys(Context context, int[] keyCodes, IntConsumer onClick) {
         this.context = context.getApplicationContext();
+        this.keyCodes = keyCodes.clone();
         this.onClick = onClick;
     }
 
@@ -79,6 +127,7 @@ final class OneOsPanelKeys implements ServiceConnection {
         try {
             bound = context.bindService(intent, this, Context.BIND_AUTO_CREATE);
             if (!bound) {
+                AppLog.warn("OneOS panel input service is unavailable", null);
                 context.unbindService(this);
             }
         } catch (SecurityException | IllegalArgumentException error) {
@@ -87,6 +136,9 @@ final class OneOsPanelKeys implements ServiceConnection {
     }
 
     void close() {
+        // Release the activity callback even if the remote process keeps the Binder stubs alive.
+        onClick = null;
+        main.removeCallbacksAndMessages(null);
         if (!bound) {
             return;
         }
@@ -100,7 +152,11 @@ final class OneOsPanelKeys implements ServiceConnection {
             }
             manager = null;
         }
-        context.unbindService(this);
+        try {
+            context.unbindService(this);
+        } catch (IllegalArgumentException error) {
+            AppLog.warn("OneOS panel input service unbind failed", error);
+        }
     }
 
     @Override
@@ -146,7 +202,7 @@ final class OneOsPanelKeys implements ServiceConnection {
             unsubscribe();
             if (service != null) {
                 IInputManager next = IInputManager.Stub.asInterface(service);
-                next.registerListener(keys, context.getPackageName(), KEYS);
+                next.registerListener(keys, context.getPackageName(), keyCodes);
                 input = next;
                 AppLog.info("OneOS panel steering keys subscribed");
             }

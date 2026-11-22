@@ -128,8 +128,14 @@ public final class ClimatePanelActivity extends Activity {
     private void updateSteering(boolean focused) {
         if (focused && resumed && !isFinishing()) {
             if (steering == null) {
-                steering = new OneOsPanelKeys(this, this::onSteeringClick);
-                steering.open();
+                WidgetConfig config = prefs.widget(Prefs.PANEL_ID);
+                int[] keys = OneOsPanelKeys.keys(
+                        config.isEnabled(WidgetConfig.Block.TEMPERATURE),
+                        config.isEnabled(WidgetConfig.Block.FAN));
+                if (keys.length > 0) {
+                    steering = new OneOsPanelKeys(this, keys, this::onSteeringClick);
+                    steering.open();
+                }
             }
         } else if (steering != null) {
             steering.close();
@@ -141,13 +147,18 @@ public final class ClimatePanelActivity extends Activity {
         if (!resumed || !hasWindowFocus() || isFinishing() || content.isDragging()) {
             return;
         }
+        WidgetConfig config = prefs.widget(Prefs.PANEL_ID);
         String control = switch (keyCode) {
             case OneOsPanelKeys.VOLUME_UP, OneOsPanelKeys.KNOB_VOLUME_UP ->
-                    "tempstep/" + Hvac.ZONE_DRIVER + "/1";
+                    config.isEnabled(WidgetConfig.Block.TEMPERATURE)
+                            ? "tempstep/" + Hvac.ZONE_DRIVER + "/1" : null;
             case OneOsPanelKeys.VOLUME_DOWN, OneOsPanelKeys.KNOB_VOLUME_DOWN ->
-                    "tempstep/" + Hvac.ZONE_DRIVER + "/-1";
-            case OneOsPanelKeys.MEDIA_NEXT -> "fanstep/1";
-            case OneOsPanelKeys.MEDIA_PREVIOUS -> "fanstep/-1";
+                    config.isEnabled(WidgetConfig.Block.TEMPERATURE)
+                            ? "tempstep/" + Hvac.ZONE_DRIVER + "/-1" : null;
+            case OneOsPanelKeys.MEDIA_NEXT ->
+                    config.isEnabled(WidgetConfig.Block.FAN) ? "fanstep/1" : null;
+            case OneOsPanelKeys.MEDIA_PREVIOUS ->
+                    config.isEnabled(WidgetConfig.Block.FAN) ? "fanstep/-1" : null;
             default -> null;
         };
         if (control != null) {

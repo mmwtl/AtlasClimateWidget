@@ -105,6 +105,115 @@ public final class ClimatePanelActivityTest {
         }
     }
 
+    @Test
+    public void steeringOnlySubscribesToEnabledPanelBlocks() throws Exception {
+        ShadowApplication app = Shadows.shadowOf(RuntimeEnvironment.getApplication());
+        ComponentName component = new ComponentName("com.geely.service.oneosapi",
+                "com.geely.service.oneosapi.OneOSApiService");
+        Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
+
+        // Temperature only: subscribes only to volume/knob keys and ignores media keys.
+        TestOneOs tempOnly = new TestOneOs();
+        tempOnly.ready = true;
+        app.setComponentNameAndServiceForBindServiceForIntent(
+                new Intent().setComponent(component), component, tempOnly);
+        WidgetConfig config = new WidgetConfig();
+        config.temperatureEnabled = true;
+        config.fanEnabled = false;
+        prefs.setWidget(Prefs.PANEL_ID, config);
+        try (ActivityController<ClimatePanelActivity> controller = open()) {
+            controller.windowFocusChanged(true);
+            ShadowLooper.idleMainLooper();
+            assertEquals(ClimateService.ACTION_REFRESH, app.getNextStartedService().getAction());
+            assertEquals(component, app.getNextStartedService().getComponent());
+            assertArrayEquals(new int[]{200024, 200025, 210007, 210008}, tempOnly.codes);
+            tempOnly.listener.onShortClick(OneOsPanelKeys.MEDIA_NEXT, 0);
+            ShadowLooper.idleMainLooper();
+            assertNull(app.getNextStartedService());
+        }
+
+        // Fan only: subscribes only to media keys and ignores volume keys.
+        TestOneOs fanOnly = new TestOneOs();
+        fanOnly.ready = true;
+        app.setComponentNameAndServiceForBindServiceForIntent(
+                new Intent().setComponent(component), component, fanOnly);
+        config = new WidgetConfig();
+        config.temperatureEnabled = false;
+        config.fanEnabled = true;
+        prefs.setWidget(Prefs.PANEL_ID, config);
+        try (ActivityController<ClimatePanelActivity> controller = open()) {
+            controller.windowFocusChanged(true);
+            ShadowLooper.idleMainLooper();
+            assertEquals(ClimateService.ACTION_REFRESH, app.getNextStartedService().getAction());
+            assertEquals(component, app.getNextStartedService().getComponent());
+            assertArrayEquals(new int[]{200087, 200088}, fanOnly.codes);
+            fanOnly.listener.onShortClick(OneOsPanelKeys.VOLUME_UP, 0);
+            ShadowLooper.idleMainLooper();
+            assertNull(app.getNextStartedService());
+        }
+
+        // Neither block enabled: does not bind OneOS at all.
+        TestOneOs tilesOnly = new TestOneOs();
+        tilesOnly.ready = true;
+        app.setComponentNameAndServiceForBindServiceForIntent(
+                new Intent().setComponent(component), component, tilesOnly);
+        config = new WidgetConfig();
+        config.temperatureEnabled = false;
+        config.fanEnabled = false;
+        prefs.setWidget(Prefs.PANEL_ID, config);
+        try (ActivityController<ClimatePanelActivity> controller = open()) {
+            controller.windowFocusChanged(true);
+            ShadowLooper.idleMainLooper();
+            assertEquals(ClimateService.ACTION_REFRESH, app.getNextStartedService().getAction());
+            assertNull(app.getNextStartedService());
+            assertNull(tilesOnly.services);
+            assertNull(tilesOnly.listener);
+        }
+    }
+
+    @Test
+    public void steeringCloseToleratesUnbindFailureAndReleasesCallback() {
+        int[] received = {0};
+        android.content.ContextWrapper failingUnbind = new android.content.ContextWrapper(
+                RuntimeEnvironment.getApplication()) {
+            @Override
+            public android.content.Context getApplicationContext() {
+                return this;
+            }
+
+            @Override
+            public boolean bindService(Intent service, android.content.ServiceConnection conn,
+                    int flags) {
+                return true;
+            }
+
+            @Override
+            public void unbindService(android.content.ServiceConnection conn) {
+                throw new IllegalArgumentException("Service not registered");
+            }
+        };
+        TestOneOs oneOs = new TestOneOs();
+        oneOs.ready = true;
+        OneOsPanelKeys keys = new OneOsPanelKeys(failingUnbind, OneOsPanelKeys.keys(true, true),
+                code -> received[0] = code);
+        keys.open();
+        keys.onServiceConnected(new ComponentName("com.geely.service.oneosapi",
+                "com.geely.service.oneosapi.OneOSApiService"), oneOs);
+        IInputListener registered = oneOs.listener;
+        assertNotNull(registered);
+
+        keys.close();
+        assertNull(oneOs.listener);
+        assertNull(oneOs.services);
+        try {
+            registered.onShortClick(OneOsPanelKeys.VOLUME_UP, 0);
+        } catch (Exception error) {
+            throw new AssertionError(error);
+        }
+        ShadowLooper.idleMainLooper();
+        assertEquals(0, received[0]);
+    }
+
     private static final class TestOneOs extends IServiceManager.Stub {
         boolean ready;
         IServiceManagerCallback services;
