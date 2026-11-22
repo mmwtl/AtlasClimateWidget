@@ -786,6 +786,7 @@ final class WidgetRenderer {
      */
     private static final class BarButton {
         final int icon;
+        final float iconScale;
         final String label;
         final boolean on;
         final boolean kept;
@@ -793,13 +794,25 @@ final class WidgetRenderer {
         final boolean known;
 
         BarButton(int icon, String label, boolean active, boolean known, boolean dormant) {
+            this(icon, label, active, known, dormant, 1f);
+        }
+
+        BarButton(int icon, String label, boolean active, boolean known, boolean dormant,
+                float iconScale) {
             this.icon = icon;
+            this.iconScale = iconScale;
             this.label = label;
             this.on = active && !dormant;
             this.kept = active && dormant;
             this.dormant = dormant;
             this.known = known;
         }
+    }
+
+    /** Relative icon size of an auto-fan preset when drawn icon-only, growing with strength. */
+    private static float presetIconScale(int index, int count) {
+        float grow = count <= 1 ? 1f : index / (float) (count - 1);
+        return 0.62f + 0.38f * grow;
     }
 
     /**
@@ -827,9 +840,11 @@ final class WidgetRenderer {
             int count = ClimateCommands.fanPresets(config.fanPresetCount).length;
             List<BarButton> presets = new ArrayList<>();
             for (int index = 0; index < count; index++) {
-                presets.add(new BarButton(0,
+                int icon = config.fanLabels ? 0 : fanIcon();
+                float scale = config.fanLabels ? 1f : presetIconScale(index, count);
+                presets.add(new BarButton(icon,
                         context.getString(labels[Math.min(index, labels.length - 1)]),
-                        index == active && showKept, known, off));
+                        index == active && showKept, known, off, scale));
             }
             drawBarButtons(canvas, partEdges(strip, count, cell), 0f, strip.contentHeight,
                     presets, false, strip.contentHeight, config.bareButtons());
@@ -959,7 +974,7 @@ final class WidgetRenderer {
         }
         float textRoom = icons ? room - icon - iconGap : room;
         boolean named = !icons || glyph;
-        if (icons && !glyph && textRoom > 0f) {
+        if (icons && !glyph && config.fanLabels && textRoom > 0f) {
             float size = textPaint.getTextSize() * Math.min(1f, textRoom / widest);
             named = size >= 10f * dp * plan.verticalScale;
         }
@@ -975,9 +990,10 @@ final class WidgetRenderer {
             float cx = (start + end) / 2f;
             if (bare) {
                 // A glyph such as AUTO spans the whole block, so it keeps the pill's size.
+                float bareSize = glyph ? icon : bareIcon(end - start, height) * button.iconScale;
                 drawBarContent(canvas, button, bareContent(button.on, button.kept,
                         button.dormant, button.known), cx, cy,
-                        glyph ? icon : bareIcon(end - start, height), iconGap, false, glyph);
+                        bareSize, iconGap, false, glyph);
                 continue;
             }
             int content = theme.text;
@@ -1011,7 +1027,8 @@ final class WidgetRenderer {
             if (!button.known) {
                 content = withAlpha(content, Math.round(255 * UNKNOWN_ALPHA));
             }
-            drawBarContent(canvas, button, content, cx, cy, icon, iconGap, named, glyph);
+            drawBarContent(canvas, button, content, cx, cy, icon * button.iconScale, iconGap,
+                    named, glyph);
         }
     }
 
@@ -1065,7 +1082,7 @@ final class WidgetRenderer {
         int activePreset = ClimateCommands.fanPreset(state, config.fanPresetCount);
         boolean presetsKnown = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL) != null;
         boolean presetsDormant = ClimateCommands.presetsResting(state);
-        boolean withLabels = directions == 0;
+        boolean withLabels = directions == 0 && config.fanLabels;
         boolean bare = config.bareButtons();
 
         float height = strip.contentHeight;
@@ -1220,11 +1237,11 @@ final class WidgetRenderer {
         for (String name : names) {
             widest = Math.max(widest, textPaint.measureText(name));
         }
-        boolean withNames = true;
-        if (widest > room && directions) {
+        boolean withNames = config.fanLabels;
+        if (withNames && widest > room && directions) {
             withNames = textPaint.getTextSize() * room / widest >= 10f * dp * plan.verticalScale;
         }
-        if (widest > room) {
+        if (withNames && widest > room) {
             textPaint.setTextSize(textPaint.getTextSize() * room / widest);
         }
         boolean previousOn = false;
@@ -1281,7 +1298,14 @@ final class WidgetRenderer {
             float cy = height / 2f;
             textPaint.setColor(content);
             if (!directions) {
-                drawCenteredLine(canvas, names[index], cx, cy);
+                if (config.fanLabels) {
+                    drawCenteredLine(canvas, names[index], cx, cy);
+                } else {
+                    float iconMax = bare ? bareIcon(cell, height)
+                            : Math.min(cell * 0.8f, height * 0.72f);
+                    drawIcon(canvas, fanIcon(), cx, cy,
+                            iconMax * presetIconScale(index, strip.zoneCount), content);
+                }
                 continue;
             }
             int iconRes = WidgetConfig.FAN_DIRECTIONS[index].icon(config.iconSet, 0);

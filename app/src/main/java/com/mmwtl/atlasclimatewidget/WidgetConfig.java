@@ -220,6 +220,8 @@ final class WidgetConfig {
     FanLayout fanLayout = FanLayout.BAR;
     /** The bar layout's AUTO button, fixed at the bar's start in both modes. */
     boolean fanAuto = true;
+    /** Whether fan direction and auto-fan preset buttons show text labels alongside/instead of icons. */
+    boolean fanLabels = true;
     /** Resolved from the global car setting by {@link Prefs}; not part of the saved layout. */
     int fanPresetCount = 3;
     /** Whether the kept choice is outlined with the climate off; global, not saved either. */
@@ -614,6 +616,7 @@ final class WidgetConfig {
             json.put("fanPresets", fanPresets);
             json.put("fanLayout", fanLayout.name());
             json.put("fanAuto", fanAuto);
+            json.put("fanLabels", fanLabels);
             json.put("cardLayout", cardLayout.name());
             json.put("style", style.name());
             JSONArray tiles = new JSONArray();
@@ -737,6 +740,7 @@ final class WidgetConfig {
         config.fanLayout = enumValue(FanLayout.class, json.optString("fanLayout"),
                 FanLayout.ROWS);
         config.fanAuto = json.optBoolean("fanAuto", config.fanAuto);
+        config.fanLabels = json.optBoolean("fanLabels", config.fanLabels);
         config.cardLayout = enumValue(CardLayout.class, json.optString("cardLayout"),
                 config.cardLayout);
         config.style = enumValue(Style.class, json.optString("style"), config.style);

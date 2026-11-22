@@ -31,6 +31,7 @@ public final class WidgetConfigTest {
         config.iconSet = WidgetConfig.IconSet.OEM;
         config.fanLayout = WidgetConfig.FanLayout.ROWS;
         config.fanAuto = false;
+        config.fanLabels = false;
         config.temperatureLayout = WidgetConfig.TempLayout.BUTTONS;
         WidgetConfig copy = WidgetConfig.fromJson(config.toJson());
         assertEquals(WidgetConfig.Block.TILES, copy.blockOrder.get(0));
@@ -49,6 +50,7 @@ public final class WidgetConfigTest {
         assertTrue(copy.fanPresets);
         assertEquals(WidgetConfig.FanLayout.ROWS, copy.fanLayout);
         assertFalse(copy.fanAuto);
+        assertFalse(copy.fanLabels);
         assertEquals(WidgetConfig.TempLayout.BUTTONS, copy.temperatureLayout);
         assertEquals("saved layouts keep the bar", WidgetConfig.TempLayout.BAR,
                 WidgetConfig.fromJson("{\"temperatureLayout\":\"WHEEL\"}").temperatureLayout);
@@ -59,6 +61,7 @@ public final class WidgetConfigTest {
         assertEquals("saved layouts keep their rows", WidgetConfig.FanLayout.ROWS,
                 WidgetConfig.fromJson("{}").fanLayout);
         assertTrue(WidgetConfig.fromJson("{}").fanAuto);
+        assertTrue(WidgetConfig.fromJson("{}").fanLabels);
         WidgetConfig fresh = WidgetConfig.fromJson("{}");
         assertTrue(fresh.fanBar && fresh.fanDirections && fresh.fanPresets);
         WidgetConfig legacyPresets = WidgetConfig.fromJson("{\"fanStyle\":\"PRESETS\"}");

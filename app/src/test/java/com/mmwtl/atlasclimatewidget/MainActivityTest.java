@@ -117,6 +117,51 @@ public final class MainActivityTest {
     }
 
     @Test
+    public void fanLabelsTogglePersistsAndRendersIconOnlyVariants() {
+        ActivityController<MainActivity> controller = open();
+        try {
+            View root = root(controller);
+            View labels = find(root, controller.get().getString(R.string.fan_labels));
+            assertTrue(shown(labels));
+            assertTrue(new Prefs(controller.get()).template().fanLabels);
+
+            labels.performClick();
+            ShadowLooper.runUiThreadTasks();
+            assertFalse(new Prefs(controller.get()).template().fanLabels);
+
+            // Render icon-only fan block across BAR/ROWS, CLASSIC/CONSOLE, and manual/AUTO.
+            ClimateStore store = new ClimateStore();
+            store.putProperty(Hvac.FAN_SPEED, Hvac.ZONE_ROW_1_ALL, Hvac.FAN_SPEED_LEVEL_1 + 2, 1L);
+            store.putProperty(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL, Hvac.AUTO_FAN_NORMAL, 1L);
+            for (boolean auto : new boolean[]{false, true}) {
+                store.putProperty(Hvac.AUTO, Hvac.ZONE_DRIVER,
+                        auto ? ClimateFunction.AUTO.onValue : ClimateFunction.AUTO.offValue, 1L);
+                ClimateState state = store.snapshot(1L);
+                for (WidgetConfig.FanLayout fanLayout : WidgetConfig.FanLayout.values()) {
+                    for (WidgetConfig.Style style : WidgetConfig.Style.values()) {
+                        WidgetConfig config = new WidgetConfig();
+                        config.fanLayout = fanLayout;
+                        config.style = style;
+                        config.fanLabels = false;
+                        WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 900, 0, 2f, 29);
+                        WidgetRenderer renderer = new WidgetRenderer(controller.get(), config,
+                                state, CarModel.ATLAS, plan);
+                        for (WidgetGeometry.Strip strip : plan.strips) {
+                            if (strip.block == WidgetConfig.Block.FAN) {
+                                android.graphics.Bitmap bitmap = renderer.render(strip);
+                                assertNotNull(bitmap);
+                                bitmap.recycle();
+                            }
+                        }
+                    }
+                }
+            }
+        } finally {
+            close(controller);
+        }
+    }
+
+    @Test
     public void usagePermissionButtonOpensPackageUsageSettings() {
         android.app.Application app = RuntimeEnvironment.getApplication();
         android.app.AppOpsManager appOps = app.getSystemService(android.app.AppOpsManager.class);

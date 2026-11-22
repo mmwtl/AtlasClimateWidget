@@ -1839,8 +1839,18 @@ public final class MainActivity extends ScaledActivity {
                     if (config.fanLayout == WidgetConfig.FanLayout.BAR) {
                         options.addView(configSwitch(R.string.fan_auto_button, config.fanAuto,
                                 value -> config.fanAuto = value));
-                        options.addView(configSwitch(R.string.fan_part_directions,
-                                config.fanDirections, value -> config.fanDirections = value));
+                        Switch directions = switchRow(R.string.fan_part_directions,
+                                config.fanDirections);
+                        directions.setOnCheckedChangeListener((button, value) -> {
+                            config.fanDirections = value;
+                            changed();
+                            button.post(this::rebuildBlocks);
+                        });
+                        options.addView(directions);
+                        if (config.fanDirections) {
+                            options.addView(configSwitch(R.string.fan_labels, config.fanLabels,
+                                    value -> config.fanLabels = value));
+                        }
                         options.addView(configSwitch(R.string.fan_buttons, config.fanButtons,
                                 value -> config.fanButtons = value));
                         options.addView(hint(R.string.fan_bar_hint));
@@ -1857,6 +1867,10 @@ public final class MainActivity extends ScaledActivity {
                             config::hasFanParts));
                     options.addView(partSwitch(R.string.fan_part_presets, config.fanPresets,
                             value -> config.fanPresets = value, config::hasFanParts));
+                    if (config.fanDirections || config.fanPresets) {
+                        options.addView(configSwitch(R.string.fan_labels, config.fanLabels,
+                                value -> config.fanLabels = value));
+                    }
                     options.addView(hint(R.string.fan_hint));
                     break;
                 default:
