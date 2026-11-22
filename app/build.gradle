@@ -33,6 +33,10 @@ android {
         versionName = effectiveVersionName
     }
 
+    buildFeatures {
+        aidl = true
+    }
+
     buildTypes {
         release {
             // R8 runs in full mode (the AGP 8 default).

@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="geely.oneos.permission.SERVICE" />
 
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
@@ -17,6 +18,7 @@
             <category android:name="android.intent.category.HOME" />
         </intent>
         <package android:name="com.salat.gbinder" />
+        <package android:name="com.geely.service.oneosapi" />
         <!-- A browser for the donation link; without one the dialog shows only its QR code. -->
         <intent>
             <action android:name="android.intent.action.VIEW" />

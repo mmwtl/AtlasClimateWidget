@@ -19,9 +19,9 @@ import android.view.WindowManager;
  * <p>The window is a widget with its own layout ({@link Prefs#PANEL_ID}): the service draws it
  * with the same {@link WidgetViews}. This activity handles bar drags in place and keeps the
  * released value visible until the service has processed the selection; a long press on an
- * option switches it off directly. Another
- * start while the window is open closes it, so one button toggles it. The window closes on Back,
- * on a tap outside, when another app comes up and after the configured time without a touch.
+ * option switches it off directly. While focused it also listens for steering wheel keys from
+ * OneOS. Another start while the window is open closes it, so one button toggles it. The window
+ * closes on Back, on a tap outside, when another app comes up and after inactivity.
  */
 public final class ClimatePanelActivity extends Activity {
     /** Public action for launchers and key mappers; the shortcut starts the same component. */
@@ -34,6 +34,8 @@ public final class ClimatePanelActivity extends Activity {
     private final ClimateService.PanelHost host = this::show;
     private InteractiveClimateView content;
     private Prefs prefs;
+    private boolean resumed;
+    private OneOsPanelKeys steering;
 
     static Intent intent(Context context) {
         return new Intent(ACTION_SHOW).setClass(context, ClimatePanelActivity.class);
@@ -102,15 +104,59 @@ public final class ClimatePanelActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        resumed = true;
         content.resumeControls();
         restartIdleTimer();
+        updateSteering(hasWindowFocus());
     }
 
     @Override
     protected void onPause() {
+        resumed = false;
+        updateSteering(false);
         main.removeCallbacks(idleClose);
         content.pauseControls();
         super.onPause();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        updateSteering(hasFocus);
+    }
+
+    private void updateSteering(boolean focused) {
+        if (focused && resumed && !isFinishing()) {
+            if (steering == null) {
+                steering = new OneOsPanelKeys(this, this::onSteeringClick);
+                steering.open();
+            }
+        } else if (steering != null) {
+            steering.close();
+            steering = null;
+        }
+    }
+
+    private void onSteeringClick(int keyCode) {
+        if (!resumed || !hasWindowFocus() || isFinishing() || content.isDragging()) {
+            return;
+        }
+        String control = switch (keyCode) {
+            case OneOsPanelKeys.VOLUME_UP, OneOsPanelKeys.KNOB_VOLUME_UP ->
+                    "tempstep/" + Hvac.ZONE_DRIVER + "/1";
+            case OneOsPanelKeys.VOLUME_DOWN, OneOsPanelKeys.KNOB_VOLUME_DOWN ->
+                    "tempstep/" + Hvac.ZONE_DRIVER + "/-1";
+            case OneOsPanelKeys.MEDIA_NEXT -> "fanstep/1";
+            case OneOsPanelKeys.MEDIA_PREVIOUS -> "fanstep/-1";
+            default -> null;
+        };
+        if (control != null) {
+            if (AppLog.debugEnabled()) {
+                AppLog.debug("OneOS panel click key=" + keyCode + " control=" + control);
+            }
+            ClimateService.sendPanelControl(this, control);
+            restartIdleTimer();
+        }
     }
 
     /** Another app or HOME came up: the window is a quick control, not a place to return to. */
@@ -149,6 +195,7 @@ public final class ClimatePanelActivity extends Activity {
     @SuppressWarnings("deprecation") // overrideActivityTransition needs API 34.
     public void finish() {
         main.removeCallbacks(idleClose);
+        updateSteering(false);
         super.finish();
         overridePendingTransition(0, 0);
     }

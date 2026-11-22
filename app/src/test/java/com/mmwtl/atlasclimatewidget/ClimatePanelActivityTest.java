@@ -1,5 +1,6 @@
 package com.mmwtl.atlasclimatewidget;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -8,14 +9,21 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import android.content.ComponentName;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
+import android.os.IBinder;
 import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+
+import com.geely.lib.oneosapi.IServiceManager;
+import com.geely.lib.oneosapi.IServiceManagerCallback;
+import com.geely.lib.oneosapi.input.IInputListener;
+import com.geely.lib.oneosapi.input.IInputManager;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -33,6 +41,110 @@ import java.util.concurrent.TimeUnit;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 30, qualifiers = "w720dp-h960dp-mdpi")
 public final class ClimatePanelActivityTest {
+    @Test
+    public void steeringSubscribesWhenInputBecomesAvailableAndStopsAtFocusLoss() throws Exception {
+        ShadowApplication app = Shadows.shadowOf(RuntimeEnvironment.getApplication());
+        TestOneOs oneOs = new TestOneOs();
+        ComponentName component = new ComponentName("com.geely.service.oneosapi",
+                "com.geely.service.oneosapi.OneOSApiService");
+        app.setComponentNameAndServiceForBindServiceForIntent(
+                new Intent().setComponent(component), component, oneOs);
+
+        try (ActivityController<ClimatePanelActivity> controller = open()) {
+            controller.windowFocusChanged(true);
+            ShadowLooper.idleMainLooper();
+            assertEquals(ClimateService.ACTION_REFRESH, app.getNextStartedService().getAction());
+            assertEquals(component, app.getNextStartedService().getComponent());
+            assertNotNull(oneOs.services);
+            assertNull(oneOs.listener);
+
+            oneOs.ready = true;
+            oneOs.services.onServiceChanged(8);
+            ShadowLooper.idleMainLooper();
+            int[] codes = {200024, 200025, 210007, 210008, 200087, 200088};
+            assertArrayEquals(codes, oneOs.codes);
+            IInputListener listener = oneOs.listener;
+            assertNotNull(listener);
+            listener.onKeyCodeEvent(200087, 0, 0);
+            listener.onKeyCodeEvent(200087, 1, 0);
+            listener.onShortClick(200085, 0);
+            ShadowLooper.idleMainLooper();
+            assertNull(app.getNextStartedService());
+
+            String temperature = "/tempstep/" + Hvac.ZONE_DRIVER;
+            String[] paths = {temperature + "/1", temperature + "/-1",
+                    temperature + "/1", temperature + "/-1", "/fanstep/1", "/fanstep/-1"};
+            for (int i = 0; i < codes.length; i++) {
+                listener.onShortClick(codes[i], 0);
+                ShadowLooper.idleMainLooper();
+                Intent control = app.getNextStartedService();
+                assertNotNull(control);
+                assertEquals(ClimateService.ACTION_CONTROL, control.getAction());
+                assertEquals(paths[i], control.getData().getPath());
+                assertNull(app.getNextStartedService());
+            }
+
+            controller.windowFocusChanged(false);
+            assertNull(oneOs.listener);
+            assertNull(oneOs.services);
+            listener.onShortClick(200087, 0);
+            ShadowLooper.idleMainLooper();
+            assertNull(app.getNextStartedService());
+
+            controller.windowFocusChanged(true);
+            ShadowLooper.idleMainLooper();
+            assertEquals(component, app.getNextStartedService().getComponent());
+            assertNotNull(oneOs.listener);
+            assertNotSame(listener, oneOs.listener);
+            oneOs.listener.onShortClick(200087, 0);
+            controller.get().finish();
+            assertNull(oneOs.listener);
+            assertNull(oneOs.services);
+            ShadowLooper.idleMainLooper();
+            assertNull(app.getNextStartedService());
+        }
+    }
+
+    private static final class TestOneOs extends IServiceManager.Stub {
+        boolean ready;
+        IServiceManagerCallback services;
+        IInputListener listener;
+        int[] codes;
+
+        private final IInputManager.Stub input = new IInputManager.Stub() {
+            @Override
+            public void registerListener(IInputListener listener, String tag, int[] keys) {
+                assertEquals("com.mmwtl.atlasclimatewidget", tag);
+                assertNull(TestOneOs.this.listener);
+                TestOneOs.this.listener = listener;
+                codes = keys;
+            }
+
+            @Override
+            public void unregisterListener(IInputListener listener, String tag) {
+                assertSame(TestOneOs.this.listener, listener);
+                TestOneOs.this.listener = null;
+            }
+        };
+
+        @Override
+        public IBinder getService(int type) {
+            assertEquals(8, type);
+            return ready ? input : null;
+        }
+
+        @Override
+        public void registerCallback(IServiceManagerCallback callback) {
+            services = callback;
+        }
+
+        @Override
+        public void unregisterCallback(IServiceManagerCallback callback) {
+            assertSame(services, callback);
+            services = null;
+        }
+    }
+
     @Test
     public void firstDragPreviewsAndSendsOnlyTheReleasedStep() {
         try (ActivityController<ClimatePanelActivity> controller = open()) {
