@@ -214,6 +214,70 @@ public final class ClimatePanelActivityTest {
         assertEquals(0, received[0]);
     }
 
+    @Test
+    public void volumeChangesStepDriverTemperatureAndRestoreBaseline() {
+        android.media.AudioManager audio = RuntimeEnvironment.getApplication()
+                .getSystemService(android.media.AudioManager.class);
+        audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, 6, 0);
+        ShadowApplication app = Shadows.shadowOf(RuntimeEnvironment.getApplication());
+
+        try (ActivityController<ClimatePanelActivity> controller = open()) {
+            controller.windowFocusChanged(true);
+            ShadowLooper.idleMainLooper();
+            app.clearStartedServices();
+
+            // Volume up steps temperature +1 and restores stream volume back to 6.
+            audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, 7, 0);
+            RuntimeEnvironment.getApplication().sendBroadcast(
+                    volumeIntent(android.media.AudioManager.STREAM_MUSIC, 7, 6));
+            ShadowLooper.idleMainLooper();
+            Intent up = app.getNextStartedService();
+            assertNotNull(up);
+            assertEquals(ClimateService.ACTION_CONTROL, up.getAction());
+            assertEquals("/tempstep/" + Hvac.ZONE_DRIVER + "/1", up.getData().getPath());
+            assertEquals(6, audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC));
+
+            // Self-triggered rollback broadcast returning to baseline (6) is ignored.
+            RuntimeEnvironment.getApplication().sendBroadcast(
+                    volumeIntent(android.media.AudioManager.STREAM_MUSIC, 6, 7));
+            ShadowLooper.idleMainLooper();
+            assertNull(app.getNextStartedService());
+
+            // Volume down steps temperature -1 and restores stream volume back to 6.
+            audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, 5, 0);
+            RuntimeEnvironment.getApplication().sendBroadcast(
+                    volumeIntent(android.media.AudioManager.STREAM_MUSIC, 5, 6));
+            ShadowLooper.idleMainLooper();
+            Intent down = app.getNextStartedService();
+            assertNotNull(down);
+            assertEquals(ClimateService.ACTION_CONTROL, down.getAction());
+            assertEquals("/tempstep/" + Hvac.ZONE_DRIVER + "/-1", down.getData().getPath());
+            assertEquals(6, audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC));
+
+            // Non-music stream changes are ignored.
+            RuntimeEnvironment.getApplication().sendBroadcast(
+                    volumeIntent(android.media.AudioManager.STREAM_RING, 4, 3));
+            ShadowLooper.idleMainLooper();
+            assertNull(app.getNextStartedService());
+
+            // After losing focus, volume changes are no longer intercepted.
+            controller.windowFocusChanged(false);
+            audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, 7, 0);
+            RuntimeEnvironment.getApplication().sendBroadcast(
+                    volumeIntent(android.media.AudioManager.STREAM_MUSIC, 7, 6));
+            ShadowLooper.idleMainLooper();
+            assertNull(app.getNextStartedService());
+            assertEquals(7, audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC));
+        }
+    }
+
+    private static Intent volumeIntent(int stream, int value, int prev) {
+        return new Intent(PanelVolumeKeys.ACTION_VOLUME_CHANGED)
+                .putExtra(PanelVolumeKeys.EXTRA_VOLUME_STREAM_TYPE, stream)
+                .putExtra(PanelVolumeKeys.EXTRA_VOLUME_STREAM_VALUE, value)
+                .putExtra(PanelVolumeKeys.EXTRA_PREV_VOLUME_STREAM_VALUE, prev);
+    }
+
     private static final class TestOneOs extends IServiceManager.Stub {
         boolean ready;
         IServiceManagerCallback services;

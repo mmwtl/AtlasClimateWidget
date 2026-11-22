@@ -36,6 +36,7 @@ public final class ClimatePanelActivity extends Activity {
     private Prefs prefs;
     private boolean resumed;
     private OneOsPanelKeys steering;
+    private PanelVolumeKeys volumeKeys;
 
     static Intent intent(Context context) {
         return new Intent(ACTION_SHOW).setClass(context, ClimatePanelActivity.class);
@@ -127,20 +128,46 @@ public final class ClimatePanelActivity extends Activity {
 
     private void updateSteering(boolean focused) {
         if (focused && resumed && !isFinishing()) {
+            WidgetConfig config = prefs.widget(Prefs.PANEL_ID);
+            boolean tempEnabled = config.isEnabled(WidgetConfig.Block.TEMPERATURE);
+            boolean fanEnabled = config.isEnabled(WidgetConfig.Block.FAN);
             if (steering == null) {
-                WidgetConfig config = prefs.widget(Prefs.PANEL_ID);
-                int[] keys = OneOsPanelKeys.keys(
-                        config.isEnabled(WidgetConfig.Block.TEMPERATURE),
-                        config.isEnabled(WidgetConfig.Block.FAN));
+                int[] keys = OneOsPanelKeys.keys(tempEnabled, fanEnabled);
                 if (keys.length > 0) {
                     steering = new OneOsPanelKeys(this, keys, this::onSteeringClick);
                     steering.open();
                 }
             }
-        } else if (steering != null) {
-            steering.close();
-            steering = null;
+            if (volumeKeys == null && tempEnabled) {
+                volumeKeys = new PanelVolumeKeys(this, this::onVolumeStep);
+                volumeKeys.open();
+            }
+        } else {
+            if (steering != null) {
+                steering.close();
+                steering = null;
+            }
+            if (volumeKeys != null) {
+                volumeKeys.close();
+                volumeKeys = null;
+            }
         }
+    }
+
+    private void onVolumeStep(int direction) {
+        if (!resumed || !hasWindowFocus() || isFinishing() || content.isDragging()) {
+            return;
+        }
+        WidgetConfig config = prefs.widget(Prefs.PANEL_ID);
+        if (!config.isEnabled(WidgetConfig.Block.TEMPERATURE)) {
+            return;
+        }
+        String control = "tempstep/" + Hvac.ZONE_DRIVER + "/" + (direction > 0 ? 1 : -1);
+        if (AppLog.debugEnabled()) {
+            AppLog.debug("Panel volume step=" + direction + " control=" + control);
+        }
+        ClimateService.sendPanelControl(this, control);
+        restartIdleTimer();
     }
 
     private void onSteeringClick(int keyCode) {
