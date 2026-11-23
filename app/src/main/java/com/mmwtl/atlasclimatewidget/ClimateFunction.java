@@ -12,7 +12,7 @@ enum ClimateFunction {
     AC(R.string.fn_ac, R.string.fn_ac_short, Tone.COOL,
             Spec.toggle(Hvac.AC, Gib.AREA_GLOBAL, 1, 0).glyph("A/C").oem(R.drawable.ic_oem_ac)),
     AC_MAX(R.string.fn_ac_max, R.string.fn_ac_max_short, Tone.COOL,
-            Spec.toggle(Hvac.AC_MAX, Gib.AREA_GLOBAL, 1, 0).glyph("MAX")
+            Spec.toggle(Hvac.AC_MAX, Gib.AREA_GLOBAL, 1, 0).icon(R.drawable.ic_oem_ac_max)
                     .oem(R.drawable.ic_oem_ac_max)),
     RECIRCULATION(R.string.fn_recirculation, R.string.fn_recirculation_short, Tone.NEUTRAL,
             Spec.toggle(Hvac.CIRCULATION, Gib.AREA_GLOBAL,
