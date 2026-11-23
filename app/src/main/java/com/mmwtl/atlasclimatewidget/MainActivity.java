@@ -1193,7 +1193,7 @@ public final class MainActivity extends ScaledActivity {
         return card;
     }
 
-    /** The climate window: how to bind it, its size, place and auto-close. */
+    /** The climate window: binding, position, steering focus and auto-close. */
     private LinearLayout buildPanelCard() {
         LinearLayout card = Ui.card(this);
         card.addView(Ui.heading(this, R.string.panel_shortcut, 20));
@@ -1230,6 +1230,10 @@ public final class MainActivity extends ScaledActivity {
                         ? getString(R.string.panel_close_never)
                         : getString(R.string.panel_close_seconds, value),
                 prefs::setPanelCloseSeconds, null);
+
+        Switch doubleOutline = switchRow(R.string.panel_double_outline, prefs.panelDoubleOutline());
+        doubleOutline.setOnCheckedChangeListener((view, checked) -> prefs.setPanelDoubleOutline(checked));
+        card.addView(doubleOutline);
 
         Button edit = Ui.button(this, R.string.panel_edit);
         Ui.topMargin(edit, 12);

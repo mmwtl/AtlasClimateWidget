@@ -24,6 +24,7 @@ final class Prefs {
     static final String KEY_PANEL_WIDTH = "panel_width_percent";
     static final String KEY_PANEL_BOTTOM = "panel_bottom";
     static final String KEY_PANEL_CLOSE = "panel_close_seconds";
+    static final String KEY_PANEL_DOUBLE_OUTLINE = "panel_double_outline";
 
     static final String KEY_DISPLAY_MODE = "overlay_mode";
     static final String KEY_OVERLAY_ENABLED = "overlay_enabled";
@@ -424,6 +425,14 @@ final class Prefs {
         preferences.edit().putInt(KEY_PANEL_CLOSE, clampPanelClose(value)).apply();
     }
 
+    boolean panelDoubleOutline() {
+        return preferences.getBoolean(KEY_PANEL_DOUBLE_OUTLINE, false);
+    }
+
+    void setPanelDoubleOutline(boolean value) {
+        preferences.edit().putBoolean(KEY_PANEL_DOUBLE_OUTLINE, value).apply();
+    }
+
     static int clampPanelWidth(int value) {
         return Math.max(PANEL_WIDTH_MIN, Math.min(PANEL_WIDTH_MAX, value));
     }
@@ -469,6 +478,7 @@ final class Prefs {
         backup.panelWidthPercent = panelWidthPercent();
         backup.panelBottom = panelBottom();
         backup.panelCloseSeconds = panelCloseSeconds();
+        backup.panelDoubleOutline = panelDoubleOutline();
         return backup;
     }
 
@@ -498,7 +508,8 @@ final class Prefs {
                 .putBoolean(KEY_SHOW_ONLY_IN_APP_LIST, backup.overlayAppListOnly)
                 .putInt(KEY_PANEL_WIDTH, clampPanelWidth(backup.panelWidthPercent))
                 .putBoolean(KEY_PANEL_BOTTOM, backup.panelBottom)
-                .putInt(KEY_PANEL_CLOSE, clampPanelClose(backup.panelCloseSeconds));
+                .putInt(KEY_PANEL_CLOSE, clampPanelClose(backup.panelCloseSeconds))
+                .putBoolean(KEY_PANEL_DOUBLE_OUTLINE, backup.panelDoubleOutline);
         if (backup.overlayOffsetXPx >= 0) {
             editor.putInt(KEY_OVERLAY_X_PX, backup.overlayOffsetXPx).remove(KEY_OVERLAY_X);
         } else {

@@ -117,7 +117,7 @@ public final class ClimatePanelActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = new Prefs(this);
-        content = new InteractiveClimateView(this, this::updateIdleTimer);
+        content = new InteractiveClimateView(this, this::updateIdleTimer, prefs.panelDoubleOutline());
         setContentView(content);
         Window window = getWindow();
         window.setGravity(prefs.panelBottom()

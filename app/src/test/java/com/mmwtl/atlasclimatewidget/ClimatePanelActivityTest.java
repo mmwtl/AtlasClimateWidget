@@ -11,6 +11,9 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.ComponentName;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.os.IBinder;
 import android.os.SystemClock;
@@ -33,6 +36,7 @@ import org.robolectric.RuntimeEnvironment;
 import org.robolectric.Shadows;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
+import org.robolectric.annotation.GraphicsMode;
 import org.robolectric.shadows.ShadowApplication;
 import org.robolectric.shadows.ShadowLooper;
 
@@ -259,6 +263,7 @@ public final class ClimatePanelActivityTest {
     @Test
     public void steeringFocusDrawsInSeparateAndSingleCardLayouts() {
         Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
+        prefs.setPanelDoubleOutline(true);
         for (WidgetConfig.CardLayout cardLayout : WidgetConfig.CardLayout.values()) {
             WidgetConfig config = new WidgetConfig();
             config.cardLayout = cardLayout;
@@ -279,6 +284,50 @@ public final class ClimatePanelActivityTest {
                     view.draw(new android.graphics.Canvas(bitmap));
                     bitmap.recycle();
                 }
+            }
+        }
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    public void doubleOutlineUsesTheCardColorToOrderItsTwoOpaqueStrokes() {
+        Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
+        prefs.setThemeMode(WidgetTheme.FIXED_DAY);
+        prefs.setPanelDoubleOutline(true);
+        WidgetConfig config = new WidgetConfig();
+        config.cardOpacityPercent = 50;
+        config.dayCardColor = 0xFF232528;
+        prefs.setWidget(Prefs.PANEL_ID, config);
+        assertDoubleOutline(0xFF111A20, 0xFFBAE5F6);
+
+        config.dayCardColor = 0xFFEDEEF0;
+        prefs.setWidget(Prefs.PANEL_ID, config);
+        assertDoubleOutline(Color.WHITE, 0xFF204B61);
+    }
+
+    private void assertDoubleOutline(int outer, int inner) {
+        try (ActivityController<ClimatePanelActivity> controller = open()) {
+            ClimatePanelActivity activity = controller.get();
+            InteractiveClimateView view = panelView(activity);
+            int width = activity.getWindow().getAttributes().width;
+            int height = activity.getWindow().getAttributes().height;
+            view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
+            view.layout(0, 0, width, height);
+            view.setSteeringFocus(WidgetConfig.Block.TEMPERATURE);
+            WidgetGeometry.Plan plan = frame(activity, 0).plan();
+            int index = 0;
+            while (plan.strips.get(index).block != WidgetConfig.Block.TEMPERATURE) {
+                index++;
+            }
+            View row = ((ViewGroup) view.getChildAt(0)).getChildAt(index);
+            Bitmap image = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            try {
+                view.draw(new Canvas(image));
+                assertEquals(outer, image.getPixel(width / 2, row.getTop() + 1));
+                assertEquals(inner, image.getPixel(width / 2, row.getTop() + 3));
+            } finally {
+                image.recycle();
             }
         }
     }

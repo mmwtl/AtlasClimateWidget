@@ -383,12 +383,14 @@ public final class MainActivityTest {
         prefs.setWidget(5, first);
         prefs.setFanPresets(Prefs.FanPresets.FIVE);
         prefs.setDirectCar(true);
+        prefs.setPanelDoubleOutline(true);
         String json = prefs.exportBackup(new int[]{12, 5}).toJson("test");
         prefs.raw().edit().clear().commit();
 
         prefs.importBackup(SettingsBackup.parse(json), new int[]{40, 31, 50});
         assertEquals(Prefs.FanPresets.FIVE, prefs.fanPresets());
         assertTrue(prefs.directCar());
+        assertTrue(prefs.panelDoubleOutline());
         assertEquals(3, prefs.widget(31).columns);
         assertEquals(WidgetConfig.Style.CONSOLE, prefs.widget(40).style);
         assertTrue("extra widget gets the template", prefs.hasWidget(50));

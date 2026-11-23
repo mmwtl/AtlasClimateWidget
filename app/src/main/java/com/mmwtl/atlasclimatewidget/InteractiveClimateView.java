@@ -3,6 +3,7 @@ package com.mmwtl.atlasclimatewidget;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
@@ -20,6 +21,8 @@ import java.util.List;
 /** Local touch handling for the HOME overlay and the shortcut's climate window. */
 final class InteractiveClimateView extends FrameLayout {
     private static final float FOCUS_STROKE_DP = 2.5f;
+    private static final float FOCUS_OUTER_DP = 2f;
+    private static final float FOCUS_INNER_DP = 3f;
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Runnable selectionTimeout = this::expireSelection;
@@ -28,6 +31,7 @@ final class InteractiveClimateView extends FrameLayout {
     private final RectF focusRect = new RectF();
 
     private final Runnable onInteraction;
+    private final boolean doubleSteeringOutline;
     private boolean acceptsControls = true;
     private Drag activeDrag;
     private boolean touchHeld;
@@ -37,12 +41,13 @@ final class InteractiveClimateView extends FrameLayout {
     private WidgetConfig.Block steeringFocus;
 
     InteractiveClimateView(Context context) {
-        this(context, () -> {});
+        this(context, () -> {}, false);
     }
 
-    InteractiveClimateView(Context context, Runnable onInteraction) {
+    InteractiveClimateView(Context context, Runnable onInteraction, boolean doubleSteeringOutline) {
         super(context);
         this.onInteraction = onInteraction;
+        this.doubleSteeringOutline = doubleSteeringOutline;
         setWillNotDraw(false);
     }
 
@@ -105,7 +110,8 @@ final class InteractiveClimateView extends FrameLayout {
         float firstScaleY = firstRow.getHeight() / firstStrip.height;
         float lastScaleY = lastRow.getHeight() / lastStrip.height;
         float density = getResources().getDisplayMetrics().density;
-        float stroke = Math.max(1f, FOCUS_STROKE_DP * density);
+        float stroke = Math.max(1f, (doubleSteeringOutline ? FOCUS_OUTER_DP : FOCUS_STROKE_DP)
+                * density);
         float cardLeft = root.getLeft() + firstRow.getLeft() + plan.offsetX() * scaleX;
         float cardRight = cardLeft + plan.width * scaleX;
         float radius;
@@ -133,11 +139,44 @@ final class InteractiveClimateView extends FrameLayout {
         }
         WidgetTheme mode = WidgetTheme.of(WidgetTheme.themed(getContext()));
         WidgetTheme cardTheme = WidgetTheme.forCard(frame.config(), mode);
+        if (doubleSteeringOutline) {
+            drawDoubleSteeringOutline(canvas, radius, stroke, density,
+                    WidgetTheme.cardColor(frame.config(), mode), cardTheme.night);
+            return;
+        }
         Palette palette = frame.config().palette(mode.night);
         focusPaint.setStyle(Paint.Style.STROKE);
         focusPaint.setStrokeWidth(stroke);
         focusPaint.setColor(cardTheme.litIcon(palette, ClimateFunction.Tone.NEUTRAL));
         canvas.drawRoundRect(focusRect, radius, radius, focusPaint);
+    }
+
+    private void drawDoubleSteeringOutline(Canvas canvas, float radius, float outerStroke,
+            float density, int cardColor, boolean darkCard) {
+        focusPaint.setStyle(Paint.Style.FILL);
+        focusPaint.setColor(darkCard ? 0x246BAAC4 : 0x236A9DB6);
+        canvas.drawRoundRect(focusRect, radius, radius, focusPaint);
+
+        // Use opaque strokes so the card opacity and the wallpaper cannot wash out both lines.
+        focusPaint.setStyle(Paint.Style.STROKE);
+        focusPaint.setStrokeWidth(outerStroke);
+        focusPaint.setColor(darkCard ? 0xFF111A20 : Color.WHITE);
+        canvas.drawRoundRect(focusRect, radius, radius, focusPaint);
+
+        float innerStroke = Math.max(1f, FOCUS_INNER_DP * density);
+        float inset = (outerStroke + innerStroke) / 2f;
+        focusRect.inset(inset, inset);
+        if (focusRect.isEmpty()) {
+            return;
+        }
+        int inner = darkCard ? 0xFFBAE5F6 : 0xFF204B61;
+        if (WidgetTheme.contrast(inner, cardColor) < 3) {
+            inner = darkCard ? Color.WHITE : Color.BLACK;
+        }
+        focusPaint.setStrokeWidth(innerStroke);
+        focusPaint.setColor(inner);
+        float innerRadius = Math.max(0f, radius - inset);
+        canvas.drawRoundRect(focusRect, innerRadius, innerRadius, focusPaint);
     }
 
     void resumeControls() {
