@@ -372,6 +372,29 @@ public final class MainActivityTest {
     }
 
     @Test
+    public void steeringSwitchHidesOutlineWithoutResettingItsChoice() {
+        Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
+        prefs.setPanelShowOutline(true);
+        ActivityController<MainActivity> controller = open();
+        try {
+            View root = root(controller);
+            find(root, "Система").performClick();
+            View steering = find(root, "Управление климатом с руля");
+            View outline = find(root, "Показывать обводку выбранного блока");
+            assertTrue(shown(outline));
+            steering.performClick();
+            assertFalse(prefs.panelSteeringEnabled());
+            assertFalse(shown(outline));
+            steering.performClick();
+            assertTrue(prefs.panelSteeringEnabled());
+            assertTrue(shown(outline));
+            assertTrue(((android.widget.Switch) outline).isChecked());
+        } finally {
+            close(controller);
+        }
+    }
+
+    @Test
     public void exportedBackupRestoresWidgetsByPosition() {
         MainActivity activity = Robolectric.buildActivity(MainActivity.class).create().get();
         Prefs prefs = new Prefs(activity);
@@ -383,6 +406,7 @@ public final class MainActivityTest {
         prefs.setWidget(5, first);
         prefs.setFanPresets(Prefs.FanPresets.FIVE);
         prefs.setDirectCar(true);
+        prefs.setPanelSteeringEnabled(false);
         prefs.setPanelShowOutline(true);
         String json = prefs.exportBackup(new int[]{12, 5}).toJson("test");
         prefs.raw().edit().clear().commit();
@@ -390,6 +414,7 @@ public final class MainActivityTest {
         prefs.importBackup(SettingsBackup.parse(json), new int[]{40, 31, 50});
         assertEquals(Prefs.FanPresets.FIVE, prefs.fanPresets());
         assertTrue(prefs.directCar());
+        assertFalse(prefs.panelSteeringEnabled());
         assertTrue(prefs.panelShowOutline());
         assertEquals(3, prefs.widget(31).columns);
         assertEquals(WidgetConfig.Style.CONSOLE, prefs.widget(40).style);

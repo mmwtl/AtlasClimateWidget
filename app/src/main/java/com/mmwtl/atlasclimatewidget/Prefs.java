@@ -24,6 +24,7 @@ final class Prefs {
     static final String KEY_PANEL_WIDTH = "panel_width_percent";
     static final String KEY_PANEL_BOTTOM = "panel_bottom";
     static final String KEY_PANEL_CLOSE = "panel_close_seconds";
+    static final String KEY_PANEL_STEERING = "panel_steering_enabled";
     // Keep the stored choice from the double-outline switch.
     static final String KEY_PANEL_SHOW_OUTLINE = "panel_double_outline";
 
@@ -426,6 +427,14 @@ final class Prefs {
         preferences.edit().putInt(KEY_PANEL_CLOSE, clampPanelClose(value)).apply();
     }
 
+    boolean panelSteeringEnabled() {
+        return preferences.getBoolean(KEY_PANEL_STEERING, true);
+    }
+
+    void setPanelSteeringEnabled(boolean value) {
+        preferences.edit().putBoolean(KEY_PANEL_STEERING, value).apply();
+    }
+
     boolean panelShowOutline() {
         return preferences.getBoolean(KEY_PANEL_SHOW_OUTLINE, false);
     }
@@ -479,6 +488,7 @@ final class Prefs {
         backup.panelWidthPercent = panelWidthPercent();
         backup.panelBottom = panelBottom();
         backup.panelCloseSeconds = panelCloseSeconds();
+        backup.panelSteeringEnabled = panelSteeringEnabled();
         backup.panelShowOutline = panelShowOutline();
         return backup;
     }
@@ -510,6 +520,7 @@ final class Prefs {
                 .putInt(KEY_PANEL_WIDTH, clampPanelWidth(backup.panelWidthPercent))
                 .putBoolean(KEY_PANEL_BOTTOM, backup.panelBottom)
                 .putInt(KEY_PANEL_CLOSE, clampPanelClose(backup.panelCloseSeconds))
+                .putBoolean(KEY_PANEL_STEERING, backup.panelSteeringEnabled)
                 .putBoolean(KEY_PANEL_SHOW_OUTLINE, backup.panelShowOutline);
         if (backup.overlayOffsetXPx >= 0) {
             editor.putInt(KEY_OVERLAY_X_PX, backup.overlayOffsetXPx).remove(KEY_OVERLAY_X);

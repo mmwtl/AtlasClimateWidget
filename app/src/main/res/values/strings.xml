@@ -41,7 +41,7 @@
     <string name="widget_item">Виджет %1$d · %2$s</string>
     <string name="widget_template">Шаблон для новых виджетов</string>
     <string name="panel_shortcut">Окно климата</string>
-    <string name="panel_hint">Чтобы открывать панель кнопкой на руле, в GInputBridge назначьте действие «Запуск ярлыка» и выберите «Окно климата». Пока окно открыто, стрелки ←/→ меняют выбранный блок (по умолчанию температуру водителя), а Play/Pause переключает между температурой и обдувом. Долгое нажатие на плитку сразу выключает опцию. Повторное нажатие кнопки открытия, «Назад» или касание вне панели закроют окно.</string>
+    <string name="panel_hint">Чтобы открывать панель кнопкой на руле, в GInputBridge назначьте действие «Запуск ярлыка» и выберите «Окно климата». Если включено управление с руля, стрелки ←/→ меняют температуру водителя или скорость обдува, а Play/Pause переключает между ними. Долгое нажатие на плитку сразу выключает опцию. Повторное нажатие кнопки открытия, «Назад» или касание вне панели закроют окно.</string>
     <string name="panel_open">Открыть окно</string>
     <string name="panel_edit">Настроить раскладку окна</string>
     <string name="panel_width">Ширина окна</string>
@@ -51,6 +51,7 @@
     <string name="panel_close">Закрывать без касаний через</string>
     <string name="panel_close_never">не закрывать</string>
     <string name="panel_close_seconds">%1$d с</string>
+    <string name="panel_steering_enabled">Управление климатом с руля</string>
     <string name="panel_show_outline">Показывать обводку выбранного блока</string>
     <string name="apply_to_all">Применить ко всем</string>
     <string name="applied_to_all">Раскладка применена ко всем виджетам и шаблону</string>

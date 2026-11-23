@@ -179,6 +179,7 @@ public final class SettingsBackupTest {
         assertEquals(Prefs.PANEL_WIDTH_DEFAULT, parsed.panelWidthPercent);
         assertFalse(parsed.panelBottom);
         assertEquals(Prefs.PANEL_CLOSE_DEFAULT, parsed.panelCloseSeconds);
+        assertTrue(parsed.panelSteeringEnabled);
         assertFalse(parsed.panelShowOutline);
     }
 }

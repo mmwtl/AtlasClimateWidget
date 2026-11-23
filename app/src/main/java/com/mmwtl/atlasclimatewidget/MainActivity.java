@@ -1231,8 +1231,16 @@ public final class MainActivity extends ScaledActivity {
                         : getString(R.string.panel_close_seconds, value),
                 prefs::setPanelCloseSeconds, null);
 
+        boolean steeringEnabled = prefs.panelSteeringEnabled();
+        Switch steering = switchRow(R.string.panel_steering_enabled, steeringEnabled);
         Switch showOutline = switchRow(R.string.panel_show_outline, prefs.panelShowOutline());
+        showOutline.setVisibility(steeringEnabled ? View.VISIBLE : View.GONE);
         showOutline.setOnCheckedChangeListener((view, checked) -> prefs.setPanelShowOutline(checked));
+        steering.setOnCheckedChangeListener((view, checked) -> {
+            prefs.setPanelSteeringEnabled(checked);
+            showOutline.setVisibility(checked ? View.VISIBLE : View.GONE);
+        });
+        card.addView(steering);
         card.addView(showOutline);
 
         Button edit = Ui.button(this, R.string.panel_edit);

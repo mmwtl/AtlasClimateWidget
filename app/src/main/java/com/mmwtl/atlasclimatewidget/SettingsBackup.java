@@ -40,6 +40,7 @@ final class SettingsBackup {
     int panelWidthPercent = Prefs.PANEL_WIDTH_DEFAULT;
     boolean panelBottom;
     int panelCloseSeconds = Prefs.PANEL_CLOSE_DEFAULT;
+    boolean panelSteeringEnabled = true;
     boolean panelShowOutline;
 
     boolean overlayMode;
@@ -91,6 +92,7 @@ final class SettingsBackup {
             window.put("widthPercent", panelWidthPercent);
             window.put("bottom", panelBottom);
             window.put("closeSeconds", panelCloseSeconds);
+            window.put("steeringEnabled", panelSteeringEnabled);
             window.put("doubleOutline", panelShowOutline);
             if (panel != null) {
                 window.put("layout", new JSONObject(panel.toJson()));
@@ -190,6 +192,7 @@ final class SettingsBackup {
             backup.panelBottom = window.optBoolean("bottom", false);
             backup.panelCloseSeconds = Prefs.clampPanelClose(
                     window.optInt("closeSeconds", Prefs.PANEL_CLOSE_DEFAULT));
+            backup.panelSteeringEnabled = window.optBoolean("steeringEnabled", true);
             backup.panelShowOutline = window.optBoolean("doubleOutline", false);
             JSONObject layout = window.optJSONObject("layout");
             if (layout != null) {

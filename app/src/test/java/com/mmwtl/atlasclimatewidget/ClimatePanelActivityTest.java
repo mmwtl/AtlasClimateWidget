@@ -46,6 +46,31 @@ import java.util.concurrent.TimeUnit;
 @Config(sdk = 30, qualifiers = "w720dp-h960dp-mdpi")
 public final class ClimatePanelActivityTest {
     @Test
+    public void disablingSteeringKeepsTheWindowOpenWithoutRegisteringKeys() {
+        android.app.Application application = RuntimeEnvironment.getApplication();
+        Prefs prefs = new Prefs(application);
+        prefs.setPanelSteeringEnabled(false);
+        prefs.setPanelShowOutline(true);
+        ShadowApplication app = Shadows.shadowOf(application);
+        TestOneOs oneOs = new TestOneOs();
+        oneOs.ready = true;
+        ComponentName component = new ComponentName("com.geely.service.oneosapi",
+                "com.geely.service.oneosapi.OneOSApiService");
+        app.setComponentNameAndServiceForBindServiceForIntent(
+                new Intent().setComponent(component), component, oneOs);
+
+        try (ActivityController<ClimatePanelActivity> controller = open()) {
+            controller.windowFocusChanged(true);
+            ShadowLooper.idleMainLooper();
+            assertEquals(ClimateService.ACTION_REFRESH, app.getNextStartedService().getAction());
+            assertNotNull(controller.get().findViewById(R.id.widget_root));
+            assertNull(panelView(controller.get()).steeringFocus());
+            assertNull(oneOs.services);
+            assertNull(oneOs.listener);
+        }
+    }
+
+    @Test
     public void steeringSubscribesWhenInputBecomesAvailableAndStopsAtFocusLoss() throws Exception {
         ShadowApplication app = Shadows.shadowOf(RuntimeEnvironment.getApplication());
         TestOneOs oneOs = new TestOneOs();

@@ -177,7 +177,7 @@ public final class ClimatePanelActivity extends Activity {
     }
 
     private void updateSteering(boolean focused) {
-        if (focused && resumed && !isFinishing()) {
+        if (focused && resumed && !isFinishing() && prefs.panelSteeringEnabled()) {
             WidgetConfig config = prefs.widget(Prefs.PANEL_ID);
             boolean tempEnabled = config.isEnabled(WidgetConfig.Block.TEMPERATURE);
             boolean fanEnabled = config.isEnabled(WidgetConfig.Block.FAN);
