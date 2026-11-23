@@ -1231,9 +1231,9 @@ public final class MainActivity extends ScaledActivity {
                         : getString(R.string.panel_close_seconds, value),
                 prefs::setPanelCloseSeconds, null);
 
-        Switch doubleOutline = switchRow(R.string.panel_double_outline, prefs.panelDoubleOutline());
-        doubleOutline.setOnCheckedChangeListener((view, checked) -> prefs.setPanelDoubleOutline(checked));
-        card.addView(doubleOutline);
+        Switch showOutline = switchRow(R.string.panel_show_outline, prefs.panelShowOutline());
+        showOutline.setOnCheckedChangeListener((view, checked) -> prefs.setPanelShowOutline(checked));
+        card.addView(showOutline);
 
         Button edit = Ui.button(this, R.string.panel_edit);
         Ui.topMargin(edit, 12);

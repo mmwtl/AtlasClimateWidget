@@ -30,7 +30,7 @@ public final class SettingsBackupTest {
         backup.panelWidthPercent = 75;
         backup.panelBottom = true;
         backup.panelCloseSeconds = 0;
-        backup.panelDoubleOutline = true;
+        backup.panelShowOutline = true;
         WidgetConfig first = new WidgetConfig();
         first.style = WidgetConfig.Style.CONSOLE;
         first.setTileLevels(ClimateFunction.WHEEL_HEAT, 2, 3);
@@ -62,7 +62,7 @@ public final class SettingsBackupTest {
             assertEquals(75, copy.panelWidthPercent);
             assertTrue(copy.panelBottom);
             assertEquals(0, copy.panelCloseSeconds);
-            assertTrue(copy.panelDoubleOutline);
+            assertTrue(copy.panelShowOutline);
             assertEquals(2, copy.widgets.size());
             assertEquals(WidgetConfig.Style.CONSOLE, copy.widgets.get(0).style);
             assertTrue(java.util.Arrays.equals(new int[]{2, 3},
@@ -179,6 +179,6 @@ public final class SettingsBackupTest {
         assertEquals(Prefs.PANEL_WIDTH_DEFAULT, parsed.panelWidthPercent);
         assertFalse(parsed.panelBottom);
         assertEquals(Prefs.PANEL_CLOSE_DEFAULT, parsed.panelCloseSeconds);
-        assertFalse(parsed.panelDoubleOutline);
+        assertFalse(parsed.panelShowOutline);
     }
 }

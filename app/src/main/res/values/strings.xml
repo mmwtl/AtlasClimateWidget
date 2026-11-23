@@ -51,7 +51,7 @@
     <string name="panel_close">Закрывать без касаний через</string>
     <string name="panel_close_never">не закрывать</string>
     <string name="panel_close_seconds">%1$d с</string>
-    <string name="panel_double_outline">Двойной контур выбранного блока</string>
+    <string name="panel_show_outline">Показывать обводку выбранного блока</string>
     <string name="apply_to_all">Применить ко всем</string>
     <string name="applied_to_all">Раскладка применена ко всем виджетам и шаблону</string>
     <string name="reset_layout">Сбросить</string>

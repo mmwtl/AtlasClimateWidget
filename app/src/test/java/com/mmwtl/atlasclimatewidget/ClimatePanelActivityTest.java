@@ -263,7 +263,7 @@ public final class ClimatePanelActivityTest {
     @Test
     public void steeringFocusDrawsInSeparateAndSingleCardLayouts() {
         Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
-        prefs.setPanelDoubleOutline(true);
+        prefs.setPanelShowOutline(true);
         for (WidgetConfig.CardLayout cardLayout : WidgetConfig.CardLayout.values()) {
             WidgetConfig config = new WidgetConfig();
             config.cardLayout = cardLayout;
@@ -290,10 +290,38 @@ public final class ClimatePanelActivityTest {
 
     @Test
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    public void hiddenOutlineLeavesTheFocusedBlockVisuallyUnchanged() {
+        Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
+        prefs.setPanelShowOutline(false);
+        try (ActivityController<ClimatePanelActivity> controller = open()) {
+            ClimatePanelActivity activity = controller.get();
+            InteractiveClimateView view = panelView(activity);
+            int width = activity.getWindow().getAttributes().width;
+            int height = activity.getWindow().getAttributes().height;
+            view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
+            view.layout(0, 0, width, height);
+            Bitmap before = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            Bitmap after = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            try {
+                view.draw(new Canvas(before));
+                view.setSteeringFocus(WidgetConfig.Block.TEMPERATURE);
+                view.draw(new Canvas(after));
+                assertEquals(WidgetConfig.Block.TEMPERATURE, view.steeringFocus());
+                assertTrue(before.sameAs(after));
+            } finally {
+                before.recycle();
+                after.recycle();
+            }
+        }
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
     public void doubleOutlineUsesTheCardColorToOrderItsTwoOpaqueStrokes() {
         Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
         prefs.setThemeMode(WidgetTheme.FIXED_DAY);
-        prefs.setPanelDoubleOutline(true);
+        prefs.setPanelShowOutline(true);
         WidgetConfig config = new WidgetConfig();
         config.cardOpacityPercent = 50;
         config.dayCardColor = 0xFF232528;

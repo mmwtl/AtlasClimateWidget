@@ -20,7 +20,6 @@ import java.util.List;
 
 /** Local touch handling for the HOME overlay and the shortcut's climate window. */
 final class InteractiveClimateView extends FrameLayout {
-    private static final float FOCUS_STROKE_DP = 2.5f;
     private static final float FOCUS_OUTER_DP = 2f;
     private static final float FOCUS_INNER_DP = 3f;
 
@@ -31,7 +30,7 @@ final class InteractiveClimateView extends FrameLayout {
     private final RectF focusRect = new RectF();
 
     private final Runnable onInteraction;
-    private final boolean doubleSteeringOutline;
+    private final boolean showSteeringOutline;
     private boolean acceptsControls = true;
     private Drag activeDrag;
     private boolean touchHeld;
@@ -44,10 +43,10 @@ final class InteractiveClimateView extends FrameLayout {
         this(context, () -> {}, false);
     }
 
-    InteractiveClimateView(Context context, Runnable onInteraction, boolean doubleSteeringOutline) {
+    InteractiveClimateView(Context context, Runnable onInteraction, boolean showSteeringOutline) {
         super(context);
         this.onInteraction = onInteraction;
-        this.doubleSteeringOutline = doubleSteeringOutline;
+        this.showSteeringOutline = showSteeringOutline;
         setWillNotDraw(false);
     }
 
@@ -69,7 +68,9 @@ final class InteractiveClimateView extends FrameLayout {
     @Override
     protected void dispatchDraw(Canvas canvas) {
         super.dispatchDraw(canvas);
-        drawSteeringFocus(canvas);
+        if (showSteeringOutline) {
+            drawSteeringFocus(canvas);
+        }
     }
 
     /** Outlines the block currently driven by steering-wheel arrows in the climate window. */
@@ -110,8 +111,7 @@ final class InteractiveClimateView extends FrameLayout {
         float firstScaleY = firstRow.getHeight() / firstStrip.height;
         float lastScaleY = lastRow.getHeight() / lastStrip.height;
         float density = getResources().getDisplayMetrics().density;
-        float stroke = Math.max(1f, (doubleSteeringOutline ? FOCUS_OUTER_DP : FOCUS_STROKE_DP)
-                * density);
+        float stroke = Math.max(1f, FOCUS_OUTER_DP * density);
         float cardLeft = root.getLeft() + firstRow.getLeft() + plan.offsetX() * scaleX;
         float cardRight = cardLeft + plan.width * scaleX;
         float radius;
@@ -139,16 +139,8 @@ final class InteractiveClimateView extends FrameLayout {
         }
         WidgetTheme mode = WidgetTheme.of(WidgetTheme.themed(getContext()));
         WidgetTheme cardTheme = WidgetTheme.forCard(frame.config(), mode);
-        if (doubleSteeringOutline) {
-            drawDoubleSteeringOutline(canvas, radius, stroke, density,
-                    WidgetTheme.cardColor(frame.config(), mode), cardTheme.night);
-            return;
-        }
-        Palette palette = frame.config().palette(mode.night);
-        focusPaint.setStyle(Paint.Style.STROKE);
-        focusPaint.setStrokeWidth(stroke);
-        focusPaint.setColor(cardTheme.litIcon(palette, ClimateFunction.Tone.NEUTRAL));
-        canvas.drawRoundRect(focusRect, radius, radius, focusPaint);
+        drawDoubleSteeringOutline(canvas, radius, stroke, density,
+                WidgetTheme.cardColor(frame.config(), mode), cardTheme.night);
     }
 
     private void drawDoubleSteeringOutline(Canvas canvas, float radius, float outerStroke,

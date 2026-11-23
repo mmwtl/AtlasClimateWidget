@@ -24,7 +24,8 @@ final class Prefs {
     static final String KEY_PANEL_WIDTH = "panel_width_percent";
     static final String KEY_PANEL_BOTTOM = "panel_bottom";
     static final String KEY_PANEL_CLOSE = "panel_close_seconds";
-    static final String KEY_PANEL_DOUBLE_OUTLINE = "panel_double_outline";
+    // Keep the stored choice from the double-outline switch.
+    static final String KEY_PANEL_SHOW_OUTLINE = "panel_double_outline";
 
     static final String KEY_DISPLAY_MODE = "overlay_mode";
     static final String KEY_OVERLAY_ENABLED = "overlay_enabled";
@@ -425,12 +426,12 @@ final class Prefs {
         preferences.edit().putInt(KEY_PANEL_CLOSE, clampPanelClose(value)).apply();
     }
 
-    boolean panelDoubleOutline() {
-        return preferences.getBoolean(KEY_PANEL_DOUBLE_OUTLINE, false);
+    boolean panelShowOutline() {
+        return preferences.getBoolean(KEY_PANEL_SHOW_OUTLINE, false);
     }
 
-    void setPanelDoubleOutline(boolean value) {
-        preferences.edit().putBoolean(KEY_PANEL_DOUBLE_OUTLINE, value).apply();
+    void setPanelShowOutline(boolean value) {
+        preferences.edit().putBoolean(KEY_PANEL_SHOW_OUTLINE, value).apply();
     }
 
     static int clampPanelWidth(int value) {
@@ -478,7 +479,7 @@ final class Prefs {
         backup.panelWidthPercent = panelWidthPercent();
         backup.panelBottom = panelBottom();
         backup.panelCloseSeconds = panelCloseSeconds();
-        backup.panelDoubleOutline = panelDoubleOutline();
+        backup.panelShowOutline = panelShowOutline();
         return backup;
     }
 
@@ -509,7 +510,7 @@ final class Prefs {
                 .putInt(KEY_PANEL_WIDTH, clampPanelWidth(backup.panelWidthPercent))
                 .putBoolean(KEY_PANEL_BOTTOM, backup.panelBottom)
                 .putInt(KEY_PANEL_CLOSE, clampPanelClose(backup.panelCloseSeconds))
-                .putBoolean(KEY_PANEL_DOUBLE_OUTLINE, backup.panelDoubleOutline);
+                .putBoolean(KEY_PANEL_SHOW_OUTLINE, backup.panelShowOutline);
         if (backup.overlayOffsetXPx >= 0) {
             editor.putInt(KEY_OVERLAY_X_PX, backup.overlayOffsetXPx).remove(KEY_OVERLAY_X);
         } else {
