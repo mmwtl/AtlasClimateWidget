@@ -793,10 +793,6 @@ final class WidgetRenderer {
         final boolean dormant;
         final boolean known;
 
-        BarButton(int icon, String label, boolean active, boolean known, boolean dormant) {
-            this(icon, label, active, known, dormant, 1f);
-        }
-
         BarButton(int icon, String label, boolean active, boolean known, boolean dormant,
                 float iconScale) {
             this.icon = icon;
@@ -838,13 +834,15 @@ final class WidgetRenderer {
             boolean known = state.property(Hvac.AUTO_FAN_SETTING, Hvac.ZONE_ROW_1_ALL) != null;
             int[] labels = presetLabels();
             int count = ClimateCommands.fanPresets(config.fanPresetCount).length;
+            ClimateFunction preset = ClimateFunction.FAN_SOFT;
+            int icon = config.fanLabels ? 0 : preset.icon(config.iconSet, 0);
+            float iconScale = preset.iconScale(config.iconSet);
             List<BarButton> presets = new ArrayList<>();
             for (int index = 0; index < count; index++) {
-                int icon = config.fanLabels ? 0 : fanIcon();
-                float scale = config.fanLabels ? 1f : presetIconScale(index, count);
                 presets.add(new BarButton(icon,
                         context.getString(labels[Math.min(index, labels.length - 1)]),
-                        index == active && showKept, known, off, scale));
+                        index == active && showKept, known, off,
+                        iconScale * presetIconScale(index, count)));
             }
             drawBarButtons(canvas, partEdges(strip, count, cell), 0f, strip.contentHeight,
                     presets, false, strip.contentHeight, config.bareButtons());
@@ -856,7 +854,7 @@ final class WidgetRenderer {
                     model);
             directions.add(new BarButton(direction.icon(config.iconSet, 0),
                     context.getString(direction.shortRes), tileState.active && showKept,
-                    tileState.known, tileState.dormant));
+                    tileState.known, tileState.dormant, direction.iconScale(config.iconSet)));
         }
         drawBarButtons(canvas, partEdges(strip, directions.size(), cell), 0f,
                 strip.contentHeight, directions, false, strip.contentHeight,
@@ -890,7 +888,8 @@ final class WidgetRenderer {
         auto.add(new BarButton(ClimateFunction.AUTO.icon(config.iconSet, 0),
                 ClimateFunction.AUTO.glyph,
                 ClimateCommands.fanState(state).auto && keptShown(),
-                ClimateCommands.shownAutoMode(state) != null, ClimateCommands.powerOff(state)));
+                ClimateCommands.shownAutoMode(state) != null, ClimateCommands.powerOff(state),
+                ClimateFunction.AUTO.iconScale(config.iconSet)));
         drawBarButtons(canvas, new float[]{plan.padding,
                 plan.padding + strip.autoCells * cell}, top, bottom, auto, true, textHeight,
                 config.bareButtons());
@@ -990,7 +989,7 @@ final class WidgetRenderer {
             float cx = (start + end) / 2f;
             if (bare) {
                 // A glyph such as AUTO spans the whole block, so it keeps the pill's size.
-                float bareSize = glyph ? icon : bareIcon(end - start, height) * button.iconScale;
+                float bareSize = glyph ? icon : bareIcon(end - start, height);
                 drawBarContent(canvas, button, bareContent(button.on, button.kept,
                         button.dormant, button.known), cx, cy,
                         bareSize, iconGap, false, glyph);
@@ -1027,8 +1026,7 @@ final class WidgetRenderer {
             if (!button.known) {
                 content = withAlpha(content, Math.round(255 * UNKNOWN_ALPHA));
             }
-            drawBarContent(canvas, button, content, cx, cy, icon * button.iconScale, iconGap,
-                    named, glyph);
+            drawBarContent(canvas, button, content, cx, cy, icon, iconGap, named, glyph);
         }
     }
 
@@ -1038,11 +1036,11 @@ final class WidgetRenderer {
         if (button.icon == 0) {
             drawCenteredLine(canvas, button.label, cx, cy);
         } else if (!named || glyph) {
-            drawIcon(canvas, button.icon, cx, cy, icon, content);
+            drawIcon(canvas, button.icon, cx, cy, icon * button.iconScale, content);
         } else {
             float width = textPaint.measureText(button.label);
             float x = cx - (icon + iconGap + width) / 2f;
-            drawIcon(canvas, button.icon, x + icon / 2f, cy, icon, content);
+            drawIcon(canvas, button.icon, x + icon / 2f, cy, icon * button.iconScale, content);
             drawCenteredLine(canvas, button.label, x + icon + iconGap + width / 2f, cy);
         }
     }
@@ -1115,7 +1113,7 @@ final class WidgetRenderer {
             float right = plan.padding + (index + 1) * cell
                     - (index == strip.zoneCount - 1 ? 0f : gap / 2f);
             if (bare && direction) {
-                drawIcon(canvas, WidgetConfig.FAN_DIRECTIONS[index].icon(config.iconSet, 0),
+                drawFunctionIcon(canvas, WidgetConfig.FAN_DIRECTIONS[index],
                         (left + right) / 2f, height / 2f, bareIcon(right - left, height),
                         bareContent(on, kept, dormant, known));
                 continue;
@@ -1153,7 +1151,7 @@ final class WidgetRenderer {
             float cy = top + pillHeight / 2f;
             float iconMax = Math.min(right - left, pillHeight);
             if (direction) {
-                drawIcon(canvas, WidgetConfig.FAN_DIRECTIONS[index].icon(config.iconSet, 0), cx, cy,
+                drawFunctionIcon(canvas, WidgetConfig.FAN_DIRECTIONS[index], cx, cy,
                         iconMax * 0.92f, content);
                 continue;
             }
@@ -1161,7 +1159,7 @@ final class WidgetRenderer {
             float grow = presets <= 1 ? 1f : preset / (float) (presets - 1);
             float icon = iconMax * (0.52f + 0.34f * grow);
             if (!withLabels) {
-                drawIcon(canvas, fanIcon(), cx, cy, icon, content);
+                drawFanIcon(canvas, cx, cy, icon, content);
                 continue;
             }
             textPaint.setTypeface(Typeface.DEFAULT_BOLD);
@@ -1181,7 +1179,7 @@ final class WidgetRenderer {
                 continue;
             }
             float start = cx - (iconSlot + iconGap + textWidth) / 2f;
-            drawIcon(canvas, fanIcon(), start + iconSlot / 2f, cy,
+            drawFanIcon(canvas, start + iconSlot / 2f, cy,
                     pillHeight * (0.44f + 0.22f * grow), content);
             canvas.drawText(label, start + iconSlot + iconGap,
                     cy - textBounds(label).exactCenterY(), textPaint);
@@ -1303,23 +1301,23 @@ final class WidgetRenderer {
                 } else {
                     float iconMax = bare ? bareIcon(cell, height)
                             : Math.min(cell * 0.8f, height * 0.72f);
-                    drawIcon(canvas, fanIcon(), cx, cy,
+                    drawFanIcon(canvas, cx, cy,
                             iconMax * presetIconScale(index, strip.zoneCount), content);
                 }
                 continue;
             }
-            int iconRes = WidgetConfig.FAN_DIRECTIONS[index].icon(config.iconSet, 0);
+            ClimateFunction direction = WidgetConfig.FAN_DIRECTIONS[index];
             if (bare) {
-                drawIcon(canvas, iconRes, cx, cy, bareIcon(cell, height), content);
+                drawFunctionIcon(canvas, direction, cx, cy, bareIcon(cell, height), content);
                 continue;
             }
             if (!withNames) {
-                drawIcon(canvas, iconRes, cx, cy, icon, content);
+                drawFunctionIcon(canvas, direction, cx, cy, icon, content);
                 continue;
             }
             float width = textPaint.measureText(names[index]);
             float start = cx - (icon + iconGap + width) / 2f;
-            drawIcon(canvas, iconRes, start + icon / 2f, cy, icon, content);
+            drawFunctionIcon(canvas, direction, start + icon / 2f, cy, icon, content);
             drawCenteredLine(canvas, names[index], start + icon + iconGap + width / 2f, cy);
         }
     }
@@ -1335,7 +1333,7 @@ final class WidgetRenderer {
             paint.setColor(theme.raised);
             canvas.drawCircle(cx, cy, size * 0.4f, paint);
         }
-        drawIcon(canvas, fanIcon(), cx, cy, size * iconRatio, theme.text);
+        drawFanIcon(canvas, cx, cy, size * iconRatio, theme.text);
     }
 
     // ---- tiles -------------------------------------------------------------------------------
@@ -1529,9 +1527,14 @@ final class WidgetRenderer {
         paint.setStyle(Paint.Style.FILL);
     }
 
-    private int fanIcon() {
-        return config.iconSet == WidgetConfig.IconSet.OEM ? R.drawable.ic_oem_fan
-                : R.drawable.ic_fan;
+    private void drawFanIcon(Canvas canvas, float cx, float cy, float size, int color) {
+        drawFunctionIcon(canvas, ClimateFunction.FAN_SOFT, cx, cy, size, color);
+    }
+
+    private void drawFunctionIcon(Canvas canvas, ClimateFunction function,
+            float cx, float cy, float size, int color) {
+        drawIcon(canvas, function.icon(config.iconSet, 0), cx, cy,
+                size * function.iconScale(config.iconSet), color);
     }
 
     private void drawIcon(Canvas canvas, int res, float cx, float cy, float size, int color) {

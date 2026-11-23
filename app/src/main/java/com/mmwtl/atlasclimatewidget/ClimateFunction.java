@@ -381,7 +381,7 @@ enum ClimateFunction {
         int[] levelIcons;
         int[] levelNames;
         int[] oemIcons;
-        float oemScale = 1f;
+        float oemScale = 1.10f;
 
         static Spec toggle(int propertyId, int area, int onValue, int offValue) {
             Spec spec = new Spec();
