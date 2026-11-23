@@ -75,7 +75,7 @@ public final class SettingsBackupTest {
         SettingsBackup backup = new SettingsBackup();
         backup.overlayMode = true;
         backup.overlay = new WidgetConfig();
-        backup.overlay.temperatureDual = true;
+        backup.overlay.temperatureZones = WidgetConfig.TempZones.BOTH;
         backup.overlayWidthPercent = 75;
         backup.overlayHeightPercent = 34;
         backup.overlayCorner = OverlayCorner.TOP_END.preferenceValue;
@@ -86,7 +86,7 @@ public final class SettingsBackupTest {
 
         SettingsBackup copy = SettingsBackup.parse(backup.toJson("1.6.1"));
         assertTrue(copy.overlayMode);
-        assertTrue(copy.overlay.temperatureDual);
+        assertTrue(copy.overlay.hasPassengerTemperature());
         assertEquals(75, copy.overlayWidthPercent);
         assertEquals(34, copy.overlayHeightPercent);
         assertEquals(OverlayCorner.TOP_END.preferenceValue, copy.overlayCorner);

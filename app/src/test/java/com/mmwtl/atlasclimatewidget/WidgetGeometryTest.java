@@ -373,7 +373,7 @@ public final class WidgetGeometryTest {
             WidgetConfig config = new WidgetConfig();
             config.infoEnabled = false;
             config.style = style;
-            config.temperatureDual = true;
+            config.temperatureZones = WidgetConfig.TempZones.BOTH;
             config.temperatureLayout = WidgetConfig.TempLayout.BUTTONS;
             config.temperatureButtons = false;
             config.scalePercent = 100;
@@ -393,7 +393,7 @@ public final class WidgetGeometryTest {
             assertEquals("tempstep/4/-1", WidgetViews.control(config, row, half));
             assertEquals("tempstep/4/1", WidgetViews.control(config, row, row.zoneCount - 1));
 
-            config.temperatureDual = false;
+            config.temperatureZones = WidgetConfig.TempZones.DRIVER;
             row = WidgetGeometry.plan(config, 640f, 0f, 1f, 25).strips.get(0);
             assertEquals(WidgetGeometry.RowKind.TEMP_BUTTONS, row.row.kind);
             assertTrue(row.zoneCount >= 3);
@@ -406,7 +406,7 @@ public final class WidgetGeometryTest {
     @Test public void edgeLayoutStacksPlusAboveMinusAtTheEdges() {
         WidgetConfig config = new WidgetConfig();
         config.infoEnabled = false;
-        config.temperatureDual = true;
+        config.temperatureZones = WidgetConfig.TempZones.BOTH;
         config.temperatureLayout = WidgetConfig.TempLayout.EDGES;
         config.scalePercent = 100;
         WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
@@ -425,7 +425,7 @@ public final class WidgetGeometryTest {
         assertEquals("tempstep/4/-1", WidgetViews.control(config, minus, last));
         assertNull("the values are inert", WidgetViews.control(config, plus, last / 2));
 
-        config.temperatureDual = false;
+        config.temperatureZones = WidgetConfig.TempZones.DRIVER;
         plus = WidgetGeometry.plan(config, 640f, 0f, 1f, 25).strips.get(0);
         assertNull("one zone keeps its stack on the right", WidgetViews.control(config, plus, 0));
         assertEquals("tempstep/1/1", WidgetViews.control(config, plus, plus.zoneCount - 1));
@@ -434,7 +434,7 @@ public final class WidgetGeometryTest {
     @Test public void consoleDualZoneStacksValueAndBarPerZone() {
         WidgetConfig config = new WidgetConfig();
         config.infoEnabled = false;
-        config.temperatureDual = true;
+        config.temperatureZones = WidgetConfig.TempZones.BOTH;
         config.style = WidgetConfig.Style.CONSOLE;
         WidgetGeometry.Plan plan = WidgetGeometry.plan(config, 640f, 0f, 1f, 25);
         WidgetGeometry.RowKind[] kinds = {WidgetGeometry.RowKind.TEMP_VALUE,

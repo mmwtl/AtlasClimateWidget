@@ -256,7 +256,7 @@ final class ClimateOverlay implements SharedPreferences.OnSharedPreferenceChange
         if (heightPx > 0) {
             return new WidgetViews.Size(width, heightPx);
         }
-        WidgetGeometry.Plan plan = WidgetGeometry.plan(config, width, 0, density,
+        WidgetGeometry.Plan plan = WidgetGeometry.plan(config.forClimate(state), width, 0, density,
                 ClimateCommands.tempRange(state).steps());
         int height = plan.strips.isEmpty() ? Math.round(56 * density)
                 : (int) Math.ceil(plan.totalHeight());

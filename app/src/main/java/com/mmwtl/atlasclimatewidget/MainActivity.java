@@ -1826,8 +1826,7 @@ public final class MainActivity extends ScaledActivity {
                     break;
                 case TEMPERATURE:
                     options.addView(temperatureLayouts());
-                    options.addView(configSwitch(R.string.temp_dual, config.temperatureDual,
-                            value -> config.temperatureDual = value));
+                    options.addView(temperatureZones());
                     if (config.temperatureButtonsOnly()) {
                         options.addView(hint(
                                 config.temperatureLayout == WidgetConfig.TempLayout.EDGES
@@ -1908,6 +1907,26 @@ public final class MainActivity extends ScaledActivity {
             Ui.addSegment(layouts, segment);
         }
         return layouts;
+    }
+
+    private LinearLayout temperatureZones() {
+        LinearLayout zones = new LinearLayout(this);
+        zones.setOrientation(LinearLayout.HORIZONTAL);
+        Ui.topMargin(zones, 6);
+        for (WidgetConfig.TempZones mode : WidgetConfig.TempZones.values()) {
+            TextView segment = Ui.segment(this, mode.titleRes);
+            Ui.setSegmentSelected(this, segment, config.temperatureZones == mode);
+            if (config.temperatureZones != mode) {
+                segment.setBackground(Ui.rounded(Ui.SURFACE, Ui.dp(this, 8)));
+            }
+            segment.setOnClickListener(view -> {
+                config.temperatureZones = mode;
+                changed();
+                rebuildBlocks();
+            });
+            Ui.addSegment(zones, segment);
+        }
+        return zones;
     }
 
     private LinearLayout fanLayouts() {
@@ -2327,21 +2346,23 @@ public final class MainActivity extends ScaledActivity {
         boolean demo = !live.isConnected() || !hasClimateValues(live);
         previewCaption.setText(!live.isConnected() ? R.string.preview_demo
                 : demo ? R.string.preview_demo_no_car : R.string.preview_live);
+        ClimateState state = demo ? DemoState.INSTANCE : live;
+        WidgetConfig layout = config.forClimate(state);
         WidgetViews.Size size;
         if (editedWidget == TEMPLATE) {
             float density = getApplicationContext().getResources().getDisplayMetrics().density;
             size = new WidgetViews.Size(Math.round(WidgetGeometry.DEFAULT_WIDTH_DP * density), 0);
         } else if (editedWidget == Prefs.PANEL_ID) {
-            size = panelSize(config);
+            size = ClimatePanelActivity.size(this, prefs.panelWidthPercent(), layout, state);
         } else if (editedWidget == Prefs.OVERLAY_ID) {
             Context app = getApplicationContext();
-            size = ClimateOverlay.size(app, ClimateOverlay.displayBounds(this), prefs, config, live);
+            size = ClimateOverlay.size(app, ClimateOverlay.displayBounds(this), prefs, layout, state);
         } else {
             size = ClimateService.widgetSize(getApplicationContext(), editedWidget);
         }
         try {
-            RemoteViews views = WidgetViews.build(withEditedMode(getApplicationContext()), config,
-                    demo ? DemoState.INSTANCE : live, prefs.carModel(), size, false, 1f);
+            RemoteViews views = WidgetViews.build(withEditedMode(getApplicationContext()), layout,
+                    state, prefs.carModel(), size, false, 1f);
             View preview = views.apply(withEditedMode(this), previewHost);
             int width = previewHost.getWidth() - previewHost.getPaddingLeft()
                     - previewHost.getPaddingRight();
@@ -2356,10 +2377,10 @@ public final class MainActivity extends ScaledActivity {
             }
             previewHost.removeAllViews();
             previewHost.addView(HeightReport.framePreview(this, preview, size, maxWidth));
-            WidgetGeometry.Plan plan = WidgetGeometry.plan(config, size.widthPx, size.heightPx,
+            WidgetGeometry.Plan plan = WidgetGeometry.plan(layout, size.widthPx, size.heightPx,
                     getApplicationContext().getResources().getDisplayMetrics().density,
-                    ClimateCommands.tempRange(demo ? DemoState.INSTANCE : live).steps());
-            previewHost.setLayout(config, plan, editNight ? WidgetTheme.NIGHT : WidgetTheme.DAY);
+                    ClimateCommands.tempRange(state).steps());
+            previewHost.setLayout(layout, plan, editNight ? WidgetTheme.NIGHT : WidgetTheme.DAY);
             if (editedWidget == Prefs.OVERLAY_ID) {
                 if (overlaySizeReport != null) {
                     overlaySizeReport.setText(plan.verticalScale < 1f
@@ -2375,11 +2396,6 @@ public final class MainActivity extends ScaledActivity {
         } catch (RuntimeException error) {
             AppLog.warn("Preview failed", error);
         }
-    }
-
-    private WidgetViews.Size panelSize(WidgetConfig layout) {
-        return ClimatePanelActivity.size(this, prefs.panelWidthPercent(), layout,
-                ClimateService.STORE.snapshot(SystemClock.elapsedRealtime()));
     }
 
     private Context withEditedMode(Context base) {

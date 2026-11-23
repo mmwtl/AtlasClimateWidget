@@ -353,18 +353,20 @@ public final class WidgetSetupActivity extends ScaledActivity {
         boolean demo = !live.isConnected()
                 || ClimateCommands.temperature(live, Hvac.ZONE_DRIVER) == null;
         previewCaption.setText(demo ? R.string.setup_preview_demo : R.string.setup_preview_live);
+        ClimateState state = demo ? DemoState.INSTANCE : live;
+        WidgetConfig layout = config.forClimate(state);
         WidgetViews.Size size = ClimateService.widgetSize(getApplicationContext(), widgetId);
         try {
-            RemoteViews views = WidgetViews.build(WidgetTheme.themed(getApplicationContext()), config,
-                    demo ? DemoState.INSTANCE : live, prefs.carModel(), size, false, 1f);
+            RemoteViews views = WidgetViews.build(WidgetTheme.themed(getApplicationContext()), layout,
+                    state, prefs.carModel(), size, false, 1f);
             View preview = views.apply(this, previewHost);
             int width = previewHost.getWidth() - previewHost.getPaddingLeft()
                     - previewHost.getPaddingRight();
             // Keep the preview short enough that the choices stay on screen.
             float appDensity = getApplicationContext().getResources().getDisplayMetrics().density;
             int maxHeight = Math.round(getResources().getDisplayMetrics().heightPixels * .3f);
-            WidgetGeometry.Plan plan = WidgetGeometry.plan(config, size.widthPx, size.heightPx,
-                    appDensity, ClimateCommands.tempRange(DemoState.INSTANCE).steps());
+            WidgetGeometry.Plan plan = WidgetGeometry.plan(layout, size.widthPx, size.heightPx,
+                    appDensity, ClimateCommands.tempRange(state).steps());
             float cellHeight = size.heightPx > 0 ? size.heightPx : plan.totalHeight();
             int fitWidth = cellHeight <= 0f ? width
                     : Math.round(maxHeight * size.widthPx / cellHeight);

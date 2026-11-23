@@ -57,8 +57,11 @@ final class WatchList {
     private void add(WidgetConfig config, CarModel model) {
         if (config.isEnabled(WidgetConfig.Block.TEMPERATURE)) {
             property(Hvac.TEMP, Hvac.ZONE_DRIVER, true);
-            if (config.temperatureDual) {
+            if (config.hasPassengerTemperature()) {
                 property(Hvac.TEMP, Hvac.ZONE_PASSENGER, true);
+            }
+            if (config.temperatureZones == WidgetConfig.TempZones.SYNC) {
+                property(Hvac.TEMP_DUAL, Gib.AREA_GLOBAL, false);
             }
             property(Hvac.TEMP_MIN, Hvac.ZONE_DRIVER, true);
             property(Hvac.TEMP_MAX, Hvac.ZONE_DRIVER, true);

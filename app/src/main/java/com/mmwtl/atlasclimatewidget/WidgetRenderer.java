@@ -353,7 +353,7 @@ final class WidgetRenderer {
         }
         float top = 0f;
         float barHeight = strip.contentHeight;
-        if (config.temperatureDual) {
+        if (config.hasPassengerTemperature()) {
             float labelHeight = strip.contentHeight * WidgetGeometry.TEMP_LABEL_DP
                     / WidgetGeometry.temperatureRowDp(config);
             textPaint.setTypeface(Typeface.DEFAULT);
@@ -426,7 +426,7 @@ final class WidgetRenderer {
         float valueHeight = height * WidgetGeometry.CONSOLE_VALUE_ROW_DP
                 / WidgetGeometry.consoleValueRowDp(config);
         float cx = plan.width / 2f;
-        if (config.temperatureDual) {
+        if (config.hasPassengerTemperature()) {
             float labelHeight = height - valueHeight;
             textPaint.setTypeface(MEDIUM);
             textPaint.setTextSize(Math.min(11f * dp, labelHeight * 0.8f));
@@ -469,7 +469,7 @@ final class WidgetRenderer {
             return;
         }
         boolean console = config.style == WidgetConfig.Style.CONSOLE;
-        int zones = config.temperatureDual ? 2 : 1;
+        int zones = config.hasPassengerTemperature() ? 2 : 1;
         float height = strip.contentHeight;
         float valueHeight = height * WidgetGeometry.temperatureButtonsValueShare(config);
         float labelHeight = height - valueHeight;
@@ -532,7 +532,7 @@ final class WidgetRenderer {
      */
     private void drawTemperatureEdges(Canvas canvas, WidgetGeometry.Strip strip) {
         boolean console = config.style == WidgetConfig.Style.CONSOLE;
-        boolean dual = config.temperatureDual;
+        boolean dual = config.hasPassengerTemperature();
         float inner = plan.width - 2f * plan.padding;
         float cell = inner / strip.zoneCount;
         float diameter = console ? consoleButton()

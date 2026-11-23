@@ -95,8 +95,9 @@ public final class ClimateService extends Service {
     /** Content last pushed to each widget, see {@link #update}. */
     private static final Map<Integer, Frame> FRAMES = new HashMap<>();
     /** Widget id and strip key of the bar under an open scrubber. */
-    private static volatile int scrubbedWidget = AppWidgetManager.INVALID_APPWIDGET_ID;
-    private static volatile String scrubbedStrip;
+    record ScrubbedBar(int widgetId, String strip, boolean showPassenger) {}
+
+    private static volatile ScrubbedBar scrubbedBar;
     private static volatile boolean directActive;
     private static volatile boolean firstPushLogged;
     private static volatile Panel panel;
@@ -182,9 +183,8 @@ public final class ClimateService extends Service {
     }
 
     /** Marks a bar as covered by the scrubber, or clears it with a null key, and redraws. */
-    static void setScrubbed(Context context, int widgetId, String stripKey) {
-        scrubbedWidget = stripKey == null ? AppWidgetManager.INVALID_APPWIDGET_ID : widgetId;
-        scrubbedStrip = stripKey;
+    static void setScrubbed(Context context, ScrubbedBar bar) {
+        scrubbedBar = bar;
         start(context, ACTION_RENDER);
     }
 
@@ -262,7 +262,7 @@ public final class ClimateService extends Service {
     private static PanelFrame buildSurface(Context context, Prefs prefs, int id, ClimateState state,
             WidgetViews.Size size, List<Bitmap> rendered, long appliedControl) {
         try {
-            WidgetConfig config = prefs.widget(id);
+            WidgetConfig config = prefs.widget(id).forClimate(state);
             CarModel model = prefs.carModel();
             WidgetGeometry.Plan plan = WidgetGeometry.plan(config, size.widthPx, size.heightPx,
                     context.getResources().getDisplayMetrics().density,
@@ -940,9 +940,13 @@ public final class ClimateService extends Service {
             }
             return;
         }
-        WidgetConfig config = prefs.widget(widgetId);
+        ScrubbedBar bar = scrubbedBar;
+        boolean scrubbing = bar != null && bar.widgetId == widgetId;
+        WidgetConfig saved = prefs.widget(widgetId);
+        WidgetConfig config = scrubbing ? saved.forTemperatureZones(bar.showPassenger)
+                : saved.forClimate(state);
         WidgetViews.Size size = widgetSize(context, widgetId);
-        String scrubbed = widgetId == scrubbedWidget ? scrubbedStrip : null;
+        String scrubbed = scrubbing ? bar.strip : null;
         String key = config.toJson() + "|" + WidgetTheme.of(context).night + "|" + size.widthPx + "x" + size.heightPx + "|" + scrubbed;
         float quality = 1f;
         for (int attempt = 0; attempt < 3; attempt++) {

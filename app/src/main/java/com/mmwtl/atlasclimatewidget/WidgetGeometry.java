@@ -445,7 +445,7 @@ final class WidgetGeometry {
                 gaps.add(HEADER_GAP_DP * density * scale);
                 break;
             case TEMPERATURE: {
-                int zones = config.temperatureDual ? 2 : 1;
+                int zones = config.hasPassengerTemperature() ? 2 : 1;
                 if (config.temperatureLayout == WidgetConfig.TempLayout.EDGES) {
                     for (int index = 0; index < 2; index++) {
                         rows.add(new Row(block, RowKind.TEMP_BUTTONS, index,
@@ -569,7 +569,7 @@ final class WidgetGeometry {
                         break;
                     }
                     float valueHeight = row.height * temperatureButtonsValueShare(config);
-                    int zones = config.temperatureDual ? 2 : 1;
+                    int zones = config.hasPassengerTemperature() ? 2 : 1;
                     zoneCount = zones * Math.max(3, Math.round(inner / zones / valueHeight));
                     break;
                 }
@@ -624,11 +624,11 @@ final class WidgetGeometry {
     }
 
     static float temperatureRowDp(WidgetConfig config) {
-        return TEMP_ROW_DP + (config.temperatureDual ? TEMP_LABEL_DP : 0f);
+        return TEMP_ROW_DP + (config.hasPassengerTemperature() ? TEMP_LABEL_DP : 0f);
     }
 
     static float consoleValueRowDp(WidgetConfig config) {
-        return CONSOLE_VALUE_ROW_DP + (config.temperatureDual ? CONSOLE_ZONE_LABEL_DP : 0f);
+        return CONSOLE_VALUE_ROW_DP + (config.hasPassengerTemperature() ? CONSOLE_ZONE_LABEL_DP : 0f);
     }
 
     /** Height of the button layout's row: the value, with the zone names above when dual. */
@@ -636,7 +636,7 @@ final class WidgetGeometry {
         boolean console = config.style == WidgetConfig.Style.CONSOLE;
         float value = console ? CONSOLE_VALUE_ROW_DP : TEMP_ROW_DP;
         float label = console ? CONSOLE_ZONE_LABEL_DP : TEMP_LABEL_DP;
-        return value + (config.temperatureDual ? label : 0f);
+        return value + (config.hasPassengerTemperature() ? label : 0f);
     }
 
     /** Part of the button layout's row taken by the value and the buttons. */

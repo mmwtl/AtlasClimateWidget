@@ -104,7 +104,9 @@
     <string name="setup_open_settings">Открыть все настройки</string>
     <string name="setup_switch_widget_mode">Переключить в режим Android-виджета</string>
     <string name="setup_switch_widget_mode_hint">Сейчас выбран оверлей. Без переключения виджет на рабочем столе покажет «Выбран режим „Оверлей“».</string>
-    <string name="temp_dual">Две зоны: водитель и пассажир</string>
+    <string name="temp_zones_driver">Одна зона</string>
+    <string name="temp_zones_both">Две зоны</string>
+    <string name="temp_zones_sync">По SYNC</string>
     <string name="info_cabin">Температура в салоне</string>
     <string name="info_outside">Температура на улице</string>
     <string name="info_fuel">Топливо в баке, л</string>

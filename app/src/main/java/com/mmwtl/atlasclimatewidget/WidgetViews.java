@@ -118,7 +118,8 @@ final class WidgetViews {
                     zone.setOnClickPendingIntent(R.id.zone,
                             widgetId != AppWidgetManager.INVALID_APPWIDGET_ID
                                     && isScrubbable(control)
-                                    ? scrubIntent(context, widgetId, cell, control)
+                                    ? scrubIntent(context, widgetId, cell, control,
+                                            config.hasPassengerTemperature())
                                     : controlIntent(context, control));
                 }
                 views.addView(R.id.strip_zones, zone);
@@ -183,14 +184,14 @@ final class WidgetViews {
                     // zone's) last.
                     String step = strip.row.index == 0 ? "/1" : "/-1";
                     if (cell == strip.zoneCount - 1) {
-                        return "tempstep/" + (config.temperatureDual
+                        return "tempstep/" + (config.hasPassengerTemperature()
                                 ? Hvac.ZONE_PASSENGER : Hvac.ZONE_DRIVER) + step;
                     }
-                    return cell == 0 && config.temperatureDual
+                    return cell == 0 && config.hasPassengerTemperature()
                             ? "tempstep/" + Hvac.ZONE_DRIVER + step : null;
                 }
                 // Each zone owns its half of the cells: − first, + last.
-                int perZone = config.temperatureDual ? strip.zoneCount / 2 : strip.zoneCount;
+                int perZone = config.hasPassengerTemperature() ? strip.zoneCount / 2 : strip.zoneCount;
                 int zone = cell < perZone ? Hvac.ZONE_DRIVER : Hvac.ZONE_PASSENGER;
                 int local = cell % perZone;
                 if (local == 0) {
@@ -307,11 +308,12 @@ final class WidgetViews {
      * extras cannot be replaced by the host. The tapped cell places the window, since a step
      * may span several cells.
      */
-    static PendingIntent scrubIntent(Context context, int widgetId, int cell, String control) {
+    private static PendingIntent scrubIntent(Context context, int widgetId, int cell,
+            String control, boolean showPassenger) {
         Intent intent = new Intent(context, ScrubActivity.class)
                 .setAction(Intent.ACTION_VIEW)
                 .setData(Uri.parse(CONTROL_SCHEME + "://scrub/" + widgetId + "/" + cell + "/"
-                        + control))
+                        + control + "?passenger=" + showPassenger))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
         return PendingIntent.getActivity(context, widgetId, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);

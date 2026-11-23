@@ -78,6 +78,18 @@ final class WidgetConfig {
         }
     }
 
+    enum TempZones {
+        DRIVER(R.string.temp_zones_driver),
+        BOTH(R.string.temp_zones_both),
+        SYNC(R.string.temp_zones_sync);
+
+        final int titleRes;
+
+        TempZones(int titleRes) {
+            this.titleRes = titleRes;
+        }
+    }
+
     /**
      * Temperature block layout: a bar per zone, or only − and + with the zones side by side:
      * around each value in one row, or stacked at the card's edges with the values towards
@@ -190,7 +202,29 @@ final class WidgetConfig {
     boolean fanEnabled = true;
     boolean tilesEnabled = true;
 
-    boolean temperatureDual;
+    TempZones temperatureZones = TempZones.DRIVER;
+
+    boolean hasPassengerTemperature() {
+        return temperatureZones != TempZones.DRIVER;
+    }
+
+    /** Resolves SYNC for one frame. Missing or stale values leave both controls available. */
+    WidgetConfig forClimate(ClimateState state) {
+        if (temperatureZones != TempZones.SYNC) {
+            return this;
+        }
+        Double sync = state.property(Hvac.TEMP_DUAL, Gib.AREA_GLOBAL);
+        return forTemperatureZones(sync == null || sync != ClimateFunction.TEMP_SYNC.onValue);
+    }
+
+    WidgetConfig forTemperatureZones(boolean showPassenger) {
+        if (temperatureZones != TempZones.SYNC || showPassenger) {
+            return this;
+        }
+        WidgetConfig layout = copy();
+        layout.temperatureZones = TempZones.DRIVER;
+        return layout;
+    }
     /**
      * Sensor line parts: cabin and outside temperature, liters in the tank, the sensor's own
      * percent (beside the liters when both are on), free volume and range.
@@ -584,7 +618,12 @@ final class WidgetConfig {
     }
 
     WidgetConfig copy() {
-        return fromJson(toJson());
+        WidgetConfig copy = fromJson(toJson());
+        copy.fanPresetCount = fanPresetCount;
+        copy.keptWhenOff = keptWhenOff;
+        copy.fuelMultiplier = fuelMultiplier;
+        copy.fuelOffset = fuelOffset;
+        return copy;
     }
 
     String toJson() {
@@ -600,7 +639,7 @@ final class WidgetConfig {
             json.put("temperatureEnabled", temperatureEnabled);
             json.put("fanEnabled", fanEnabled);
             json.put("tilesEnabled", tilesEnabled);
-            json.put("temperatureDual", temperatureDual);
+            json.put("temperatureZones", temperatureZones.name());
             json.put("headerAlign", headerAlign.name());
             json.put("headerCabin", headerCabin);
             json.put("headerOutside", headerOutside);
@@ -697,7 +736,8 @@ final class WidgetConfig {
         config.temperatureEnabled = json.optBoolean("temperatureEnabled", config.temperatureEnabled);
         config.fanEnabled = json.optBoolean("fanEnabled", config.fanEnabled);
         config.tilesEnabled = json.optBoolean("tilesEnabled", config.tilesEnabled);
-        config.temperatureDual = json.optBoolean("temperatureDual", config.temperatureDual);
+        config.temperatureZones = enumValue(TempZones.class, json.optString("temperatureZones"),
+                json.optBoolean("temperatureDual") ? TempZones.BOTH : TempZones.DRIVER);
         config.headerAlign = enumValue(HeaderAlign.class, json.optString("headerAlign"),
                 config.headerAlign);
         // Both temperatures used to share one switch.

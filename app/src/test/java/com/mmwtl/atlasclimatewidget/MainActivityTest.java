@@ -77,7 +77,7 @@ public final class MainActivityTest {
     public void displayModeSwitchKeepsWidgetAndOverlayLayouts() {
         Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
         WidgetConfig placed = new WidgetConfig();
-        placed.temperatureDual = true;
+        placed.temperatureZones = WidgetConfig.TempZones.BOTH;
         prefs.setWidget(42, placed);
         WidgetConfig overlay = new WidgetConfig();
         overlay.temperatureEnabled = false;
@@ -109,7 +109,7 @@ public final class MainActivityTest {
             find(root(controller), "Виджет").performClick();
             ShadowLooper.runUiThreadTasks();
             assertTrue(prefs.isWidgetMode());
-            assertTrue(prefs.widget(42).temperatureDual);
+            assertTrue(prefs.widget(42).hasPassengerTemperature());
             assertFalse(prefs.widget(Prefs.OVERLAY_ID).temperatureEnabled);
         } finally {
             close(controller);

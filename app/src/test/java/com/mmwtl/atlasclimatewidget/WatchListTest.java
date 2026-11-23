@@ -8,6 +8,17 @@ import java.util.Collections;
 import org.junit.Test;
 
 public final class WatchListTest {
+    @Test public void temperatureFollowingSyncWatchesBothZonesWithoutSyncTile() {
+        WidgetConfig config = new WidgetConfig();
+        config.tilesEnabled = false;
+        config.temperatureZones = WidgetConfig.TempZones.SYNC;
+        WatchList watch = WatchList.of(Collections.singletonList(config), CarModel.ATLAS);
+        assertTrue(watch.properties.contains(
+                new WatchList.Key(Hvac.TEMP_DUAL, Gib.AREA_GLOBAL, false)));
+        assertTrue(watch.properties.contains(
+                new WatchList.Key(Hvac.TEMP, Hvac.ZONE_PASSENGER, true)));
+    }
+
     @Test public void airDirectionTilesWatchDirectionAndAuto() {
         WidgetConfig config = new WidgetConfig();
         config.setFunctionEnabled(ClimateFunction.BLOW_FACE, true);

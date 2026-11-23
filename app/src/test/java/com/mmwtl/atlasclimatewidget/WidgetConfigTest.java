@@ -7,11 +7,34 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public final class WidgetConfigTest {
+    @Test public void temperatureModesPreserveLegacyLayoutsAndFollowFreshSyncOnly() {
+        assertEquals(WidgetConfig.TempZones.DRIVER,
+                WidgetConfig.fromJson("{\"temperatureDual\":false}").temperatureZones);
+        assertEquals(WidgetConfig.TempZones.BOTH,
+                WidgetConfig.fromJson("{\"temperatureDual\":true}").temperatureZones);
+
+        WidgetConfig config = new WidgetConfig();
+        config.temperatureZones = WidgetConfig.TempZones.SYNC;
+        assertEquals(WidgetConfig.TempZones.SYNC, config.copy().temperatureZones);
+
+        ClimateStore store = new ClimateStore();
+        assertTrue(config.forClimate(store.snapshot(1)).hasPassengerTemperature());
+        store.putProperty(Hvac.TEMP_DUAL, Gib.AREA_GLOBAL, 1, 2);
+        assertFalse(config.forClimate(store.snapshot(2)).hasPassengerTemperature());
+        assertTrue(config.forClimate(store.snapshot(3 + ClimateStore.STALE_AFTER_MS))
+                .hasPassengerTemperature());
+        store.putProperty(Hvac.TEMP_DUAL, Gib.AREA_GLOBAL, 0, 3);
+        store.putProperty(Hvac.TEMP, Hvac.ZONE_DRIVER, 22, 3);
+        store.putProperty(Hvac.TEMP, Hvac.ZONE_PASSENGER, 22, 3);
+        assertTrue(config.forClimate(store.snapshot(3)).hasPassengerTemperature());
+        assertEquals(WidgetConfig.TempZones.SYNC, config.temperatureZones);
+    }
+
     @Test public void roundTripsAllFields() {
         WidgetConfig config = new WidgetConfig();
         config.moveBlock(WidgetConfig.Block.TILES, -3);
         config.fanEnabled = false;
-        config.temperatureDual = true;
+        config.temperatureZones = WidgetConfig.TempZones.BOTH;
         config.setFunctionEnabled(ClimateFunction.ME_HOT, true);
         config.setFunctionEnabled(ClimateFunction.AC, false);
         config.columns = 4;
@@ -36,7 +59,7 @@ public final class WidgetConfigTest {
         WidgetConfig copy = WidgetConfig.fromJson(config.toJson());
         assertEquals(WidgetConfig.Block.TILES, copy.blockOrder.get(0));
         assertFalse(copy.fanEnabled);
-        assertTrue(copy.temperatureDual);
+        assertTrue(copy.hasPassengerTemperature());
         assertTrue(copy.functions.contains(ClimateFunction.ME_HOT));
         assertFalse(copy.functions.contains(ClimateFunction.AC));
         assertEquals(4, copy.columns);

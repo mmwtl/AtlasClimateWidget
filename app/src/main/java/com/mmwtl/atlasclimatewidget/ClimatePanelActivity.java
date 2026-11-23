@@ -107,7 +107,7 @@ public final class ClimatePanelActivity extends Activity {
         DisplayMetrics metrics = app.getResources().getDisplayMetrics();
         int width = Math.round(metrics.widthPixels * widthPercent / 100f);
         int maxHeight = Math.round(metrics.heightPixels * MAX_HEIGHT_SHARE);
-        WidgetGeometry.Plan natural = WidgetGeometry.plan(config, width, 0f,
+        WidgetGeometry.Plan natural = WidgetGeometry.plan(config.forClimate(state), width, 0f,
                 metrics.density, ClimateCommands.tempRange(state).steps());
         int height = (int) Math.ceil(natural.totalHeight());
         return new WidgetViews.Size(width, Math.max(1, Math.min(maxHeight, height)));

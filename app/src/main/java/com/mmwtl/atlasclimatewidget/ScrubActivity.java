@@ -119,9 +119,12 @@ public final class ScrubActivity extends Activity {
         Context app = getApplicationContext();
         themed = WidgetTheme.themed(app);
         Prefs prefs = new Prefs(app);
-        config = prefs.widget(widgetId);
+        WidgetConfig saved = prefs.widget(widgetId);
         model = prefs.carModel();
         ClimateState state = ClimateService.STORE.snapshot(SystemClock.elapsedRealtime());
+        Uri data = getIntent().getData();
+        config = data.getQueryParameter("passenger") == null ? saved.forClimate(state)
+                : saved.forTemperatureZones(data.getBooleanQueryParameter("passenger", true));
         WidgetViews.Size size = ClimateService.widgetSize(app, widgetId);
         plan = WidgetGeometry.plan(config, size.widthPx, size.heightPx,
                 app.getResources().getDisplayMetrics().density,
@@ -170,7 +173,8 @@ public final class ScrubActivity extends Activity {
         window.getDecorView().getViewTreeObserver().registerFrameCommitCallback(() -> {
             if (!closing && !isFinishing()) {
                 scrubbing = true;
-                ClimateService.setScrubbed(this, widgetId, stripKey);
+                ClimateService.setScrubbed(this, new ClimateService.ScrubbedBar(
+                        widgetId, stripKey, config.hasPassengerTemperature()));
                 showBubble();
             }
         });
@@ -222,7 +226,7 @@ public final class ScrubActivity extends Activity {
             return;
         }
         scrubbing = false;
-        ClimateService.setScrubbed(this, widgetId, null);
+        ClimateService.setScrubbed(this, null);
         // A tap outside may be a preset that changes this bar; draw what the widget draws.
         view.invalidate();
         main.postDelayed(this::finish, RESTORE_FINISH_MS);
@@ -236,7 +240,7 @@ public final class ScrubActivity extends Activity {
         hideBubble();
         if (scrubbing) {
             scrubbing = false;
-            ClimateService.setScrubbed(this, widgetId, null);
+            ClimateService.setScrubbed(this, null);
         }
         super.finish();
         overridePendingTransition(0, 0);
